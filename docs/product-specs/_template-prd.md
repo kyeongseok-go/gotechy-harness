@@ -43,14 +43,14 @@
 |---|---|
 | 로딩 / 빈 상태(2종) / 에러(구분) / 부분 실패 | |
 
-## 5. career_signals (2단계 — docs/career.yaml 참조)
+## 5. career_signals (2단계 — `~/.claude/gotechy-career.yaml` 참조, 없으면 `docs/career.example.yaml`)
 
 ```yaml
 career_signals:
   hypothesis:          # 스펙 시점: 증명하려는 역량 가설
     capabilities: []
-    jd_keywords_matched: []   # docs/career.yaml의 jd_keywords와 매칭
-  evidence:            # ship 시점에 채움 — 제3자가 확인 가능한 것만 (career.yaml의 evidence_types)
+    jd_keywords_matched: []   # ~/.claude/gotechy-career.yaml(없으면 career.example.yaml)의 jd_keywords와 매칭
+  evidence:            # ship 시점에 채움 — 제3자가 확인 가능한 것만 (career 파일의 evidence_types)
     links: []
     metrics: []
     story: ""

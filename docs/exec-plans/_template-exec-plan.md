@@ -65,8 +65,15 @@
 
 ## career_signals
 
+<!-- PRD와 같은 2단계 구조. evidence는 /gotechy-ship 5단계가 검사하는 필드다 (링크·수치 없으면 미통과). -->
+
 ```yaml
-capabilities: []
-jd_keywords_matched: []
-story: ""
+career_signals:
+  hypothesis:          # 계획 시점: 증명하려는 역량 가설
+    capabilities: []
+    jd_keywords_matched: []
+  evidence:            # 완료 시점: 제3자가 확인 가능한 것만
+    links: []
+    metrics: []
+    story: ""
 ```

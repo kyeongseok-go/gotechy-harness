@@ -1,0 +1,34 @@
+# career.example.yaml — 커리어 시그널 구조 예시 (템플릿에 포함되는 공개 안전 버전)
+#
+# ⚠️ 실제 타겟 회사 목록은 이 파일에 쓰지 않는다.
+#    개인 파일 `~/.claude/gotechy-career.yaml` 에 두고, 저장소에는 절대 커밋하지 않는다.
+#    이유: 이 템플릿은 여러 프로젝트로 복사된다. 클라이언트·공개 저장소에
+#    "이직하려는 회사 목록"이 따라가는 것은 마찰이 아니라 사고다.
+#
+# 읽는 순서: ~/.claude/gotechy-career.yaml 이 있으면 그것을, 없으면 이 파일의 구조만 쓴다.
+
+target_companies: []          # 개인 파일에만 채운다
+
+# 아이디어·스펙 본문과 매칭해 career_signals.hypothesis.jd_keywords_matched 에 기록
+jd_keywords:
+  - AI 에이전트
+  - LLM 워크플로우
+  - RAG
+  - 에이전트 오케스트레이션
+  - MCP
+  - 개발 생산성 도구
+  - 자동화 파이프라인
+  - 프롬프트 엔지니어링
+  - 컨텍스트 엔지니어링
+  - eval / LLM 평가
+  - 벡터 데이터베이스
+  - 임베딩
+  - Human-in-the-loop
+  - 에이전트 하네스
+
+# evidence 게이트 기준 (/gotechy-ship 5단계): 아래 중 1개 이상이 있어야 "증명"으로 인정
+evidence_types:
+  - 배포된 데모 URL
+  - 재현 가능한 저장소 커밋/PR 링크
+  - 전/후 측정 수치 (성능·시간·비용)
+  - eval 통과 리포트

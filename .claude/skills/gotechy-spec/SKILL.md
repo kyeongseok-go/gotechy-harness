@@ -16,7 +16,7 @@ argument-hint: "[기능 아이디어 한 줄]"
 2. **불편함 인터뷰 (짧게)** — 아이디어가 모호하면 사용자에게 최대 3개만 묻는다: 누가 / 언제 / 없으면 곤란한가. 명확하면 묻지 않는다.
 3. **스펙 작성** — `docs/product-specs/_template-prd.md` 복사 → `docs/product-specs/<기능-슬러그>.md`.
    - Non-goals 필수. 성공 기준은 **측정 방법·시점·실패 판정선**까지 표로 (측정 불가 기준은 삭제하거나 측정 수단을 스코프에 포함).
-4. **career_signals(hypothesis)** — `docs/career.yaml`의 jd_keywords와 매칭해 가설만 기록 (evidence는 ship 시점).
+4. **career_signals(hypothesis)** — `~/.claude/gotechy-career.yaml`(개인) 또는 `docs/career.example.yaml`의 jd_keywords와 매칭해 가설만 기록 (evidence는 ship 시점).
 5. **색인 갱신** — index.md에 행 추가 (상태: 초안, 우선순위 포함).
 6. **적대적 리뷰** — spec-reviewer에게 위임. **🟡/🟢 지적은 반영 또는 기각 사유 기록. 🔴 지적은 에이전트가 기각할 수 없다 — 반영하거나, 지적 원문과 함께 사용자에게 판단을 넘긴다** (판정 기준은 위임하지 않는다).
 7. **확정 조건** — 🔴 0건이어야 "확정"으로 전이. 확정 후 변경은 스펙 하단 변경 이력에 기록하고, Non-goals 축소(스코프 확대)는 사용자 승인 필수.

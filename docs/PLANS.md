@@ -34,7 +34,7 @@
 | Idempotence and Recovery | 중단 후 재개 방법 |
 | Artifacts and Notes | 산출물 원장 (파일·문서·URL·측정치) — 3종 출력의 근거 |
 | Interfaces and Dependencies | 노출·의존 계약 (타입/시그니처·API 경로·env 키) |
-| career_signals | 이 작업이 만드는 커리어 시그널 (`docs/career.yaml` 매칭 — gotechy 고유) |
+| career_signals | 이 작업이 만드는 커리어 시그널 (`~/.claude/gotechy-career.yaml`(개인) 또는 `docs/career.example.yaml` 매칭 — gotechy 고유) |
 
 ## 완료의 정의 (완료 게이트)
 

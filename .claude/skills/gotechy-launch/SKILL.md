@@ -5,13 +5,14 @@ description: |
   "홍보 글"이라고 하거나 제품 출시 시점에 사용한다. docs/BRAND.md의 SEO/GEO 기준과
   마케팅 체크리스트를 적용하고, 블로그·쓰레드·유튜브 3채널 세트를 생성한다.
 argument-hint: "[제품/기능명]"
+disable-model-invocation: true
 ---
 
 # /gotechy-launch — 런치 & 마케팅
 
 ## 절차
 
-1. **런치 체크리스트 (docs/BRAND.md)** — 랜딩의 3초 규칙, 데모 GIF, README 채용 담당자 시선 점검. 미달 항목은 목록으로 보고하고 수정 여부를 확인한다.
+1. **런치 체크리스트 (`docs/BRAND.md`) + 첫인상 기준(`docs/DESIGN.md` 경험 원칙 1)** — 랜딩의 3초 규칙, 데모 GIF, README 채용 담당자 시선 점검. 미달 항목은 목록으로 보고하고 수정 여부를 확인한다.
 2. **SEO/GEO 감사** — 대상 페이지에 대해:
    - 제목·description·OG 태그·JSON-LD 구조화 데이터
    - 첫 문단 결론 구조 (AI 답변 엔진 인용 최적화 — GEO/AEO)

@@ -10,7 +10,7 @@
 ## 반영 내역 (v1.1 변경)
 
 ### 강제 계층 신설 (C1/C2/D1/D2/E1/E2/E4/F1/F2)
-- `.claude/hooks/guard-bash.sh` — stdin JSON 파싱 방식의 정상 hook (force push·시크릿 Bash 접근·재귀 삭제 차단). **스모크 테스트 7케이스 통과 확인.**
+- `.claude/hooks/guard-bash.sh` — stdin JSON 파싱 방식의 정상 hook (force push·시크릿 Bash 접근·재귀 삭제 차단). **스모크 테스트 통과 확인** (당시 7케이스 → 현재 14케이스로 확장).
 - settings.json 재작성 — 무효한 `if` 필드 제거, deny는 Read 계열만 유지(Bash 방어는 hook으로 이중화).
 - `package.json` 스텁 — 미설정 명령은 **명시적 실패** ("명령 부재 = 게이트 실패, 스킵 아님").
 - `.github/workflows/ci.yml` — ship 게이트의 CI 미러 (격리된 채점자): lint/build/test/경계/문서 드리프트/ExecPlan 위생/(교체) 마커.
@@ -19,7 +19,7 @@
 
 ### 기획 게이트의 "참" 검증 (A1~A8)
 - PRD §3 성공 기준 → 측정 방법·시점·실패 판정선 표 강제.
-- `docs/career.yaml` 신설 (댕글링 참조 해소, 진실의 원천 단일화) + career_signals를 hypothesis(스펙)/evidence(ship) 2단계로 분리 — evidence는 제3자 확인 가능 링크/수치 필수.
+- `~/.claude/gotechy-career.yaml` 신설 (댕글링 참조 해소, 진실의 원천 단일화) + career_signals를 hypothesis(스펙)/evidence(ship) 2단계로 분리 — evidence는 제3자 확인 가능 링크/수치 필수.
 - 🔴 지적은 작성자가 기각 불가 (사용자에게만 기각 권한). 확정 조건 = 🔴 0건.
 - 착수 판정(§0)·미니 스펙 트랙·우선순위 열·변경 이력(Non-goals 축소는 사용자 승인) 추가. 출시 2주 후 측정 환류.
 
@@ -64,7 +64,7 @@
 | # | 심각도 | 지적 | 판정 |
 |---|---|---|---|
 | 1 | HIGH | guard-bash.sh가 `.env.local` 미차단 + `.env.example` 포함 시 전체 예외 | **수용** — 토큰 단위 검사로 재작성, `.env.*` 전부 차단·`.env.example` 토큰만 허용 |
-| 2 | HIGH | `git -C . push --force`, `rm -r -f`, `--recursive --force` 우회 | **수용** — 토큰 기반 매칭으로 재작성, 스모크 테스트 22케이스 전부 통과 |
+| 2 | HIGH | `git -C . push --force`, `rm -r -f`, `--recursive --force` 우회 | **수용** — 토큰 기반 매칭으로 재작성, 스모크 테스트 전부 통과 (당시 22케이스 검증 → init.sh에 14케이스 상설화) |
 | 3 | HIGH | lockfile 없는 템플릿에서 `cache: npm`이 CI를 설치 전에 실패시킴 | **수용** — cache 제거, lockfile 커밋 후 npm ci 전환 안내 주석 |
 | 4 | MED | `npm ci \|\| npm install`이 lockfile 문제를 은폐 | **수용** — npm install 단일화 (초기 템플릿 전제 명시) |
 | 5 | MED | CI가 ship 게이트의 완전한 미러가 아님에도 그렇게 주장 | **수정 수용** — "기계 검증 가능한 항목의 미러"로 주장 완화 + init.sh 단계 추가. 공통 ship-gate.sh 추출은 도그푸딩 후 검토(부채) |
@@ -75,4 +75,45 @@
 
 Codex가 검증해준 것: settings.json strict JSON 유효, PreToolUse hook 구조가 공식 규약과 일치, guard-bash.sh·init.sh `bash -n` 통과, AGENTS.md 지도와 실제 구조 일치(87줄).
 
-hook 스모크 테스트는 12케이스(우회 변형 포함)로 확장되어 init.sh와 CI에 상설화되었다.
+hook 스모크 테스트는 14케이스(우회 변형 포함)로 확장되어 init.sh와 CI에 상설화되었다.
+
+---
+
+# 부록 2: 최종 검증 라운드 — v1.1.1 → v1.2 (2026-09-18)
+
+> 심사 이후 30여 건의 편집이 들어갔으므로, **수정된 상태를 처음 보는 눈으로** 다시 검증했다.
+> 검증자 2인: ①정합성 검증(참조 무결성 + 주장 대조, 실제 명령 실행) ②첫날 사용 시뮬레이션(온보딩·인지 부하·3주차 이탈).
+
+## 치명적 발견 2건 (둘 다 "우리가 만든 수정"이 만든 문제)
+
+| 지적 | 판정 | 조치 |
+|---|---|---|
+| **guard-bash.sh가 jq 부재 시 fail-open** — jq가 없으면 원본 JSON이 그대로 들어가 어떤 패턴에도 안 걸린다. 실측: `cat .env`·`git push --force`·`rm -rf /` 전부 exit 0. macOS 기본에 jq가 없고, SECURITY.md·README는 "무조건 차단"이라 단언 중이었다 | **수용** | jq → python3 → sed 3단 폴백 + 파싱 실패 시 **fail-closed**. 폴백 단계별 실측 검증 완료 |
+| **템플릿의 `docs/career.yaml`에 타겟 회사 10곳 실명** — 템플릿이 클라이언트·공개 저장소로 복사되면 "이직하려는 회사 목록"이 따라간다. 마찰이 아니라 사고 | **수용** | 개인 파일 `~/.claude/gotechy-career.yaml`로 이전(양 머신 배치), 템플릿에는 회사명 없는 `career.example.yaml`만. 전 참조 경로 갱신 |
+
+## 그 외 수용 (12건)
+
+- **ExecPlan career_signals가 평면 구조라 ship이 검사할 `evidence` 칸이 없었음** → PRD와 동일한 hypothesis/evidence 2단계로 통일 (게이트가 구조적으로 검사 가능해짐)
+- **ship 게이트가 "전부 아니면 무"** → **패치/기능/릴리스 3등급** + 부분 점수 보고("5개 중 4개 통과, 남은 것 1개"). 오타 수정에 evidence를 요구하던 문제 해소. 3주차 이탈 원인 1위 제거
+- **`rm -rf` 전면 차단으로 `rm -rf node_modules`까지 막힘** → 빌드 산출물 화이트리스트(node_modules·dist·.next·coverage·/tmp 등). 일상 마찰로 hook을 통째로 끄게 만드는 경로 차단 + 예외 추가/비활성 방법을 파일 상단에 명시
+- **`--force-with-lease` 과차단** (가장 안전한 형태인데) → 허용
+- **보안 리뷰가 수명주기 다이어그램에 없었음** → 추가 + "인증·API·DB를 건드리면 크기와 무관하게 필수"
+- **작업 크기 임계값이 문서마다 다르고, "사용자 데이터 건드리면 풀 스펙"이 Claude 전용 SKILL에만 있었음**(Codex 호환 주장과 모순) → AGENTS.md에 크기 판정 표로 통합
+- **스킬 호출 트리거 규칙 부재** → AGENTS.md "에이전트 행동 규칙" 신설 (크기 판정 후 진행 / 부작용은 사용자 지시 시에만)
+- **doc-gardener 주기가 고아 주장**("ship마다"인데 ship에 호출 없음) → ship 3단계에 스코프 한정 호출 추가
+- **`generated/`(자동 생성 전용)에 수동 작성 파일** → `docs/references/`로 이동
+- `HANDOFF.md` 댕글링 참조 → ExecPlan Context 섹션으로 통일
+- launch의 "3초 규칙" 출처 오기(BRAND→DESIGN), `disable-model-invocation: true` 추가
+- init.sh: hook 결과가 앞선 검사 실패에 가려지던 버그, **CLAUDE.md `@AGENTS.md` 브리지 소실 검사** 신설(외부 도구가 덮어쓰는 조용한 치명적 실패 감지)
+
+## 부채로 이월 (4건 — TD-001~004)
+
+첫날 시뮬레이션의 지적 중 구조 변경이 필요한 것들: `init.sh --fix` 부트스트래퍼(1일차 게이트가 구조적으로 통과 불가한 문제의 근본 해결), 스캐폴드 부재(레이어 규칙은 있는데 폴더가 없음), 문서 다이어트(2,700줄 중 42%가 프로젝트 무관), 커밋·PR 규약.
+
+## 검증자가 확인해준 것
+
+참조 무결성(링크 5건 + 실경로 전부 정상, 댕글링 없음), npm 스크립트 양방향 정합, settings.json·ci.yml·archify JSON 구문 유효, `bash -n` 통과, AGENTS.md 지도 24행 전부 실존, 심각도 척도(🔴🟡🟢 vs A/B/C/D)는 대상이 달라 모순 아님, 대상 사용자 정의 4곳 일치, 스킬 frontmatter 6/6 정상.
+
+## 이번 라운드의 교훈
+
+**수정이 새 결함을 만든다.** 심사에서 나온 hook 재작성이 fail-open을 낳았고, career.yaml 신설이 유출 경로를 만들었다. 고친 뒤 **처음 보는 눈으로 다시 보는 라운드**가 없었다면 둘 다 그대로 배포됐을 것이다 — 이것이 L4(격리된 심사자)를 한 번이 아니라 매 변경마다 도는 이유다.

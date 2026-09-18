@@ -41,9 +41,10 @@ if [ -f .env ] && ! grep -q "^\.env$" .gitignore 2>/dev/null; then echo ".env가
 
 echo
 echo "[4] hook 스모크 테스트 (강제 장치가 실제로 작동하는가 — 우회 변형 포함)"
+HOOK_FAIL=0
 hook_case() { # $1=command $2=expected exit
   R=$(echo "{\"tool_input\":{\"command\":\"$1\"}}" | bash .claude/hooks/guard-bash.sh >/dev/null 2>&1; echo $?)
-  if [ "$R" != "$2" ]; then echo "실패 — '$1' exit=$R (기대 $2)"; FAIL=1; fi
+  if [ "$R" != "$2" ]; then echo "실패 — '$1' exit=$R (기대 $2)"; HOOK_FAIL=1; FAIL=1; fi
 }
 hook_case "git push --force" 2
 hook_case "git -C . push --force" 2
@@ -51,16 +52,33 @@ hook_case "git push -f origin main" 2
 hook_case "cat .env" 2
 hook_case "cat .env.local" 2
 hook_case "cat .env .env.example" 2
-hook_case "rm -r -f build" 2
-hook_case "rm --recursive --force x" 2
+hook_case "rm -r -f src" 2
+hook_case "rm --recursive --force ~/important" 2
+hook_case "rm -rf node_modules" 0
+hook_case "git push --force-with-lease" 0
 hook_case "find . -name tmp -delete" 2
 hook_case "git status" 0
 hook_case "cat .env.example" 0
 hook_case "npm test" 0
-[ "$FAIL" = "0" ] && echo "통과 — 12케이스 차단/통과 정상."
+[ "$HOOK_FAIL" = "0" ] && echo "통과 — 14케이스 차단/통과 정상."
 
 echo
-echo "[5] 템플릿 잔재 안내"
+echo "[5] CLAUDE.md 브리지 검사 (지도가 에이전트에게 보이는가)"
+# /gotechy-start 등 외부 도구가 CLAUDE.md를 덮어쓰면 @AGENTS.md 브리지가 사라지고
+# 하네스 지도 전체가 Claude Code에게 보이지 않게 된다. 조용한 치명적 실패라 기계로 검사한다.
+if [ ! -f CLAUDE.md ]; then
+  echo "CLAUDE.md 없음 — '@AGENTS.md' 한 줄이라도 있어야 지도가 로드된다."
+  FAIL=1
+elif ! grep -q "@AGENTS.md" CLAUDE.md; then
+  echo "CLAUDE.md에 '@AGENTS.md' 브리지가 없음 — 외부 도구가 덮어썼을 가능성."
+  echo "→ CLAUDE.md 첫 줄에 '@AGENTS.md' 를 복구하라. 없으면 하네스 문서 전체가 로드되지 않는다."
+  FAIL=1
+else
+  echo "통과 — 브리지 유효."
+fi
+
+echo
+echo "[6] 템플릿 잔재 안내"
 echo "  - README.md는 하네스 설명서다 → 프로젝트 README로 교체 권장"
 echo "  - docs/references/research/ 는 하네스 리서치 원문 → 유지하거나 하네스 원본으로 반납"
 

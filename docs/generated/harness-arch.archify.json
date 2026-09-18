@@ -1,0 +1,331 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Gotechy Harness v1.1 구조도",
+    "output": "harness-arch.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "human",
+      "type": "external",
+      "label": "고텍이 (사람)",
+      "sublabel": "기준·거절·확인",
+      "pos": [
+        20,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "agents",
+      "type": "external",
+      "label": "AI 에이전트",
+      "sublabel": "Claude Code·Codex",
+      "pos": [
+        210,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "entry",
+      "type": "frontend",
+      "label": "AGENTS.md",
+      "sublabel": "지도 + CLAUDE 브리지",
+      "pos": [
+        400,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "specs",
+      "type": "backend",
+      "label": "product-specs/",
+      "sublabel": "PRD·career_signals",
+      "pos": [
+        590,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "plans",
+      "type": "backend",
+      "label": "exec-plans/",
+      "sublabel": "ExecPlan·부채",
+      "pos": [
+        780,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "gate",
+      "type": "security",
+      "label": "완료 게이트",
+      "sublabel": "ship + hook·CI",
+      "pos": [
+        970,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ],
+      "tag": "L3 강제"
+    },
+    {
+      "id": "outputs",
+      "type": "cloud",
+      "label": "3종 출력",
+      "sublabel": "제품·커리어·콘텐츠",
+      "pos": [
+        1160,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "playbook",
+      "type": "backend",
+      "label": "AI_PLAYBOOK",
+      "sublabel": "ROUTINES·4대 역량",
+      "pos": [
+        590,
+        140
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "quality",
+      "type": "security",
+      "label": "품질 문서군",
+      "sublabel": "품질·보안·신뢰성 bar",
+      "pos": [
+        780,
+        140
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "evals",
+      "type": "database",
+      "label": "evals/·prompts/",
+      "sublabel": "골든셋·버전 관리",
+      "pos": [
+        970,
+        140
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "skills",
+      "type": "backend",
+      "label": "skills/ 6종",
+      "sublabel": "명령형 파이프라인",
+      "pos": [
+        590,
+        470
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "reviewers",
+      "type": "security",
+      "label": "서브에이전트 3",
+      "sublabel": "리뷰·감사·정원사",
+      "pos": [
+        780,
+        470
+      ],
+      "size": [
+        140,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "저장소 gotechy-harness/",
+      "wraps": [
+        "entry",
+        "specs",
+        "plans",
+        "gate",
+        "playbook",
+        "quality",
+        "evals",
+        "skills",
+        "reviewers"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "강제 계층 (hook·CI·eval)",
+      "wraps": [
+        "gate",
+        "evals"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "steer",
+      "from": "human",
+      "to": "agents",
+      "label": "조향",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "map-load",
+      "from": "agents",
+      "to": "entry",
+      "label": "지도 로드",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "to-spec",
+      "from": "entry",
+      "to": "specs",
+      "label": "/gotechy-spec",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "to-plan",
+      "from": "specs",
+      "to": "plans",
+      "label": "/gotechy-plan",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "to-gate",
+      "from": "plans",
+      "to": "gate",
+      "label": "/gotechy-ship",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "gate-out",
+      "from": "gate",
+      "to": "outputs",
+      "label": "통과 시에만",
+      "variant": "emphasis",
+      "labelDy": -26
+    },
+    {
+      "id": "routine",
+      "from": "playbook",
+      "to": "specs",
+      "label": "문제정의·컨텍스트 루틴",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "bar",
+      "from": "quality",
+      "to": "gate",
+      "label": "판정 기준",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "eval-gate",
+      "from": "evals",
+      "to": "gate",
+      "label": "eval 게이트",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "skill-run",
+      "from": "skills",
+      "to": "specs",
+      "label": "스킬 실행",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "adversarial",
+      "from": "reviewers",
+      "to": "plans",
+      "label": "적대적 리뷰 (🔴 기각 불가)",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "운영 헌법",
+      "items": [
+        "Humans steer, Agents execute",
+        "저장소 밖 지식은 존재하지 않는다",
+        "완료는 증명이다 (50% 증후군 방어)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "파이프라인",
+      "items": [
+        "스펙 → 계획 → 구현 → 게이트 → 3종 출력",
+        "측정 결과가 문제 정의를 다시 고친다",
+        "콘텐츠 생성 진입점은 /gotechy-launch 하나"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "v1.1 강제 계층",
+      "items": [
+        "guard-bash.sh: force push·시크릿·삭제 차단",
+        "CI가 게이트를 미러 (격리된 채점자)",
+        "명령 부재 = 게이트 실패, 스킵 아님"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# 시크릿 (docs/SECURITY.md 절대 규칙 1)
+.env
+.env.*
+!.env.example
+*.pem
+secrets/
+
+# 의존성·빌드
+node_modules/
+dist/
+build/
+.next/
+coverage/
+
+# 로컬·개인
+.DS_Store
+CLAUDE.local.md
+.claude/settings.local.json
+
+# LLM 관측 로그 (집계 결과만 generated/로)
+logs/llm/*.jsonl

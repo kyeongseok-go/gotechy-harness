@@ -14,20 +14,25 @@ OpenAI의 하네스 엔지니어링(Harness Engineering) 문서 구조 + Anthrop
 ## 새 프로젝트에 적용하기
 
 ```bash
-# 1. 템플릿 복사
-cp -r gotechy-harness/ ~/workspace/my-new-project/
-cd ~/workspace/my-new-project
+# 1. 템플릿 복사 (원본 이력은 두고 온다)
+cp -r ~/gotechy-harness/ ~/workspace/my-new-project/
+cd ~/workspace/my-new-project && rm -rf .git docs/references/research
 
-# 2. 온보딩 검사 — 교체 마커·시크릿 규약·hook 동작을 기계 검사
-npm run init:harness
+# 2. 부트스트랩 — 스택·테스트·배포를 묻고 실제로 채운다
+npm run init:harness -- --fix        # 대화형. 비대화형은 --yes --stack=node --deploy=vercel
+npm install                          # 방금 추가된 devDependencies
 
-# 3. 프로젝트 값 채우기 (에이전트에게 시켜도 됨)
-#    - AGENTS.md 하단 "프로젝트별 설정", ARCHITECTURE.md, package.json 스텁 스크립트
-#    - docs/PRODUCT_SENSE.md 대상 사용자 확인 (이 README도 프로젝트 것으로 교체)
+# 3. 게이트가 살아있는지 확인 (여기까지 green이면 1일차 세팅 끝)
+npm test && npm run lint && npm run check:boundaries
 
 # 4. 시작
-claude   # AGENTS.md 표준이라 Codex도 진입 가능 — 단 스킬·rules는 Claude Code 전용 (AGENTS.md 참조)
+claude   # AGENTS.md 표준이라 Codex도 진입 가능 — 단 스킬·rules는 Claude Code 전용
 ```
+
+`--fix`가 채우는 것: `src/` 레이어 골격(types→config→repo→service→runtime→ui) · 통과하는 예제 테스트 1개 · tsconfig · vitest 설정(커버리지 임계값 포함) · package.json 스크립트 전부 · ARCHITECTURE/AGENTS/DEPLOYMENT의 교체 자리.
+무엇이 바뀌는지 먼저 보려면 `bash scripts/bootstrap.sh --dry-run`.
+
+> **왜 자동으로 채우나**: 복사 직후에는 모든 게이트 명령이 실패 스텁이라, 규칙을 정확히 지키는 에이전트는 1일차에 완료를 선언할 수 없다. 검사만 하고 고쳐주지 않는 검사기가 온보딩 이탈의 최대 원인이었다.
 
 Claude Code는 `CLAUDE.md → @AGENTS.md` 브리지로, Codex·Cursor 등은 `AGENTS.md`를 직접 읽습니다.
 
@@ -65,7 +70,9 @@ gotechy-harness/
 │   ├── skills/              # /gotechy-spec·plan·ship·security·launch + blog-writer v2
 │   └── agents/              # spec-reviewer, security-auditor, doc-gardener
 ├── prompts/                 # 프로덕션 프롬프트 버전 관리
-├── scripts/init.sh          # 온보딩 검사 (npm run init:harness)
+├── scripts/
+│   ├── init.sh              # 온보딩 검사 (npm run init:harness)
+│   └── bootstrap.sh         # --fix 시 실제로 채우는 부트스트래퍼
 ├── .github/workflows/ci.yml # 완료 게이트의 CI 미러 (격리된 채점자)
 └── .dependency-cruiser.cjs  # 레이어 경계 기계 강제
 ```

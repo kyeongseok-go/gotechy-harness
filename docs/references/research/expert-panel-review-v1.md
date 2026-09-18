@@ -117,3 +117,37 @@ hook 스모크 테스트는 14케이스(우회 변형 포함)로 확장되어 in
 ## 이번 라운드의 교훈
 
 **수정이 새 결함을 만든다.** 심사에서 나온 hook 재작성이 fail-open을 낳았고, career.yaml 신설이 유출 경로를 만들었다. 고친 뒤 **처음 보는 눈으로 다시 보는 라운드**가 없었다면 둘 다 그대로 배포됐을 것이다 — 이것이 L4(격리된 심사자)를 한 번이 아니라 매 변경마다 도는 이유다.
+
+---
+
+# 부록 3: TD-002 상환 + 전역 스킬 통일 (2026-09-18)
+
+## 부트스트래퍼 — "검사만 하고 고쳐주지 않는 검사기"의 해결
+
+첫날 시뮬레이션이 지목한 **1순위 이탈 원인**(복사 직후 `exit 1`, 실패 6건, 게이트가 구조적으로 통과 불가)을 `scripts/bootstrap.sh`로 상환했다.
+
+`npm run init:harness -- --fix`가 스택·테스트 러너·배포 타깃을 묻고(비대화형 플래그 지원, `--dry-run` 제공) 다음을 **실제로 생성·수정**한다:
+- `src/` 레이어 골격 6개 (types→config→repo→service→runtime→ui)
+- 통과하는 예제: `service/health.ts` + 테스트 + `runtime/index.ts` — 레이어 규칙의 살아있는 본보기
+- `tsconfig.json`(strict), `vitest.config.ts` — **커버리지 임계값으로 QUALITY_BAR 기준을 기계 강제**
+- `package.json` 스크립트 전부를 실제 명령으로 (해당 없는 것은 실패가 아니라 명시적 `exit 0`)
+- ARCHITECTURE·AGENTS·DEPLOYMENT의 교체 자리 (앵커가 없으면 조용히 넘기지 않고 경고)
+
+## 실측 증거 (작성됨 ≠ 작동함)
+
+깨끗한 복사본에서 전 과정을 재현했다:
+
+| 검증 | 결과 |
+|---|---|
+| `--fix` 후 `init.sh` | **첫 실행 통과** (이전: 실패 6건) |
+| `npm test` | 1 passed |
+| `npm run lint` / `build` / `check:boundaries` / `gen:docs` | 전부 exit 0 |
+| **레이어 위반 주입** (`src/ui`가 `src/repo`를 직접 import) | `error ui-no-repo` + **exit 1** — CI가 막는다 |
+| 위반 제거 후 | exit 0 복귀 |
+| `test:coverage` | 리포트 출력, 임계값 설정 동작 |
+
+레이어 규칙이 **실제 코드에 대해 위반을 잡는 것을 확인한 것은 이번이 처음**이다. 그전까지 `.dependency-cruiser.cjs`는 한 번도 실행된 적 없는 설정 파일이었다.
+
+## 전역 스킬 이름 충돌 해소
+
+전역 `~/.claude/skills/gotekie-blog-writer`(v1)를 v2로 교체했다. v1은 `~/.claude/skills-archive/gotekie-blog-writer-v1-backup-20260918`에 보존. 이로써 v1의 과잉 트리거("정리해줘" → 리팩터링 요청에도 발동)가 제거되고, 전역·프로젝트 어느 쪽이 로드돼도 동일한 v2가 된다.

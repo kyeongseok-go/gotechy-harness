@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
 # 하네스 온보딩 검사 — 새 프로젝트에 복사한 뒤 실행한다: npm run init:harness
-# "(교체)" 마커가 남아 있으면 지도가 거짓말을 하는 상태다. /gotechy-ship 게이트 0단계도 이걸 검사한다.
+# "(교체)" 마커가 남아 있으면 지도가 거짓말을 하는 상태다. /gotechy-ship 게이트 2단계도 이걸 검사한다.
+#
+#   npm run init:harness            # 검사만
+#   npm run init:harness -- --fix   # 부트스트랩(실제로 채움) 후 검사
+#
+# 템플릿을 갓 복사한 상태에서는 실패하는 것이 정상이다 — 그 실패를 없애는 것이 --fix 다.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
+
+for arg in "$@"; do
+  if [ "$arg" = "--fix" ]; then
+    bash scripts/bootstrap.sh "$@" || exit 1
+    echo
+    echo "── 부트스트랩 후 재검사 ──"
+    break
+  fi
+done
 
 echo "== Gotechy Harness 초기화 검사 =="
 
@@ -88,5 +102,7 @@ if [ "$FAIL" = "0" ]; then
   exit 0
 else
   echo "== 초기화 미완 — 위 항목을 처리하라 =="
+  echo "   대부분은 자동으로 채울 수 있다:  npm run init:harness -- --fix"
+  echo "   (무엇이 바뀌는지 먼저 보려면:    bash scripts/bootstrap.sh --dry-run)"
   exit 1
 fi

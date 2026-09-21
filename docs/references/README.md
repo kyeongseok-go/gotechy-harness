@@ -16,8 +16,13 @@
 |---|---|---|
 | (프로젝트별로 채움) | | |
 
+## section-library.md — 섹션 어휘 사전
+
+와이어프레임(50-wireframe)이 섹션을 선택하는 유일한 어휘. "Assembled, not generated" — `docs/WIZARD.md` 참조.
+
 ## research/ — 하네스 리서치 원문
 
 - [openai-harness-engineering.md](research/openai-harness-engineering.md) — OpenAI 하네스 엔지니어링 원문 분석
 - [anthropic-claude-code-harness.md](research/anthropic-claude-code-harness.md) — Anthropic Claude Code 공식 가이드 분석
+- [planning-wizard-research.md](research/planning-wizard-research.md) — 단계형 기획·디자인 위저드 조사 (Relume·매니페스트·식스샵 + Spec Kit·Kiro·Lovable·Looka 외) → WIZARD.md의 근거
 - [github-skills-ecosystem.md](research/github-skills-ecosystem.md) — GitHub 스킬 생태계 조사 (분야별 베스트 + 추천 툴킷 15)

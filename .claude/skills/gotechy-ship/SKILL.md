@@ -40,6 +40,7 @@ argument-hint: "[ExecPlan 파일명 또는 --patch|--feature|--release]"
 - 스펙과 실제 동작이 어긋나면 스펙 갱신 + 변경 이력 기록 (상태 → 출시됨).
 - 구조가 바뀌었으면 ARCHITECTURE.md 갱신, 승격할 결정은 ADR 생성.
 - `npm run gen:docs` 실행 후 `git diff docs/generated/`가 **비어 있는지 확인** (판단이 아니라 명령).
+- 스펙·설계 문서의 미결 마커 검사: `grep -rn "NEEDS CLARIFICATION\|SYNC NEEDED" docs/product-specs/` 가 비어야 통과 (위저드 산출물의 미확정·미전파 상태 감지 — docs/WIZARD.md).
 - **doc-gardener**에게 이번 작업이 건드린 범위의 문서 드리프트를 검증시킨다 (스코프 한정).
 
 ### 4. 부채 기록 *(전 등급)*

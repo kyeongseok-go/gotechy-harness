@@ -45,6 +45,7 @@ gotechy-harness/
 ├── ARCHITECTURE.md      # 레이어·경계 지도 (matklad 관례)
 ├── docs/
 │   ├── PLANS.md             # ExecPlan 작성 헌법
+│   ├── WIZARD.md            # 기획·디자인 위저드 헌법 (7단계·질문 엔진·승인 락)
 │   ├── AI_PLAYBOOK.md       # AI 기능 개발 과정 (4대 역량·eval·가드레일)
 │   ├── ROUTINES.md          # 개발·프롬프팅 루틴
 │   ├── PRODUCT_SENSE.md     # 제품 감각·대상 사용자
@@ -57,7 +58,7 @@ gotechy-harness/
 │   ├── BRAND.md             # 고텍이 브랜드·콘텐츠 규범
 │   ├── career.example.yaml  # 커리어 시그널 구조 (실명은 ~/.claude/에)
 │   ├── design-docs/         # 설계 문서 (index + core-beliefs)
-│   ├── product-specs/       # PRD (템플릿 포함)
+│   ├── product-specs/       # PRD + 위저드 템플릿 7종 (Brief→…→스타일가이드)
 │   ├── exec-plans/          # active/ completed/ + 부채 추적
 │   ├── decisions/           # ADR
 │   ├── evals/               # LLM 골든셋 + eval 규약
@@ -67,7 +68,7 @@ gotechy-harness/
 │   ├── settings.json        # 권한 + PreToolUse 가드 hook (guard-bash.sh — 스모크 테스트 필수)
 │   ├── hooks/guard-bash.sh  # force push·시크릿 접근·재귀 삭제 차단 (L3 최소 구현)
 │   ├── rules/               # paths 스코프 규칙 (코드/테스트/보안)
-│   ├── skills/              # /gotechy-spec·plan·ship·security·launch + blog-writer v2
+│   ├── skills/              # /gotechy-spec(위저드)·design·plan·ship·security·launch + blog-writer v2
 │   └── agents/              # spec-reviewer, security-auditor, doc-gardener
 ├── prompts/                 # 프로덕션 프롬프트 버전 관리
 ├── scripts/

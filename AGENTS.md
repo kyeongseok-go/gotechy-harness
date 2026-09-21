@@ -20,6 +20,8 @@
 | 설계 문서 색인 | `docs/design-docs/index.md` |
 | 제품 스펙 (기능이 뭘 해야 하나) | `docs/product-specs/index.md` |
 | 실행 계획 작성 규칙 (ExecPlan 헌법) | `docs/PLANS.md` |
+| 기획·디자인 위저드 헌법 (단계·질문·락) | `docs/WIZARD.md` |
+| 섹션 어휘 사전 (와이어프레임은 여기서만 선택) | `docs/references/section-library.md` |
 | AI 기능·서비스 개발 과정 (4대 역량, eval, 가드레일) | `docs/AI_PLAYBOOK.md` |
 | 개발·프롬프팅 루틴 | `docs/ROUTINES.md` |
 | 진행 중/완료된 실행 계획 | `docs/exec-plans/active/` · `completed/` |
@@ -42,9 +44,9 @@
 ## 작업 수명주기
 
 ```
-아이디어 → 스펙(product-specs) → 설계(design-docs/ADR) → 계획(exec-plans/active)
-        → 구현(+테스트) → [보안 리뷰] → 완료 게이트 → 완료(exec-plans/completed)
-        → 출력 변환(블로그·위키·커리어 evidence) → 부채 기록(tech-debt-tracker)
+아이디어 → 스펙(product-specs) → [UI 설계: 사이트맵·와이어프레임·스타일가이드] → 설계(design-docs/ADR)
+        → 계획(exec-plans/active) → 구현(+테스트) → [보안 리뷰] → 완료 게이트
+        → 완료(exec-plans/completed) → 출력 변환(블로그·위키·커리어 evidence) → 부채 기록
 ```
 
 **작업 크기 판정** (등급이 문서 부담과 게이트 범위를 정한다)
@@ -54,6 +56,7 @@
 | 1시간 미만·파일 1~2개·동작 계약 불변 | 생략 | 생략 | **패치** 등급 |
 | 1일 미만의 작은 기능 | 미니 스펙 | 생략 가능 | 기능 등급 |
 | 그 이상, 또는 **사용자 데이터·인증·결제를 건드림** | 풀 스펙 | ExecPlan 필수 | 기능/릴리스 등급 |
+| **제품·사이트 단위** (화면 여러 개, 신규 프로젝트) | 위저드 7단계 (`docs/WIZARD.md`) | ExecPlan 필수 | 기능/릴리스 등급 |
 
 - **보안 리뷰는 선택이 아니다**: 인증·API·DB·개인정보를 건드렸으면 완료 전에 반드시 보안 리뷰(`docs/SECURITY.md` 체크리스트). 크기와 무관하다.
 - **완료 시**: 회고 작성 → 게이트 검사 → `completed/`로 이동.
@@ -70,7 +73,8 @@
 
 | 커맨드 | 역할 |
 |---|---|
-| `/gotechy-spec` | 아이디어 → PRD + career_signals 생성 |
+| `/gotechy-spec` | 아이디어 → 스펙 (미니/풀/**위저드**: Brief→PRD→기능→유저플로우) |
+| `/gotechy-design` | UI 설계 위저드 (사이트맵→와이어프레임→스타일가이드) |
 | `/gotechy-plan` | 스펙 → ExecPlan 생성·갱신 |
 | `/gotechy-ship` | 완료 게이트 검사 (패치/기능/릴리스 3등급, 부분 점수 보고) |
 | `/gotechy-security` | 보안 리뷰 (docs/SECURITY.md 기준) |

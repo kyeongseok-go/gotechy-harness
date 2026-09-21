@@ -5,7 +5,8 @@
 ## A. 기능 하나의 루틴 (표준 궤도)
 
 ```
-1. /gotechy-spec "아이디어"        ← 불편함 인터뷰 → PRD + career_signals
+1. /gotechy-spec "아이디어"        ← 미니/풀/위저드 트랙 (제품 단위면 Brief→PRD→기능→플로우)
+1-b. /gotechy-design               ← 화면 있는 제품: 사이트맵→와이어프레임→스타일가이드
 2. (스펙 리뷰 반영)                ← spec-reviewer 왕복 1회
 3. /gotechy-plan 스펙파일          ← ExecPlan + tracer bullet 마일스톤
 4. 새 세션에서 구현 시작            ← 계획 세션과 분리 (컨텍스트 청결)

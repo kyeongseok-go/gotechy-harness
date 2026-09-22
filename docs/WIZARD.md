@@ -55,6 +55,7 @@
 |---|---|---|---|
 | 00 | brief | 인터뷰(무엇/누구/핵심 액션 1개) + Appetite + No-gos | 한 단락 브리프가 Relume 공식을 채움 |
 | 10 | prd | brief | 목표 지표가 전→후 수치, 이해관계자별 문제, 마커 0 |
+| 15* | quality-goals (선택 — 기능/릴리스급 권장) | prd의 맥락 | `/gotechy-quality`: 특성 3~5개, 조건+대상+지표+목표값, 근거 출처 (`docs/QUALITY_MODEL.md`) |
 | 20 | features | prd의 사용자 역할 | 요구사항>기능>상세 3계층, 수용 기준 EARS |
 | 30 | user-flow | 기능 1개 이상 | mermaid, 페이지 노드가 화면 목록의 원천 |
 | 40 | sitemap | user-flow의 페이지 노드 | 페이지당 4~8섹션, 섹션 한 줄 설명 |

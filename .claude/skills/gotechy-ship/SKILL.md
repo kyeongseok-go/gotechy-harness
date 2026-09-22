@@ -48,6 +48,7 @@ argument-hint: "[ExecPlan 파일명 또는 --patch|--feature|--release]"
 - 패치 등급에서 이것만은 면제되지 않는다 — 기록 없는 부채가 가장 비싸다.
 
 ### 5. 품질·3종 출력 *(기능·릴리스)*
+- **품질 목표 판정**: `15-quality-goals.md`(또는 quality-goals-*.md)가 있으면 — 미판정 목표·불합격 목표·`[NEEDS CLARIFICATION]` 잔존 시 미통과. 재측정은 `/gotechy-quality --verify`.
 - QUALITY_SCORE 표에서 **이번 작업이 건드린 영역만** 루브릭(A/B/C/D)에 따라 갱신. 등급 하락도 정직하게.
 - **커리어**: career_signals의 `evidence`에 제3자가 확인 가능한 링크/수치가 1개 이상 있는가 (기준: `~/.claude/gotechy-career.yaml`의 evidence_types). 역량명 나열만 있으면 미통과.
 - **콘텐츠**: Surprises & Discoveries에서 블로그 소재 1줄 이상을 Outcomes에 **기록**한다. (생성 자체는 `/gotechy-launch`가 유일한 진입점 — 여기서 실행하지 않는다.)

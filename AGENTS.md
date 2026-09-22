@@ -31,6 +31,7 @@
 | 디자인 철학·비주얼 | `docs/DESIGN.md` |
 | 프론트엔드 규범 | `docs/FRONTEND.md` |
 | 품질 기준·품질 점수 | `docs/QUALITY_BAR.md` |
+| 표준 품질 모델·목표값 방법론 (ISO 25010·25023·25030) | `docs/QUALITY_MODEL.md` |
 | 신뢰성 요구사항 | `docs/RELIABILITY.md` |
 | 보안 규범·위협 모델 | `docs/SECURITY.md` |
 | 브랜드·콘텐츠·마케팅 규범 | `docs/BRAND.md` |
@@ -76,6 +77,7 @@
 | `/gotechy-spec` | 아이디어 → 스펙 (미니/풀/**위저드**: Brief→PRD→기능→유저플로우) |
 | `/gotechy-design` | UI 설계 위저드 (사이트맵→와이어프레임→스타일가이드) |
 | `/gotechy-plan` | 스펙 → ExecPlan 생성·갱신 |
+| `/gotechy-quality` | 품질 목표 수립·검증 (특성→측정항목→목표값→검증, ISO 25010 기반) |
 | `/gotechy-ship` | 완료 게이트 검사 (패치/기능/릴리스 3등급, 부분 점수 보고) |
 | `/gotechy-security` | 보안 리뷰 (docs/SECURITY.md 기준) |
 | `/gotechy-launch` | 런치·SEO/GEO·마케팅 산출물 |

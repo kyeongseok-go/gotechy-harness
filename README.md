@@ -52,6 +52,7 @@ gotechy-harness/
 │   ├── DESIGN.md            # 디자인 시스템 (토큰·수치·anti-slop)
 │   ├── FRONTEND.md          # 프론트 규범
 │   ├── QUALITY_BAR.md       # 품질 기준 + 점수표 + 하네스 자체 측정
+│   ├── QUALITY_MODEL.md     # ISO 25010·25023·25030 품질 목표 방법론
 │   ├── RELIABILITY.md       # 신뢰성·백업·인시던트 런북
 │   ├── SECURITY.md          # 보안 규범 (웹 + OWASP LLM Top 10)
 │   ├── DEPLOYMENT.md        # 배포·롤백·시크릿 수명주기
@@ -68,7 +69,7 @@ gotechy-harness/
 │   ├── settings.json        # 권한 + PreToolUse 가드 hook (guard-bash.sh — 스모크 테스트 필수)
 │   ├── hooks/guard-bash.sh  # force push·시크릿 접근·재귀 삭제 차단 (L3 최소 구현)
 │   ├── rules/               # paths 스코프 규칙 (코드/테스트/보안)
-│   ├── skills/              # /gotechy-spec(위저드)·design·plan·ship·security·launch + blog-writer v2
+│   ├── skills/              # /gotechy-spec(위저드)·design·quality·plan·ship·security·launch + blog-writer v2
 │   └── agents/              # spec-reviewer, security-auditor, doc-gardener
 ├── prompts/                 # 프로덕션 프롬프트 버전 관리
 ├── scripts/

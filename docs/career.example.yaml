@@ -7,7 +7,15 @@
 #
 # 읽는 순서: ~/.claude/gotechy-career.yaml 이 있으면 그것을, 없으면 이 파일의 구조만 쓴다.
 
-target_companies: []          # 개인 파일에만 채운다
+# 회사 선택 기준 — 구조만 둔다. 실제 값(연봉 하한 등)은 개인 파일에만 채운다.
+target_criteria:
+  ax_adoption: AX를 적극 도입하고 구성원의 AI 활용을 지원한다
+  compensation: 희망 연봉 충족
+  financial_health: 재무 건전
+  commute: 통근 시간 기준 이내
+target_thresholds:
+  salary_floor_krw: null        # 개인 파일에만 채운다
+  commute_max_minutes: null     # 개인 파일에만 채운다
 
 # 아이디어·스펙 본문과 매칭해 career_signals.hypothesis.jd_keywords_matched 에 기록
 jd_keywords:

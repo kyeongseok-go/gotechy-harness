@@ -28,6 +28,6 @@
 
 ## career_signals 렌즈 (gotechy 고유)
 
-모든 스펙(`product-specs/`)에는 `career_signals` 필드를 포함한다. **키워드·타겟사·증거 기준의 진실의 원천은 `~/.claude/gotechy-career.yaml`(개인) 또는 `docs/career.example.yaml`** (채용 시장 변화 시 그 파일만 갱신).
+모든 스펙(`product-specs/`)에는 `career_signals` 필드를 포함한다. **키워드·회사 선택 기준·증거 기준의 진실의 원천은 `~/.claude/gotechy-career.yaml`(개인) 또는 `docs/career.example.yaml`** (채용 시장 변화 시 그 파일만 갱신).
 - 스펙 시점: `hypothesis` (증명하려는 역량 가설 + jd_keywords 매칭)
 - ship 시점: `evidence` (제3자가 확인 가능한 링크·수치 — 없으면 게이트 미통과)

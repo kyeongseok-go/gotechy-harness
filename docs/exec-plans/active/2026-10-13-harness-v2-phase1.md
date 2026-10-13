@@ -19,7 +19,8 @@
 - [x] (2026-10-13 23:00) 결정 트리 확정(D3은 미결, D12는 방향 합의 — 나머지 확정), 스펙 초안 작성
 - [x] (2026-10-13 23:40) spec-reviewer 검토(🔴6 🟡6 🟢2) 반영 — 1단계를 1a/1b로 분할
 - [x] (2026-10-14 00:30) 구현 전 독립 교차 검토(Fable 5.1 🔴4 🟡7 🟢4, Codex GPT-6.1 Sol RED 7) 반영 — 순서 재배치, 결정 검증의 위협 모델 축소·정직화, Python 3.12 고정, 검증 항목 객관화
-- [ ] M0 전제 확인
+- [x] (2026-10-14 01:30) M0 전제 확인 — mise·apm·uv 락·Claude restricted·Codex 샌드박스 검증, 공통 worktree 격리로 설계 보강
+- [ ] 구현 스택 확정 (사용자 요청: 최신 기준 리서치 후 결정)
 - [ ] M1 관통 경로 — 계약 → 작업 1건 → HANDOFF → verify (이미 설치된 claude·codex 사용)
 - [ ] M2 오너 코어 — lint·인박스·읽기 전용 HTML·결정·이해 게이트·용어 은행
 - [ ] M3 설치 계층 — 부트스트랩·train·setup·doctor·restore·gitleaks
@@ -36,6 +37,14 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**M0 전제 확인 결과 (2026-10-14, macOS arm64)**
+- mise v2026.10.8: 릴리스 바이너리 sha256이 공식 `SHASUMS256.txt`와 일치(`dd77de9a…`, 목록 줄은 `./` 접두사). 레지스트리에 전부 있음 — python·node(core), uv·claude-code·codex·gh·gitleaks(aqua), apm(github:microsoft/apm). `mise lock --platform macos-arm64,macos-x64,linux-x64` → 24개 플랫폼 항목(URL·sha256, gh는 provenance=github-attestations). `mise install --locked`로 8개 도구가 격리 폴더에 79초에 설치: Python 3.12.15, uv 0.13.0, node 24.21.0, claude 2.1.296, codex 0.162.1, gh 2.102.0, apm 0.33.0, gitleaks 8.30.1. [확인]
+- 격리 방법: `MISE_DATA_DIR`·`MISE_CONFIG_DIR`·`MISE_CACHE_DIR`·`MISE_STATE_DIR`를 지정하면 사용자 홈을 건드리지 않는다. GitHub API 한도를 피하려면 `MISE_GITHUB_TOKEN`. [확인]
+- apm v0.33.0: 단독 바이너리(파이썬 비의존) sha256 일치. 로컬 스킬 패키지를 `--target claude,agent-skills`로 설치 → `.claude/skills`·`.agents/skills` 두 곳 + `apm.lock.yaml`(배포 파일별 sha256). 배포 파일을 변조하면 `apm audit --ci` exit 1, `apm install --frozen` 후 exit 0으로 복구. 주의: 로컬 경로 설치는 락에 절대 경로가 들어가 이식성이 없다 → 실제 배포는 git 원격(태그 고정)으로. `apm_modules/`에 원본 `.git`까지 복사되므로 `.gitignore` 필수(apm이 자동 추가). [확인]
+- Claude Code `-p --restricted --permission-mode acceptEdits --settings '{"permissions":{"deny":["Read(./orchestration/gates/**)","Edit(...)","Write(...)"]}}'`: 작업 폴더 밖 파일 읽기 차단, 결정 폴더 읽기·쓰기 차단, README 편집만 성공. 명령 실행 도구 없음. 비용 약 $0.18/5턴(Opus 5.5 기본 effort, `--effort` 플래그로 조절 가능). `acceptEdits` 없이는 편집도 승인 대기로 거부됨. [확인]
+- **Codex `exec -s workspace-write`: 작업 폴더 안의 결정 파일을 실제로 수정했다**(`pending → resolved`). 폴더 밖 비밀 파일은 모델이 스스로 거절했을 뿐 샌드박스 차단이 아니다. 또 표준 입력을 닫지 않으면 `Reading additional input from stdin...`에서 무한 대기한다(`< /dev/null` 필수). usage에 `cache_write_input_tokens`·`reasoning_output_tokens` 필드가 있다. [확인]
+- 결론: 워커 격리를 "도구별 권한 설정"에만 기대면 백엔드마다 구멍이 다르다. → 모든 백엔드 공통으로 **워커는 별도 git worktree(작업 브랜치)에서 실행하고, 리드는 메인 체크아웃의 결정 파일만 읽으며, 워커 diff가 보호 경로(`orchestration/gates/`, 정책·설정 파일)를 건드리면 실행을 실패 처리**한다. 결정 키는 워커가 읽을 수 있는 파일에 두지 않는다(키 저장 방식은 구현 스택 리서치 후 확정).
 
 ## Decision Log
 

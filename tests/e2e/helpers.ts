@@ -27,7 +27,8 @@ export function makeProject(): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-p-')))
   sh(['git', 'init', '-q', '-b', 'main'], root)
   writeFileSync(join(root, 'README.md'), '# Sandbox\n')
-  initProject(root, ['owner'])
+  // 테스트 커밋이 gitleaks hook에 막히지 않게 hook은 켜지 않는다(gitleaks.test.ts가 따로 검사)
+  initProject(root, ['owner'], { hooks: false })
   sh(['git', 'add', '-A'], root)
   sh(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init'], root)
   return root

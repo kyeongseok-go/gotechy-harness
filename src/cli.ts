@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 // gotechy CLI. 종료코드: 0 성공, 1 검사 실패(고칠 수 있는 문제), 2 환경 문제(도구·경로·상태).
 import { existsSync, readFileSync } from 'node:fs'
-import { relative } from 'node:path'
+import { homedir } from 'node:os'
+import { join, relative } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
 import { Command } from 'commander'
@@ -12,12 +13,16 @@ import { hasErrors, lintHandoff } from './core/lint-handoff'
 import { lintTask } from './core/lint-task'
 import { lintStyle } from './core/style'
 import { acceptTask } from './runtime/accept'
+import { formatDoctor, runDoctor } from './runtime/doctor'
 import { decideGate, verifyGates } from './runtime/gates'
+import { repoRoot } from './runtime/git'
 import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
 import { gotechyHome, initKey, rotateKey } from './runtime/keys'
+import { libraryRoot } from './runtime/library'
 import { findProject } from './runtime/project'
 import { runTask } from './runtime/run'
+import { applySetup, formatPlan, planSetup, restoreSetup } from './runtime/setup'
 import { createTask } from './runtime/task-new'
 import { loadKnownTerms } from './runtime/terms'
 
@@ -284,6 +289,64 @@ program
     for (const v of verdicts)
       console.log(`${v.id} ${v.status}${v.reasons.length > 0 ? `: ${v.reasons.join(' / ')}` : ''}`)
     process.exit(verdicts.some((v) => v.status === 'fail') ? 1 : 0)
+  })
+
+program
+  .command('doctor')
+  .description('설치 상태가 train과 같은지, 정책과 라이브러리 규칙을 검사한다 (contract.md 10.2절)')
+  .option('--history', '현재 저장소의 git 이력 전체를 gitleaks로 검사')
+  .action(async (o: { history?: boolean }) => {
+    const lib = libraryRoot()
+    let history: { root: string; gitleaks: string } | undefined
+    if (o.history) {
+      const gitleaks = process.env.GOTECHY_GITLEAKS ?? Bun.which('gitleaks')
+      const root = await repoRoot(process.cwd())
+      if (!gitleaks || !root) {
+        console.error(
+          !gitleaks
+            ? 'gitleaks가 없어요. train대로 설치하세요 (라이브러리 폴더에서 mise install --locked).'
+            : 'git 저장소 안에서 실행하세요.',
+        )
+        process.exit(2)
+      }
+      history = { root, gitleaks }
+    }
+    const report = await runDoctor({
+      trainFile: process.env.GOTECHY_TRAIN ?? join(lib, 'train.yaml'),
+      libRoot: lib,
+      home: homedir(),
+      ...(history ? { history } : {}),
+    })
+    process.stdout.write(formatDoctor(report))
+    process.exit(report.checks.some((c) => c.status === 'fail') ? 1 : 0)
+  })
+
+program
+  .command('setup')
+  .description('train의 정책을 전역 설정에 넣는다. 바꾸기 전에 백업한다 (contract.md 10.3절)')
+  .option('--dry-run', '바꿀 내용만 보여 주고 아무것도 쓰지 않는다')
+  .option('--restore <stamp>', '이 시각의 백업으로 되돌린다')
+  .action((o: { dryRun?: boolean; restore?: string }) => {
+    const opts = {
+      home: homedir(),
+      gotechyHome: gotechyHome(),
+      trainFile: process.env.GOTECHY_TRAIN ?? join(libraryRoot(), 'train.yaml'),
+    }
+    try {
+      if (o.restore) {
+        restoreSetup(opts, o.restore)
+        console.log(`${o.restore} 백업으로 되돌렸어요.`)
+        return
+      }
+      const plan = planSetup(opts)
+      console.log(formatPlan(plan))
+      if (o.dryRun || plan.changes.length === 0) return
+      const stamp = applySetup(plan, opts)
+      console.log(`적용했어요. 되돌리려면: gotechy setup --restore ${stamp}`)
+    } catch (e) {
+      console.error((e as Error).message)
+      process.exit(1)
+    }
   })
 
 await program.parseAsync()

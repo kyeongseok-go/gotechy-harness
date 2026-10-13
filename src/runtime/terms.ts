@@ -35,8 +35,12 @@ export function loadTermBank(projectRoot?: string): TermEntry[] {
 export function loadKnownTerms(projectRoot?: string): Set<string> {
   const known = new Set<string>()
   for (const e of loadTermBank(projectRoot)) {
-    known.add(e.term.toLowerCase())
-    for (const a of e.aliases ?? []) known.add(a.toLowerCase())
+    // 여러 단어 용어는 본문에서 낱말 단위로 뽑히므로 낱말도 아는 것으로 본다
+    for (const name of [e.term, ...(e.aliases ?? [])]) {
+      const lower = name.toLowerCase()
+      known.add(lower)
+      for (const w of lower.split(/\s+/)) known.add(w)
+    }
   }
   return known
 }

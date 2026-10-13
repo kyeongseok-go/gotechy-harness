@@ -143,7 +143,7 @@ frontmatter:
 워커가 바꾸면 실행이 `failed`가 되고, 작업 `ownership`에 넣으면 `task lint`가 거부하는 경로:
 
     orchestration/gates/   orchestration/tasks/   orchestration/private/   orchestration/.seq
-    orchestration/.gate-seq   orchestration/project.yaml
+    orchestration/.gate-seq   orchestration/project.yaml   .githooks/   .gitleaks.toml
     .gotechy/              .git/                  .claude/               .agents/
     AGENTS.md              CLAUDE.md              apm.yml   apm.lock.yaml
     mise.toml              mise.lock              policy/
@@ -309,3 +309,42 @@ frontmatter:
 ### 9.5 프로젝트 용어 은행 누적
 
 - `accept`가 성공하면 HANDOFF "새 용어" 절의 `- 용어: 풀이` 중 은행(라이브러리와 프로젝트)에 없는 것을 `orchestration/terms.jsonl`에 `{term, easy, src: "T-###"}`로 더한다. 오너가 승인한 작업의 풀이만 쌓인다.
+
+## 10. 설치 계층 (M3)
+
+### 10.1 `train.yaml`
+
+저장소 루트의 `train.yaml`이 함께 검증된 도구 버전 묶음(train)이다. 도구마다 `version`, 버전을 읽는 명령 `check`, 고정 등급 `pin`을 적는다.
+
+| pin | 뜻 | doctor |
+|---|---|---|
+| `A` | mise 락으로 완전 고정 | 버전이 다르면 실패 |
+| `B` | 설치 시점 고정, 자동 업데이트는 정책으로 막음 | 버전이 다르면 실패 |
+| `C` | 고정할 수 없음(예: GUI 앱) | 기록만 하고 실패하지 않음 |
+
+`policy`는 `setup`이 전역 설정에 넣는 값이다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
+
+### 10.2 `gotechy doctor [--history]`
+
+- 검사: 도구 버전이 train과 같은가, 정책이 전역 설정에 들어가 있는가, 라이브러리 스킬의 frontmatter(`name`, `description` 필수, description 400자 이하, 본문 150줄 이하, 스킬 수 15개 이하), 저장소 셸 스크립트(`bin/`, `scripts/`, `.claude/hooks/`, `.githooks/`, `templates/`)가 macOS에서 도는가. `#!/bin/sh` 스크립트는 POSIX 밖 문법(`[[`, `declare`, `mapfile`, `readarray`, `<<<`, `${x,,}`, `${x^^}`, `function f {`)을 금지하고, bash 스크립트는 macOS 기본 bash 3.2에 없는 문법(`declare -A`, `mapfile`, `readarray`, `${x,,}`, `${x^^}`, `&>>`, `|&`, `coproc`, `local -n`)만 금지한다. 둘 다 GNU 전용 명령(`sha256sum`, `date -d`)은 금지한다.
+- 실패마다 고치는 명령을 출력한다. 하나라도 실패하면 exit 1, 모두 통과하면 exit 0.
+- `GOTECHY_TRAIN`으로 다른 train 파일을 줄 수 있다(테스트에서 불일치를 주입할 때).
+- `--history`: gitleaks로 저장소 전체 이력을 검사한다. 찾으면 exit 1.
+
+### 10.3 `gotechy setup [--dry-run] [--restore <시각>]`
+
+- `--dry-run`: 바꿀 내용만 출력한다. 어떤 파일도, 백업 폴더도, `$GOTECHY_HOME`도 만들지 않는다.
+- 적용: 바꾸기 전에 `$GOTECHY_HOME/backup/<시각>/`에 원본과 `manifest.json`(경로, 원래 있었는지, 바꾸기 전과 후의 sha256, 권한)을 남긴다. 기존 키, 주석, 권한은 지킨다. 심볼릭 링크면 실제 파일을 고친다. 계획을 세운 뒤 쓰기 직전에 파일이 바뀌었으면(다른 프로그램이 동시에 고침) 아무것도 쓰지 않고 멈춘다.
+- `--restore <시각>`: manifest대로 원본 바이트와 권한을 되돌리고, 원래 없던 파일은 지운다. 적용 뒤 사용자가 파일을 바꿨으면(현재 해시가 적용 직후 해시와 다름) 아무것도 바꾸지 않고 멈춘다.
+- 1a의 `setup`은 정책만 다룬다. 도구 설치는 부트스트랩과 `mise install --locked`가 한다. mise가 설치한 도구는 복원 대상이 아니다.
+
+### 10.4 gitleaks hook
+
+- `gotechy init`은 `.githooks/pre-commit`(POSIX sh)과 `.gitleaks.toml`(기본 규칙 + 주민등록번호 규칙)을 만들고 `git config core.hooksPath .githooks`를 설정한다. hook은 staged 변경을 gitleaks로 검사하고, 찾으면 커밋을 막는다. gitleaks가 없으면 설치하라는 안내와 함께 커밋을 막는다(fail-closed).
+- hook은 `--no-verify`로 우회할 수 있다. 최종 방어선은 CI의 전체 이력 검사다(2단계).
+
+### 10.5 `bin/gotechy` 부트스트랩
+
+- POSIX sh. 스크립트 위치로 라이브러리 폴더를 찾는다. `$GOTECHY_HOME/bin/mise`가 없으면 train의 mise 버전과 아키텍처별 sha256으로 내려받아 검증한다(`shasum -a 256`).
+- `--bootstrap-dry-run`이면 무엇을 내려받고 어디에 둘지만 출력하고, 어떤 다운로드나 폴더 생성도 하지 않는다.
+- 그다음 `mise exec -C <라이브러리> -- bun <라이브러리>/src/cli.ts "$@"`.

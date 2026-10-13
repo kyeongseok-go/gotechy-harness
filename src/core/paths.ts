@@ -7,6 +7,7 @@ export const PROTECTED_PREFIXES = [
   'orchestration/.seq',
   'orchestration/.gate-seq',
   'orchestration/project.yaml',
+  '.githooks/',
   '.gotechy/',
   '.git/',
   '.claude/',
@@ -21,6 +22,7 @@ export const PROTECTED_FILES = [
   'apm.lock.yaml',
   'mise.toml',
   'mise.lock',
+  '.gitleaks.toml',
 ] as const
 
 const IRREVERSIBLE_HINTS = [

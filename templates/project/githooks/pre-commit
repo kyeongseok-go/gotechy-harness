@@ -1,0 +1,20 @@
+#!/bin/sh
+# gotechy: 커밋하려는 변경에서 비밀 값과 개인정보를 찾으면 커밋을 막는다 (contract.md 10.4절).
+# gitleaks가 없으면 막는다(fail-closed). --no-verify로 우회할 수 있으므로 최종 방어선은 CI의 전체 이력 검사다.
+GITLEAKS="${GOTECHY_GITLEAKS:-gitleaks}"
+if ! command -v "$GITLEAKS" >/dev/null 2>&1; then
+  echo "gitleaks가 없어 커밋을 막았어요. train대로 설치하세요 (gotechy 라이브러리 폴더에서 mise install --locked)." >&2
+  exit 1
+fi
+ROOT=$(git rev-parse --show-toplevel) || exit 1
+if [ -f "$ROOT/.gitleaks.toml" ]; then
+  "$GITLEAKS" git --staged --no-banner --redact --config "$ROOT/.gitleaks.toml" "$ROOT"
+else
+  "$GITLEAKS" git --staged --no-banner --redact "$ROOT"
+fi
+status=$?
+if [ "$status" -ne 0 ]; then
+  echo "비밀 값이나 개인정보로 보이는 내용이 있어 커밋을 막았어요. 지우고 다시 커밋하세요." >&2
+  exit 1
+fi
+exit 0

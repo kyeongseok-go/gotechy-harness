@@ -1,0 +1,61 @@
+#!/bin/sh
+# gotechy 부트스트랩 (contract.md 10.5절). macOS 기본 셸에서도 돌도록 POSIX sh로만 쓴다.
+# $GOTECHY_HOME/bin/mise가 없으면 train.yaml의 버전과 체크섬으로 내려받아 검증한 뒤, 라이브러리의 CLI로 넘긴다.
+set -eu
+
+LIB=$(cd "$(dirname "$0")/.." && pwd -P)
+GHOME="${GOTECHY_HOME:-$HOME/.gotechy}"
+MISE="$GHOME/bin/mise"
+TRAIN="$LIB/train.yaml"
+
+case "$(uname -s)" in
+  Darwin) os=macos ;;
+  Linux) os=linux ;;
+  *) echo "지원하지 않는 OS예요: $(uname -s)" >&2; exit 2 ;;
+esac
+case "$(uname -m)" in
+  arm64 | aarch64) arch=arm64 ;;
+  x86_64 | amd64) arch=x64 ;;
+  *) echo "지원하지 않는 CPU예요: $(uname -m)" >&2; exit 2 ;;
+esac
+
+# train.yaml의 mise 블록에서 버전과 이 플랫폼의 체크섬을 읽는다(yaml 파서 없이 줄 단위)
+version=$(sed -n 's/^  version: *\([0-9.][0-9.]*\) *$/\1/p' "$TRAIN" | head -n 1)
+sha=$(sed -n "s/^    $os-$arch: *\([0-9a-f]\{64\}\) *$/\1/p" "$TRAIN" | head -n 1)
+if [ -z "$version" ] || [ -z "$sha" ]; then
+  echo "train.yaml에서 mise 버전이나 $os-$arch 체크섬을 찾지 못했어요" >&2
+  exit 2
+fi
+name="mise-v$version-$os-$arch"
+url="https://github.com/jdx/mise/releases/download/v$version/$name"
+
+if [ "${1:-}" = "--bootstrap-dry-run" ]; then
+  if [ -x "$MISE" ]; then
+    echo "mise가 이미 있어요: $MISE"
+  else
+    echo "받을 파일: $name"
+    echo "주소: $url"
+    echo "sha256: $sha"
+    echo "둘 곳: $MISE"
+  fi
+  echo "그다음: $MISE exec -C $LIB -- bun $LIB/src/cli.ts <인자>"
+  echo "(dry-run: 아무것도 내려받거나 만들지 않았어요)"
+  exit 0
+fi
+
+if [ ! -x "$MISE" ]; then
+  command -v curl >/dev/null 2>&1 || { echo "curl이 없어요" >&2; exit 2; }
+  mkdir -p "$GHOME/bin"
+  tmp="$MISE.download.$$"
+  curl -fsSL "$url" -o "$tmp"
+  got=$(shasum -a 256 "$tmp" | cut -d ' ' -f 1)
+  if [ "$got" != "$sha" ]; then
+    rm -f "$tmp"
+    echo "mise 체크섬이 train과 달라 설치를 멈췄어요 (기대 $sha, 받은 것 $got)" >&2
+    exit 2
+  fi
+  chmod 755 "$tmp"
+  mv "$tmp" "$MISE"
+fi
+
+exec "$MISE" exec -C "$LIB" -- bun "$LIB/src/cli.ts" "$@"

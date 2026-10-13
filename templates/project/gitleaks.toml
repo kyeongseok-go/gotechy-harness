@@ -1,0 +1,8 @@
+# gotechy: gitleaks 기본 규칙에 개인정보 규칙을 더한다 (contract.md 10.4절)
+[extend]
+useDefault = true
+
+[[rules]]
+id = "korean-rrn"
+description = "주민등록번호"
+regex = '''\b\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])-[1-4]\d{6}\b'''

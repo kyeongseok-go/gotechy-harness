@@ -28,7 +28,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'gotechy-e2e-'))
   sh(['git', 'init', '-q', '-b', 'main'], root)
   writeFileSync(join(root, 'README.md'), '# Sandbox\n')
-  initProject(root, ['owner'])
+  initProject(root, ['owner'], { hooks: false })
   writeFileSync(join(root, 'orchestration', 'gates', 'G-001.md'), GATE)
   sh(['git', 'add', '-A'], root)
   sh(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init'], root)

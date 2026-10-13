@@ -1,6 +1,14 @@
 // gotechy init: 프로젝트에 계약 골격·라우터·팩을 깐다. 이미 있는 파일은 덮어쓰지 않는다.
 // M1은 팩을 복사로 설치하고, M3에서 apm(버전 고정·해시 감사)으로 교체한다.
-import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import { libraryRoot } from './library'
 import { projectId } from './project'
@@ -9,7 +17,12 @@ const PACKS: Record<string, string[]> = { owner: ['owner-protocol'] }
 
 export type InitReport = { created: string[]; skipped: string[]; warnings: string[] }
 
-export function initProject(root: string, packs: string[]): InitReport {
+export type InitOptions = {
+  /** 커밋 전 gitleaks hook을 설정한다(contract.md 10.4절). 기본 켜짐 */
+  hooks?: boolean
+}
+
+export function initProject(root: string, packs: string[], opts: InitOptions = {}): InitReport {
   const lib = libraryRoot()
   const report: InitReport = { created: [], skipped: [], warnings: [] }
   const note = (path: string, made: boolean) => (made ? report.created : report.skipped).push(path)
@@ -50,6 +63,8 @@ export function initProject(root: string, packs: string[]): InitReport {
     note('.gitignore (gotechy 항목)', true)
   } else note('.gitignore', false)
 
+  if (opts.hooks !== false) installHooks(root, lib, report, note)
+
   for (const pack of packs) {
     const skills = PACKS[pack]
     if (!skills) {
@@ -66,4 +81,32 @@ export function initProject(root: string, packs: string[]): InitReport {
     }
   }
   return report
+}
+
+function installHooks(
+  root: string,
+  lib: string,
+  report: InitReport,
+  note: (path: string, made: boolean) => void,
+): void {
+  const hook = join(root, '.githooks', 'pre-commit')
+  const madeHook = !existsSync(hook)
+  if (madeHook) {
+    mkdirSync(join(root, '.githooks'), { recursive: true })
+    cpSync(join(lib, 'templates', 'project', 'githooks', 'pre-commit'), hook)
+    chmodSync(hook, 0o755)
+  }
+  note('.githooks/pre-commit', madeHook)
+  const config = join(root, '.gitleaks.toml')
+  const madeConfig = !existsSync(config)
+  if (madeConfig) cpSync(join(lib, 'templates', 'project', 'gitleaks.toml'), config)
+  note('.gitleaks.toml', madeConfig)
+  const inRepo = Bun.spawnSync({ cmd: ['git', 'rev-parse', '--git-dir'], cwd: root }).exitCode === 0
+  if (!inRepo) {
+    report.warnings.push(
+      'git 저장소가 아니라 hook을 연결하지 못했어요. git init 뒤에 gotechy init을 다시 실행하세요.',
+    )
+    return
+  }
+  Bun.spawnSync({ cmd: ['git', 'config', 'core.hooksPath', '.githooks'], cwd: root })
 }

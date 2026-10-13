@@ -1,6 +1,6 @@
 ---
 name: owner-protocol
-description: Report format and writing style for every delegated task in a gotechy project. Use when finishing a task, writing a HANDOFF under orchestration/handoffs/, or summarizing work for the owner. Puts decisions first, keeps the summary to one line, separates verified facts from guesses, explains new industry terms, avoids machine-like phrasing, and always ends with what was skipped, unverified, or risky. Do not use for casual chat.
+description: Report format and writing style for every delegated gotechy task. Use when finishing a task, writing a HANDOFF under orchestration/handoffs/, or summarizing work for the owner. Decisions first, one-line summary, verified facts separated from guesses, new industry terms explained, no machine-like phrasing, and always ends with what was skipped, unverified, or risky. Not for casual chat.
 ---
 
 # owner-protocol: 오너에게 보고하는 법

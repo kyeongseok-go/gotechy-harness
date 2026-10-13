@@ -12,7 +12,7 @@ tags: [gotechy-harness, overnight, handoff]
 
 ## 3초 요약
 
-M2c(결정 서명, 이해 게이트, 병합)와 ADR 4건, 1b ExecPlan 초안을 끝냈어요. 보안 감사를 두 바퀴 돌려 높음 6건을 찾았고, 모두 공격 테스트로 재현한 뒤 고쳤어요. 결정이 필요한 것은 3건이에요.
+M2c(결정 서명, 이해 게이트, 병합), M3의 격리 환경 부분(train, doctor, setup, gitleaks hook, 부트스트랩), ADR 4건, 1b ExecPlan 초안을 끝냈어요. 보안 감사를 두 바퀴 돌려 높음 6건을 찾았고, 모두 공격 테스트로 재현한 뒤 고쳤어요. 결정이 필요한 것은 4건이에요.
 
 ## 보는 법
 
@@ -32,9 +32,10 @@ gotechy render        # 마지막 줄의 file:// 주소를 브라우저로 열�
 |---|---|---|
 | T-002 | 밤사이 `harness-v2`에 푸시한 커밋을 그대로 둘까요? | 그대로 두기 |
 | T-003 | 선행 작업 조건을 done에서 accepted(메인에 병합됨)로 바꾼 것을 받아들일까요? | accepted 유지 |
+| T-006 | 이 맥에 실제로 `gotechy setup`을 적용하고 되돌려 보는 실측을 언제 할까요? | 오늘 오너와 함께 |
 | T-007 | 1b ExecPlan의 범위와 순서를 승인할까요? | 승인 |
 
-기본값으로 진행한 것(이의가 있으면 말해 주세요): 게이트 상태 rejected 없애기(T-002), 이해 게이트에서 빈 답 받기(T-003), ADR 0005 상태(T-005), 오너 인증 방식으로 Secure Enclave(T-007).
+기본값으로 진행한 것(이의가 있으면 말해 주세요): 게이트 상태 rejected 없애기(T-002), 이해 게이트에서 빈 답 받기(T-003), ADR 0005 상태(T-005), setup이 Claude Code 전역 설정에 결정 명령 실행 금지를 넣기(T-006), 오너 인증 방식으로 Secure Enclave(T-007).
 
 ## 한 일 (작업별 HANDOFF)
 
@@ -45,19 +46,20 @@ gotechy render        # 마지막 줄의 file:// 주소를 브라우저로 열�
 | T-003 | M2c-2 이해 게이트, 병합, 용어 누적 | `orchestration/handoffs/T-003.md` | `explain/m2c-2-comprehension-and-accept.md` |
 | T-004 | M2 보안 리뷰 두 바퀴 | `orchestration/handoffs/T-004.md` | `explain/security-review-rounds.md` |
 | T-005 | ADR 0002~0005 | `orchestration/handoffs/T-005.md` | ADR 본문 |
-| T-006 | M3 격리 환경 설치 계층 | (아래 "못 한 것" 참고) | |
+| T-006 | M3 설치 계층 중 격리 환경 부분 | `orchestration/handoffs/T-006.md` | `explain/m3-install-layer.md` |
 | T-007 | 1b ExecPlan 초안 | `orchestration/handoffs/T-007.md` | ExecPlan 본문 |
 
 ## 숫자
 
-- 테스트: 115개(밤 시작)에서 196개로. 전체 통과, 줄 커버리지 약 95%.
+- 테스트: 115개(밤 시작)에서 226개로. 전체 통과, 줄 커버리지 약 95%. gitleaks가 없는 CI에서는 그 4개를 건너뛰어요.
 - 보안 감사: 1차 높음 3, 중간 3, 낮음 4. 2차(1차 수정의 재검토) 높음 3, 중간 1, 낮음 2. 높음 6건은 모두 고침.
-- mutation check: 방어 코드를 하나씩 뺀 30종 모두 테스트가 잡음(중간에 두 번 살아남아 테스트를 보강함).
-- 용어 은행: 69개에서 83개로.
+- mutation check: 방어 코드를 하나씩 뺀 37종(결정 서명 11, 감사 1차 수정 10, 2차 수정 9, 설치 계층 7) 모두 테스트가 잡음. 중간에 두 번 살아남아 테스트를 보강함.
+- 용어 은행: 69개에서 88개로.
+- 이 맥의 `doctor` 진단(읽기만 함): 실패 9건. mise, bun, apm, gitleaks가 전역 PATH에 없고, node, uv, gh가 train보다 오래됐고, 정책 두 파일이 빠져 있어요. claude, codex, orca는 train과 같아요.
 
 ## 못 한 것, 확인 못 한 것
 
-- M3(설치 계층)는 이 보고를 쓰는 시점에 시작 전이에요. 밤사이 진행하면 이 표와 T-006 HANDOFF를 채워요.
+- M3 중 이 맥에 실제 `setup` 적용과 복원(Validation 14 실측), 격리 셸 처음 설치(Validation 12), `init`의 apm 전환은 오너와 함께 할 일로 남겼어요.
 - 실제 TTY에서 `decide`를 Ctrl-C로 멈췄을 때 잠금이 풀리는지는 직접 확인하지 못했어요.
 - 3차 보안 감사는 돌리지 않았어요.
 - CLAUDE.md의 위키 경로가 이 맥에 없어서, 설명 문서는 frontmatter만 달고 위키에 넣지 않았어요.

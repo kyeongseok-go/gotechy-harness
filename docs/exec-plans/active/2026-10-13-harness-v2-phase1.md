@@ -27,7 +27,8 @@
 - [x] (2026-10-14 00:24) M2a HANDOFF 규칙과 문체 검사: 계약 v1.1(4.1절 HANDOFF 규칙 8개, 7절 문체 규칙), `handoff lint` 내용 규칙, 문체 lint(2026-10-20까지 경고, 21일부터 오류), `text lint` 명령, 용어 은행 53개, 예외 구간 표지. 테스트 87개 통과
 - [x] (2026-10-14 00:53) M2b 인박스와 읽기 전용 HTML: 계약 8절, `gotechy inbox`(3초 카드, golden test), `gotechy render`(hono/jsx, markdown-it `html: false`, CSP, 허용 요소 목록), HANDOFF 예외 표지 금지, 터미널과 HTML의 제어 문자 제거, 저장소 위생 테스트. 테스트 115개 통과
 - [x] (2026-10-14 01:53) M2c 결정과 반영 (밤샘 루프, `docs/exec-plans/active/2026-10-14-overnight-loop.md`): 계약 6절(게이트, 서명, decide, verify, run의 강제)과 9절(이해 게이트, 측정, 인박스 게이트 표시, accept, 용어 누적). `keys init`, `keys rotate`, `decide`, `gate verify`, `accept`. 보안 감사 1차 지적(높음 3, 중간 3, 낮음 4) 수정. 보안 감사 2차 지적(높음 3, 중간 1, 낮음 2) 수정. 테스트 196개 통과
-- [ ] M3 설치 계층 — 부트스트랩·train·setup·doctor·restore·gitleaks
+- [x] (2026-10-14 02:09) M3 설치 계층 중 격리 환경에서 검증할 수 있는 부분 (밤샘 루프): 계약 10절, `train.yaml`(train 2026.10.0), `gotechy doctor [--history]`, `gotechy setup [--dry-run] [--restore]`, gitleaks hook과 `.gitleaks.toml`(주민등록번호 규칙), `bin/gotechy` 부트스트랩. 테스트 226개 통과
+- [ ] M3 나머지: 이 맥에 실제 setup 적용과 복원(Validation 14 실측), 격리 셸 fresh install(Validation 12), `init`의 apm 전환(작업 5), train 전체 도구의 mise 락 (오너와 함께)
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음
 - [ ] 1a 완료 게이트 (/gotechy-ship 기능 등급) → 공문서 프로젝트 착수
@@ -41,6 +42,16 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**M3 구현 중 발견 (2026-10-14 밤, 오너 부재)**
+- `doctor`를 우리 라이브러리에 직접 돌리자 `owner-protocol` 스킬의 description이 429자로 계약 상한(400자)을 넘었다. 뜻을 유지하고 388자로 줄였다. [확인]
+- 이 맥에 `doctor`를 읽기 전용으로 돌린 결과(9건 실패): mise, bun, apm, gitleaks가 전역 PATH에 없고 node(24.13.0), uv(0.8.15), gh(2.96.0)가 train보다 오래됐다. claude, codex, orca는 train과 같다. 정책 두 파일이 빠져 있다. 실제 설치와 setup은 오너와 함께 한다. [확인]
+- 기존 v1.5 스크립트(`scripts/*.sh`, 가드 hook)는 bash를 명시하고 `[[`를 쓴다. 결정 기록의 원래 의도("bash 4 문법과 GNU 전용 명령 금지")에 맞춰, `#!/bin/sh`에는 POSIX 규칙을, bash 스크립트에는 bash 3.2에 없는 문법만 금지하도록 나눴다. 기존 스크립트에 bash 4 문법은 없었다. [확인]
+- `init`이 gitleaks hook을 켜면, gitleaks가 없는 CI에서 테스트용 커밋이 모두 막힌다(hook이 fail-closed). 테스트 도우미는 hook 없이 프로젝트를 만들고, hook은 `tests/e2e/gitleaks.test.ts`가 따로 검사한다. [확인]
+- 저장소의 가드 hook이 테스트 문자열 속 `.env`를 시크릿 파일 접근으로 보고 셸 명령을 막았다. 테스트 값을 다른 경로로 바꿨다. [확인]
+- 새 HOME에서 Bun을 돌리면 Bun이 `~/Library/Caches`를 만든다. `setup --dry-run` 검사(Validation 13)는 두 설정 파일과 `~/.gotechy`만 본다. [확인]
+- Codex 0.162.1 바이너리에 `check_for_update_on_startup` 설정 키가 있는 것을 확인했다(문자열 검사). 실제로 업데이트 확인을 끄는지는 실행으로 확인하지 않았다. [추론]
+- mutation check 7종(동시 변경 감지, 사용자 변경 뒤 복원 중단, 링크 대상 수정, 권한 보존, 버전 비교, 고정 등급 C, hook fail-closed)을 모두 테스트가 잡았다. [확인]
 
 **M2c 구현 중 발견 (2026-10-14 밤, 오너 부재)**
 - 보안 감사 1차가 높음 3건을 찾았다. 셋 다 실제로 재현했다(`tests/e2e/hardening.test.ts`, 처음 13개 모두 실패). [확인]
@@ -115,6 +126,9 @@
 | 필요한 게이트는 원천(작업 명세, HANDOFF)에서 계산하고, 읽을 수 없는 게이트 파일이 있으면 모든 실행을 멈춘다 | 보안 감사 높음 3(fail-open) | 2026-10-14 | 결정 서명 ADR |
 | verify는 macOS `sandbox-exec` 안에서 돌리고, 다른 OS에서는 그 사실을 기록한다 | 보안 감사 높음 1. 워커가 쓴 테스트가 키를 읽고 결정을 위조할 수 있었다 | 2026-10-14 | 결정 서명 ADR |
 | 이해 게이트는 답하는 단계를 건너뛸 수 없지만 빈 답도 받는다. 비대화 `--answer-file`은 만들지 않고 테스트는 함수로 답을 넣는다 | Validation 10 원문. `decide`가 TTY 전용이라 파일 입력은 우회로가 된다 | 2026-10-14 | - |
+| 1a의 `setup`은 전역 설정의 정책만 다루고 도구 설치는 부트스트랩과 `mise install --locked`에 맡긴다 | 전역 설정 변경을 작게 유지해야 백업과 복원을 확실히 증명할 수 있다 | 2026-10-14 | - |
+| gitleaks hook은 gitleaks가 없으면 커밋을 막는다(fail-closed) | 없을 때 통과시키면 검사가 있는 척만 한다 | 2026-10-14 | - |
+| 셸 규칙: `#!/bin/sh`는 POSIX, bash 스크립트는 bash 3.2에 없는 문법만 금지 | macOS 기본 bash 3.2와 기존 v1.5 스크립트 | 2026-10-14 | - |
 | 렌더 의존성은 hono 4.13.13(의존성 없음)과 markdown-it 15.0.2를 정확한 버전으로 고정한다. 이미지는 만들지 않고 링크는 http(s)만 | HTML 자동 이스케이프와 1b 로컬 서버 재사용. 이미지는 추적 픽셀 같은 외부 요청이 된다 | 2026-10-14 | - |
 | 인박스는 같은 묶음에서 오래 기다린 것부터. "형식 오류" 수에는 문체 규칙을 넣지 않는다 | 오래 막힌 결정이 먼저. 문체는 날짜에 따라 강도가 바뀌어 카드가 저절로 달라진다 | 2026-10-14 | - |
 | HANDOFF에서는 문체 예외 표지를 금지하고(오류), 표지가 있어도 문체 검사를 한다 | 워커가 HANDOFF 전체를 감싸면 검사를 피할 수 있다(미탐) | 2026-10-14 | - |
@@ -271,10 +285,10 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [x] 11. `keys rotate` 후 이전 키 서명 결정은 거부되고 재결정이 요구된다.
 - [x] 11b. (2026-10-14: `tests/e2e/accept.test.ts`) 서로 다른 파일을 바꾼 두 작업은 `accept`로 차례로 병합되고, 같은 줄을 바꾼 두 번째 작업은 충돌로 병합이 취소되며 `needs-decision`이 된다. 메인 verify가 실패하면 병합하지 않는다.
 - [ ] 12. 격리 셸에서 `setup` → `doctor` exit 0 (fresh-install 로그를 Artifacts에, 현재 맥 아키텍처 기준. 다른 아키텍처는 2단계 CI).
-- [ ] 13. `setup --dry-run` 전후로 `~/.claude/settings.json`·`~/.codex/config.toml`의 sha256과 `~/.gotechy` 존재 여부가 같다.
-- [ ] 14. 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.
-- [ ] 15. doctor에 `GOTECHY_TRAIN=tests/fixtures/train-mismatch.yaml`로 불일치를 주입하면 exit 1과 교정 명령, 교정 후 재실행은 exit 0.
-- [ ] 16. 격리된 임시 Git 저장소에서 합성 토큰·합성 주민번호가 든 파일의 커밋을 hook이 막고, `doctor --history`가 이력 속 합성 토큰을 찾는다.
+- [x] 13. (2026-10-14: 임시 HOME, `tests/e2e/doctor-setup.test.ts`) `setup --dry-run` 전후로 `~/.claude/settings.json`·`~/.codex/config.toml`의 sha256과 `~/.gotechy` 존재 여부가 같다.
+- [ ] 14. (2026-10-14: 백업, 복원, 사용자 변경 시 중단은 임시 HOME 테스트로 통과. 이 맥에 실제 적용과 복원은 오너와 함께) 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.
+- [x] 15. (2026-10-14: 가짜 도구와 `tests/fixtures/train/train-mismatch.yaml`) doctor에 `GOTECHY_TRAIN=tests/fixtures/train-mismatch.yaml`로 불일치를 주입하면 exit 1과 교정 명령, 교정 후 재실행은 exit 0.
+- [x] 16. (2026-10-14: gitleaks 8.30.1, `tests/e2e/gitleaks.test.ts`. gitleaks가 없는 CI에서는 fail-closed 테스트만 돈다) 격리된 임시 Git 저장소에서 합성 토큰·합성 주민번호가 든 파일의 커밋을 hook이 막고, `doctor --history`가 이력 속 합성 토큰을 찾는다.
 - [ ] 17. `bin/gotechy test` 전체 통과, 커버리지 전체 ≥80%·핵심 모듈 ≥95%.
 
 ## Idempotence and Recovery

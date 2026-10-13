@@ -16,13 +16,17 @@
 
 ## Progress
 
-- [x] (2026-10-13 23:00) 결정 트리 확정(D3은 미결, D12는 방향 합의 — 나머지 확정), 스펙 초안 작성
-- [x] (2026-10-13 23:40) spec-reviewer 검토(🔴6 🟡6 🟢2) 반영 — 1단계를 1a/1b로 분할
-- [x] (2026-10-14 00:30) 구현 전 독립 교차 검토(Fable 5.1 🔴4 🟡7 🟢4, Codex GPT-6.1 Sol RED 7) 반영 — 순서 재배치, 결정 검증의 위협 모델 축소·정직화, Python 3.12 고정, 검증 항목 객관화
-- [x] (2026-10-14 01:30) M0 전제 확인 — mise·apm·uv 락·Claude restricted·Codex 샌드박스 검증, 공통 worktree 격리로 설계 보강
-- [x] (2026-10-14 02:10) 구현 스택 확정 — TypeScript + Bun (ADR 0001), 차선 Python 3.14 + uv
-- [x] (2026-10-14 03:30) M1 관통 경로 — 계약 문서, CLI(init·task new/lint·run·handoff lint), worktree 격리, claude·codex·fake 어댑터. 테스트 49개 통과, 커버리지 91%, 실제 Claude·Codex 워커 각 1회 성공
-- [ ] M2 오너 코어 — lint·인박스·읽기 전용 HTML·결정·이해 게이트·용어 은행
+> 시각은 해당 커밋 시각(KST) 기준이다. 2026-10-14에 커밋 기록과 대조해 바로잡았다.
+
+- [x] (2026-10-13 22:36) 결정 트리 확정(D3은 미결, D12는 방향 합의 — 나머지 확정), 스펙 초안 작성
+- [x] (2026-10-13 22:36) spec-reviewer 검토(🔴6 🟡6 🟢2) 반영 — 1단계를 1a/1b로 분할
+- [x] (2026-10-13 22:52) 구현 전 독립 교차 검토(Fable 5.1 🔴4 🟡7 🟢4, Codex GPT-6.1 Sol RED 7) 반영 — 순서 재배치, 결정 검증의 위협 모델 축소·정직화, Python 3.12 고정, 검증 항목 객관화
+- [x] (2026-10-13 23:09) M0 전제 확인 — mise·apm·uv 락·Claude restricted·Codex 샌드박스 검증, 공통 worktree 격리로 설계 보강
+- [x] (2026-10-13 23:45) 구현 스택 확정 — TypeScript + Bun (ADR 0001), 차선 Python 3.14 + uv
+- [x] (2026-10-13 23:45) M1 관통 경로 — 계약 문서, CLI(init·task new/lint·run·handoff lint), worktree 격리, claude·codex·fake 어댑터. 테스트 49개 통과, 커버리지 91%, 실제 Claude·Codex 워커 각 1회 성공
+- [x] (2026-10-14 00:24) M2a HANDOFF 규칙과 문체 검사: 계약 v1.1(4.1절 HANDOFF 규칙 8개, 7절 문체 규칙), `handoff lint` 내용 규칙, 문체 lint(2026-10-20까지 경고, 21일부터 오류), `text lint` 명령, 용어 은행 53개, 예외 구간 표지. 테스트 86개 통과
+- [ ] M2b 인박스와 읽기 전용 HTML (`inbox`, `render`)
+- [ ] M2c 결정과 반영 (`decide`, `gate verify`, `keys`, 이해 게이트, 측정 필드, `accept`, 프로젝트 용어 은행 누적)
 - [ ] M3 설치 계층 — 부트스트랩·train·setup·doctor·restore·gitleaks
 - [ ] ADR 작성: D5(배포)·D7(오케스트레이션)·D13(train)·결정 검증 방식
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정
@@ -37,6 +41,12 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**M2a 구현 중 발견 (2026-10-14)**
+- 이번에는 순서를 지켰다. HANDOFF 규칙 테스트(`tests/core/handoff-rules.test.ts`)와 문체 테스트(`tests/core/style.test.ts`)를 먼저 쓰고 실패를 확인한 뒤 구현했다. 예외는 Validation 5를 채우려고 나중에 더한 3개(추천 줄 없음, 모든 오류에 고치는 법, HANDOFF 필수 키 누락)로, 이미 있던 동작을 고정한 것이라 처음부터 통과했다. [확인]
+- 문체 lint를 계약 문서 자체에 돌리자 경고 73건이 나왔다. 대부분은 7절 규칙 표가 금지 패턴을 인용한 탓이었고, 나머지는 예전 본문의 진짜 가운데점이었다. 규칙을 설명하는 구간은 `<!-- style-ignore-start -->`와 `<!-- style-ignore-end -->`로 감싸 검사에서 빼고, 진짜 위반은 고쳐서 0건이 됐다. [확인]
+- 마스킹은 펜스 코드 블록만 인식하고 들여쓰기 코드 블록은 인식하지 않는다. 목록의 하위 항목 들여쓰기와 구분하기 어려워서다. 계약 문서의 들여쓰기 블록 2개(파일 배치, 상태 전이)는 펜스 블록으로 바꿨다. [확인]
+- 이 문서의 진행 시각 일부가 실제 커밋 시각과 달랐다(M1을 10-14 03:30으로 적었지만 커밋은 10-13 23:45). 커밋 기록에 맞춰 바로잡았다. [확인]
 
 **M1 구현 중 발견 (2026-10-14)**
 - 테스트를 코드보다 나중에 썼다(.claude/rules/testing.md의 RED→GREEN 위반). 대신 왕복 직렬화 테스트가 실제 버그(저장할 때마다 본문 앞에 빈 줄 추가)를 잡았다 → `serializeFrontmatter`가 본문을 손대지 않도록 수정. M2부터는 실패하는 테스트를 먼저 쓴다.
@@ -68,6 +78,10 @@
 | 테스트 방식 = SDD + 수용 테스트 먼저 (외부 경계는 실험 후 고정), `.claude/rules/testing.md` 개정 | 사용자 확정. M1은 테스트를 나중에 써서 규칙 위반 — M2부터 적용 | 2026-10-14 | - |
 | M2에 `gotechy accept` 추가: 오너 승인 후 작업 브랜치를 메인에 병합, 충돌 시 needs-decision | 사용자의 "말해 보기" 답에서 발견된 누락(워커 결과 통합 단계 없음) | 2026-10-14 | - |
 | 하네스 v2 대상 사용자 = 고텍이 1인, 2차 = 채용 담당자 | Y6 | 2026-10-13 | - |
+| 계약 v1.1: 리스크 절 제목을 "건너뛴 것, 확인 못 한 것, 리스크"로, 증거 형식을 `` `명령`: 결과 ``로 바꾸고 HANDOFF 규칙 8개와 문체 규칙(7절)을 계약에 넣는다 | 사용자 지시(산출물과 대화 모두 AI 티 금지), 화살표 표기는 문체 규칙과 충돌 | 2026-10-14 | - |
+| 문체 규칙은 2026-10-20까지 경고, 21일부터 오류. HANDOFF 내용 규칙은 처음부터 오류 | 기존 문서와 워커가 적응할 기간. 경고만으로는 고쳐지지 않으므로 날짜를 박아 둔다 | 2026-10-14 | - |
+| 금지 패턴을 인용해야 하는 구간은 `style-ignore` 표지로 감싼다. 들여쓰기 코드 블록은 지원하지 않고 펜스로 쓴다 | 계약 문서 자체 dogfooding에서 오탐 다수 | 2026-10-14 | - |
+| 새 영어 용어는 용어 은행(라이브러리 `knowledge/terms.jsonl`, 프로젝트 `orchestration/terms.jsonl`)에 없을 때만 "새 용어" 풀이를 요구한다 | 사용자가 용어를 익히려는 목적, 같은 풀이 반복은 소음 | 2026-10-14 | - |
 
 ## Outcomes & Retrospective
 
@@ -147,13 +161,14 @@
 - goal: 오너가 HANDOFF를 3초 카드 → HTML 화면으로 이해하고, `gotechy decide`로 검증된 결정 파일을 남기며, `run`은 검증을 통과한 결정만 따른다.
 - work:
   1. `handoff lint` 규칙 (규칙마다 통과·실패 fixture를 `tests/fixtures/handoff/`에):
-     - 구조: 필수 frontmatter 키, 본문 절 순서(결정 필요 → 한 줄 요약 → 한 일 → 증거 → 건너뛴 것·확인 못 한 것·리스크 → 새 용어 → 말해 보기 → 다음 단계), 중복 YAML 키 거부.
+     - 구조: 필수 frontmatter 키, 본문 절 순서(결정 필요, 한 줄 요약, 한 일, 증거, 건너뛴 것, 확인 못 한 것, 리스크, 새 용어, 말해 보기, 다음 단계), 중복 YAML 키 거부. 규칙 원문은 `contract.md` 4.1절.
      - 길이: 한 줄 요약 ≤60자, 리스크 항목 ≤3, 막는 결정 ≤3(초과 시 "작업을 쪼개거나 결정 세션으로" 교정 메시지).
      - 결정: `[막는]`·`[기본값]`·`[알림]` 표지, 결정마다 옵션 ≥2·추천 1·이유 1줄.
-     - 증거: `명령 → 결과` 형식만.
+     - 증거: `` `명령`: 결과 `` 형식만 (계약 v1.1).
      - 사실 표시: "한 일"·"리스크" 절 목록 항목 끝에 `[확인]`·`[추론]`·`[추정]`(제목·코드 블록 제외).
      - 강조: 굵게는 "결정 필요"·"리스크" 절에서만.
-     - 실패 메시지는 "무엇이 틀렸나 → 어떻게 고치나 → 예시".
+     - 실패 메시지는 "무엇이 틀렸나, 어떻게 고치나, 예시" 순서.
+     - 문체(`contract.md` 7절): 기호, 이모지, 번역투, 상투어, 과장, 대조 반전 등. `gotechy text lint`로 아무 md에나 쓸 수 있다. 새 영어 용어는 용어 은행에 없으면 "새 용어" 풀이를 요구한다.
   2. `gotechy inbox`: 결정 필요 → 실패 → 완료 순(동률은 시각 순) 3초 카드, 빈 인박스는 "대기 중인 일 없음".
   3. `gotechy render`: 읽기 전용 HTML 1안(시안 비교는 1b). 새 렌더러: HANDOFF·용어·속성·URL 전부 이스케이프, 스크립트 없음, `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:">`, 링크는 `rel="noopener noreferrer"`이며 `http(s)`만.
   4. 결정 `gotechy decide G-### <선택> ["다음 지시"]`: 대화형 터미널(TTY)에서만 실행(비대화 호출 거부). 서명 대상은 canonical JSON `{project_id, task_id, gate_id, task_spec_sha256, handoff_sha256, choice, instruction, key_id, nonce, decided_at}`. 키는 `gotechy keys init`이 만든 `~/.gotechy/keys/<key_id>` (0600). 잠금 + 원자적 저장, 소비 기록(nonce)으로 재사용·동시 결정 차단.
@@ -209,7 +224,7 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [x] 2. T-002(claude)·T-003(codex)이 각각 실제 1회 실행되어 README가 바뀌고 `verify` exit 0, HANDOFF가 구조 lint를 통과(증거 로그를 Artifacts에).
 - [x] 3. 워커 실행 중 `~/.gotechy/keys`와 `orchestration/gates/` 읽기·쓰기 시도가 실패한다(fixture 워커로 검사).
 - [x] 4. `task lint`가 `ownership`의 `orchestration/gates/`, `..` 경로, 글롭·심볼릭 링크 우회를 모두 거부한다.
-- [ ] 5. lint 실패 fixture(필수 키 누락·절 순서·중복 키·요약 초과·막는 결정 4개·옵션 1개·추천 없음·리스크 초과·증거 형식·사실 표시 누락·강조 위반·결정 표지 누락)가 각각 교정 메시지와 함께 실패하고, 통과 fixture는 통과한다.
+- [x] 5. lint 실패 fixture(필수 키 누락·절 순서·중복 키·요약 초과·막는 결정 4개·옵션 1개·추천 없음·리스크 초과·증거 형식·사실 표시 누락·강조 위반·결정 표지 누락)가 각각 교정 메시지와 함께 실패하고, 통과 fixture는 통과한다. (2026-10-14: `tests/core/handoff-rules.test.ts`, `tests/core/lint.test.ts`, 중복 키는 `tests/core/frontmatter.test.ts`)
 - [ ] 6. `inbox` 출력이 고정 fixture의 기대 출력과 일치(순서·동률·빈 상태).
 - [ ] 7. `<script>`·`<SCRIPT>`·`onerror=`·`javascript:` URL이 든 HANDOFF·용어를 render하면, 결과를 `html.parser`로 파싱했을 때 script 요소 0개·`on*` 속성 0개·`javascript:` href 0개이고 CSP meta가 있다. 브라우저 확인은 수동 1회 스크린샷.
 - [ ] 8. `decide`로 만든 결정은 verify 통과. 다음은 모두 거부: 수기 편집, 같은 rev의 HANDOFF 내용 교체(해시 불일치), 다른 프로젝트 결정 재사용, nonce 재사용, 동시 decide 두 번, 비대화 호출.
@@ -237,7 +252,7 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 
 ## Interfaces and Dependencies
 
-- CLI: `gotechy {init|task new|task lint|run|handoff lint|inbox|render|decide|gate verify|keys init|keys rotate|setup [--dry-run|--restore]|doctor [--history]|test}` — 종료코드 0 성공, 1 검사 실패, 2 환경 문제.
+- CLI: `gotechy {init|task new|task lint|run|handoff lint|text lint|inbox|render|decide|gate verify|accept|keys init|keys rotate|setup [--dry-run|--restore]|doctor [--history]|test}` — 종료코드 0 성공, 1 검사 실패, 2 환경 문제.
 - 계약 상세는 M1에서 `docs/references/contract.md`로 고정한다(작업 명세·HANDOFF·게이트 frontmatter, 상태 전이, 경로 규칙 목록, 서명 payload).
 - 외부 의존(M0에서 확인): mise, uv, Python 3.12, apm(0.x 고정), Claude Code, Codex, gitleaks. 환경 변수: `GOTECHY_HOME`(기본 `~/.gotechy`), `GOTECHY_TRAIN`(테스트용).
 

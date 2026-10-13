@@ -3,13 +3,16 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { relative } from 'node:path'
 import { Command } from 'commander'
+import { parseFrontmatter } from './core/frontmatter'
 import { formatIssue } from './core/issues'
-import { lintHandoff } from './core/lint-handoff'
+import { hasErrors, lintHandoff } from './core/lint-handoff'
 import { lintTask } from './core/lint-task'
+import { lintStyle } from './core/style'
 import { initProject } from './runtime/init'
 import { findProject } from './runtime/project'
 import { runTask } from './runtime/run'
 import { createTask } from './runtime/task-new'
+import { loadKnownTerms } from './runtime/terms'
 
 const program = new Command()
 program
@@ -28,7 +31,14 @@ function requireProject() {
   return p
 }
 
-function lintFiles(files: string[], kind: 'task' | 'handoff'): number {
+function textStyleIssues(text: string, rel: string) {
+  // frontmatter가 있으면 본문만, 없으면 전체를 문체 검사한다
+  const parsed = text.startsWith('---') ? parseFrontmatter(text, rel) : undefined
+  if (parsed?.ok) return lintStyle(parsed.value.body, rel, parsed.value.bodyLine)
+  return lintStyle(text, rel, 1)
+}
+
+function lintFiles(files: string[], kind: 'task' | 'handoff' | 'text'): number {
   let bad = 0
   for (const f of files) {
     if (!existsSync(f)) {
@@ -37,12 +47,17 @@ function lintFiles(files: string[], kind: 'task' | 'handoff'): number {
     }
     const text = readFileSync(f, 'utf8')
     const rel = relative(process.cwd(), f) || f
-    const issues = kind === 'task' ? lintTask(text, rel).issues : lintHandoff(text, rel).issues
+    const issues =
+      kind === 'task'
+        ? lintTask(text, rel).issues
+        : kind === 'handoff'
+          ? lintHandoff(text, rel, { knownTerms: loadKnownTerms(findProject(process.cwd())?.root) })
+              .issues
+          : textStyleIssues(text, rel)
     if (issues.length === 0) console.log(`${rel}: ok`)
-    else {
-      bad++
-      for (const i of issues) console.log(formatIssue(i))
-    }
+    for (const i of issues) console.log(formatIssue(i))
+    if (hasErrors(issues)) bad++
+    else if (issues.length > 0) console.log(`${rel}: 경고 ${issues.length}건 (오류 없음)`)
   }
   return bad > 0 ? 1 : 0
 }
@@ -118,6 +133,14 @@ program
   .command('lint')
   .argument('<files...>')
   .action((files: string[]) => process.exit(lintFiles(files, 'handoff')))
+
+program
+  .command('text')
+  .description('사람용 문서')
+  .command('lint')
+  .description('문체 규칙(contract.md 7절, AI 티) 검사')
+  .argument('<files...>')
+  .action((files: string[]) => process.exit(lintFiles(files, 'text')))
 
 program
   .command('run')

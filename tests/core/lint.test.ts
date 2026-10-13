@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { serializeFrontmatter } from '../../src/core/frontmatter'
-import { lintHandoff } from '../../src/core/lint-handoff'
+import { hasErrors, lintHandoff } from '../../src/core/lint-handoff'
 import { lintTask } from '../../src/core/lint-task'
 import { HANDOFF_SECTIONS, TASK_SECTIONS } from '../../src/core/schema'
 
@@ -86,7 +86,7 @@ const handoffFixture = readFileSync(
 
 describe('lintHandoff (M1 구조)', () => {
   test('계약 형식의 HANDOFF는 통과한다', () => {
-    expect(lintHandoff(handoffFixture, 'h.md').issues).toEqual([])
+    expect(hasErrors(lintHandoff(handoffFixture, 'h.md').issues)).toBe(false)
   })
 
   test('빠진 절을 알려 준다', () => {
@@ -110,7 +110,12 @@ describe('lintHandoff (M1 구조)', () => {
 
   test('코드 블록 안의 ## 는 절로 보지 않는다', () => {
     const text = handoffFixture.replace('## 다음 단계', '```\n## 가짜 절\n```\n## 다음 단계')
-    expect(lintHandoff(text, 'h.md').issues).toEqual([])
+    expect(hasErrors(lintHandoff(text, 'h.md').issues)).toBe(false)
+  })
+
+  test('필수 frontmatter 키(status)가 빠지면 실패한다', () => {
+    const text = handoffFixture.replace(/^status: done\n/m, '')
+    expect(rules(lintHandoff(text, 'h.md'))).toContain('handoff-schema')
   })
 
   test('워커가 알 수 없는 frontmatter 키를 쓰면 거부한다', () => {

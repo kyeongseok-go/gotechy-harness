@@ -62,9 +62,9 @@ describe('formatIssue', () => {
       fix: 'f',
       example: 'e',
     })
-    expect(s).toBe('a.md:3:2 [r] m\n  → 고치는 법: f\n  예: e')
+    expect(s).toBe('a.md:3:2 [r] m\n  고치는 법: f\n  예: e')
     expect(formatIssue({ file: 'a.md', rule: 'r', message: 'm', fix: 'f' })).toBe(
-      'a.md [r] m\n  → 고치는 법: f',
+      'a.md [r] m\n  고치는 법: f',
     )
   })
 })

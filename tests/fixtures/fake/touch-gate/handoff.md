@@ -15,9 +15,9 @@ README에 설치 방법 한 줄을 추가했어요.
 - README.md에 설치 줄을 추가했어요. [확인]
 
 ## 증거
-- `grep -q 설치 README.md` → exit 0
+- `grep -q 설치 README.md`: exit 0
 
-## 건너뛴 것 · 확인 못 한 것 · 리스크
+## 건너뛴 것, 확인 못 한 것, 리스크
 없음
 
 ## 새 용어

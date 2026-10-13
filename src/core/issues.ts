@@ -4,6 +4,8 @@ export type Issue = {
   line?: number
   col?: number
   rule: string
+  /** 기본은 error. 문체 규칙은 시행일 전까지 warning */
+  severity?: 'error' | 'warning'
   message: string
   fix: string
   example?: string
@@ -11,7 +13,8 @@ export type Issue = {
 
 export function formatIssue(i: Issue): string {
   const loc = i.line ? `${i.file}:${i.line}${i.col ? `:${i.col}` : ''}` : i.file
-  const lines = [`${loc} [${i.rule}] ${i.message}`, `  → 고치는 법: ${i.fix}`]
+  const tag = i.severity === 'warning' ? '경고 ' : ''
+  const lines = [`${loc} [${tag}${i.rule}] ${i.message}`, `  고치는 법: ${i.fix}`]
   if (i.example) lines.push(`  예: ${i.example}`)
   return lines.join('\n')
 }

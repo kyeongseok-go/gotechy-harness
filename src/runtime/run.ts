@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parseFrontmatter, serializeFrontmatter } from '../core/frontmatter'
 import { formatIssue, type Issue } from '../core/issues'
-import { lintHandoff } from '../core/lint-handoff'
+import { hasErrors, lintHandoff } from '../core/lint-handoff'
 import { lintTask } from '../core/lint-task'
 import { disallowedChanges, handoffPathFor } from '../core/paths'
 import { buildWorkerPrompt } from '../core/prompt'
@@ -15,6 +15,7 @@ import type { WorkerAdapter } from './adapters/types'
 import { changedFiles, commitAll, ensureWorktree, headCommit, restoreFiles } from './git'
 import { runShell } from './proc'
 import { appendEvent, type Project, paths, updateFrontmatter } from './project'
+import { loadKnownTerms } from './terms'
 
 export type RunOptions = {
   adapter?: WorkerAdapter['name']
@@ -96,7 +97,7 @@ export async function runTask(
   const allowed = changed.filter((f) => !bad.includes(f))
 
   const verify = await runShell(task.verify, wt)
-  notes.push(`리드 verify: \`${task.verify}\` → exit ${verify.exitCode}`)
+  notes.push(`리드 verify: \`${task.verify}\`: exit ${verify.exitCode}`)
 
   const handoffRel = handoffPathFor(task.id)
   const workerHandoff = join(wt, handoffRel)
@@ -119,17 +120,23 @@ export async function runTask(
 
   mkdirSync(dirname(mainHandoff), { recursive: true })
   writeFileSync(mainHandoff, fm.text)
-  const hl = lintHandoff(fm.text, handoffRel)
+  const hl = lintHandoff(fm.text, handoffRel, { knownTerms: loadKnownTerms(p.root) })
   let status = fm.status
   const messages = [...notes]
-  if (hl.issues.length > 0) {
+  const warnings = hl.issues.filter((i) => i.severity === 'warning')
+  if (hasErrors(hl.issues)) {
     status = 'failed'
-    messages.push('HANDOFF가 계약을 어깁니다:', ...hl.issues.map(formatIssue))
+    messages.push(
+      'HANDOFF가 계약을 어깁니다:',
+      ...hl.issues.filter((i) => i.severity !== 'warning').map(formatIssue),
+    )
     updateFrontmatter(mainHandoff, {
       status: 'failed',
-      lead_note: 'HANDOFF lint 실패 — 워커가 형식을 지키지 않았습니다.',
+      lead_note: 'HANDOFF lint 실패. 워커가 형식을 지키지 않았습니다.',
     })
   }
+  if (warnings.length > 0)
+    messages.push(`HANDOFF 경고 ${warnings.length}건:`, ...warnings.map(formatIssue))
   updateFrontmatter(taskFile, { status })
   appendEvent(p, {
     type: 'run.end',

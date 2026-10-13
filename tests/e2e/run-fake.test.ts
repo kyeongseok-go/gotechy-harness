@@ -9,6 +9,9 @@ import { runTask } from '../../src/runtime/run'
 import { createTask } from '../../src/runtime/task-new'
 
 const FIX = join(import.meta.dir, '..', 'fixtures', 'fake')
+// 워커가 건드리면 안 되는 다른 작업의 게이트. 형식이 맞아야 한다(깨진 게이트는 모든 실행을 막는다).
+const GATE =
+  '---\nid: G-001\ntask: T-900\nclass: decision\nstatus: pending\nquestion: 남의 결정이에요\noptions: [가, 나]\nhandoff_rev: 1\n---\n'
 const sh = (cmd: string[], cwd: string) => {
   const r = Bun.spawnSync({ cmd, cwd, stdout: 'pipe', stderr: 'pipe' })
   if (r.exitCode !== 0) throw new Error(`${cmd.join(' ')}: ${r.stderr.toString()}`)
@@ -26,7 +29,7 @@ beforeEach(() => {
   sh(['git', 'init', '-q', '-b', 'main'], root)
   writeFileSync(join(root, 'README.md'), '# Sandbox\n')
   initProject(root, ['owner'])
-  writeFileSync(join(root, 'orchestration', 'gates', 'G-001.md'), 'status: pending\n')
+  writeFileSync(join(root, 'orchestration', 'gates', 'G-001.md'), GATE)
   sh(['git', 'add', '-A'], root)
   sh(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init'], root)
 })
@@ -62,12 +65,8 @@ describe('run --adapter fake', () => {
     expect(out.status).toBe('failed')
     expect(out.messages.join('\n')).toContain('orchestration/gates/G-001.md')
     const wt = join(root, '.gotechy', 'worktrees', id)
-    expect(readFileSync(join(wt, 'orchestration', 'gates', 'G-001.md'), 'utf8')).toBe(
-      'status: pending\n',
-    )
-    expect(readFileSync(join(root, 'orchestration', 'gates', 'G-001.md'), 'utf8')).toBe(
-      'status: pending\n',
-    )
+    expect(readFileSync(join(wt, 'orchestration', 'gates', 'G-001.md'), 'utf8')).toBe(GATE)
+    expect(readFileSync(join(root, 'orchestration', 'gates', 'G-001.md'), 'utf8')).toBe(GATE)
     const h = fm(join(root, 'orchestration', 'handoffs', `${id}.md`))
     expect(h.status).toBe('failed')
     expect(String(h.lead_note)).toContain('허용 밖')

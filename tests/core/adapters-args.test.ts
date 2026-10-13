@@ -25,6 +25,27 @@ describe('claudeArgs', () => {
     expect(settings.permissions.deny).toContain('Write(./orchestration/tasks/**)')
   })
 
+  test('결정 서명 키 폴더와 프로젝트 id 파일도 deny한다 (다층 방어, contract.md 6.3절)', () => {
+    const a = claudeArgs(req)
+    const deny: string[] = JSON.parse(a[a.indexOf('--settings') + 1] ?? '{}').permissions.deny
+    expect(deny).toContain('Read(~/.gotechy/**)')
+    expect(deny).toContain('Edit(./orchestration/project.yaml)')
+    expect(deny).toContain('Write(./orchestration/project.yaml)')
+  })
+
+  test('GOTECHY_HOME을 바꿨으면 그 실제 경로도 deny한다', () => {
+    const before = process.env.GOTECHY_HOME
+    process.env.GOTECHY_HOME = '/tmp/gotechy-custom-home'
+    try {
+      const a = claudeArgs(req)
+      const deny: string[] = JSON.parse(a[a.indexOf('--settings') + 1] ?? '{}').permissions.deny
+      expect(deny).toContain('Read(/tmp/gotechy-custom-home/**)')
+    } finally {
+      if (before === undefined) delete process.env.GOTECHY_HOME
+      else process.env.GOTECHY_HOME = before
+    }
+  })
+
   test('모델·effort는 지정했을 때만 붙인다', () => {
     expect(claudeArgs(req)).not.toContain('--model')
     const a = claudeArgs({ ...req, model: 'claude-opus-5-5', effort: 'low' })

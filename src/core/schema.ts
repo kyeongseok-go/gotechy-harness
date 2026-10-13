@@ -2,7 +2,15 @@
 import { z } from 'zod'
 
 export const TaskId = z.string().regex(/^T-\d{3,}$/, 'T- 뒤에 3자리 이상 숫자 (예: T-001)')
-export const TaskStatus = z.enum(['draft', 'ready', 'running', 'done', 'failed', 'needs-decision'])
+export const TaskStatus = z.enum([
+  'draft',
+  'ready',
+  'running',
+  'done',
+  'failed',
+  'needs-decision',
+  'accepted',
+])
 export const HandoffStatus = z.enum(['done', 'failed', 'needs-decision'])
 export const Agent = z.enum(['claude', 'codex', 'fake'])
 
@@ -49,6 +57,8 @@ export const HandoffFrontmatter = z
     packs: z.array(z.string()).default([]),
     skills_loaded: z.array(z.string()).default([]),
     new_terms: z.array(z.string()).default([]),
+    /** "말해 보기" 질문마다 좋은 답의 핵심어. 이해 게이트 채점용이라 화면에 보이지 않는다(contract.md 9.1절) */
+    comprehension_keys: z.array(z.array(z.string())).optional(),
     // 리드가 측정해 덧붙이는 값
     rev: z.number().int().positive().optional(),
     agent: Agent.optional(),

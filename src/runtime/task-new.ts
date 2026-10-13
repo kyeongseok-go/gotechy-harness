@@ -15,6 +15,8 @@ export type NewTaskInput = {
   model?: string
   effort?: TaskFrontmatter['effort']
   status?: TaskFrontmatter['status']
+  gate?: TaskFrontmatter['gate']
+  deps?: string[]
 }
 
 export function createTask(p: Project, input: NewTaskInput): { id: string; file: string } {
@@ -25,13 +27,13 @@ export function createTask(p: Project, input: NewTaskInput): { id: string; file:
     status: input.status ?? 'ready',
     packs: input.packs ?? ['owner'],
     tier: input.tier ?? 'T0',
-    deps: [],
+    deps: input.deps ?? [],
     ownership: input.ownership,
     data_class: 'public',
     autonomy: 'L0',
     verify: input.verify,
     irreversible: false,
-    gate: 'none',
+    gate: input.gate ?? 'none',
     created_at: new Date().toISOString(),
     ...(input.agent ? { agent: input.agent } : {}),
     ...(input.model ? { model: input.model } : {}),
@@ -56,6 +58,9 @@ export function createTask(p: Project, input: NewTaskInput): { id: string; file:
   ].join('\n')
   const file = paths.task(p, id)
   mkdirSync(dirname(file), { recursive: true })
-  writeFileSync(file, serializeFrontmatter(fm as unknown as Record<string, unknown>, body))
+  // 번호가 겹쳐도 남의 작업 명세를 덮어쓰지 않는다
+  writeFileSync(file, serializeFrontmatter(fm as unknown as Record<string, unknown>, body), {
+    flag: 'wx',
+  })
   return { id, file }
 }

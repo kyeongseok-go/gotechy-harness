@@ -1,0 +1,84 @@
+// 워커가 쓴 코드를 리드 권한으로 실행할 때(verify) 쓰는 샌드박스(contract.md 6.3절).
+// verify는 워커가 쓴 테스트를 실행하므로, 막지 않으면 그 코드가 서명 키를 읽고 결정 파일을 위조하거나,
+// 홈의 설정 파일을 고쳐 리드가 나중에 실행하는 명령을 오염시킬 수 있다(보안 감사 1차, 2차).
+// macOS sandbox-exec 실험으로 확인한 것: 뒤의 규칙이 앞의 규칙을 이긴다, 링크를 거친 읽기도 막힌다,
+// 쓰기를 기본 거부해도 bun test는 돈다, 키 파일에 대한 하드 링크와 복제(cp -c)도 막힌다.
+import { existsSync, realpathSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import { type ProcResult, runProc } from './proc'
+
+const SANDBOX_EXEC = '/usr/bin/sandbox-exec'
+
+export type SandboxPaths = {
+  /** 쓰기를 허용하는 작업 폴더 (worktree). 그 안의 .git 파일은 쓸 수 없다 */
+  writable: string
+  /** verify 전용 임시 폴더. HOME과 TMPDIR로 쓴다 */
+  tmp: string
+  /** 읽기와 쓰기를 모두 막는 폴더 (서명 키, private 기록) */
+  secret: string[]
+}
+
+/** 오너 홈의 비밀이 흔히 있는 곳. 네트워크가 막혀 있어도 읽은 내용이 작업 폴더에 남지 않게 읽기도 막는다. */
+const HOME_SECRETS = [
+  '.ssh',
+  '.aws',
+  '.gnupg',
+  '.netrc',
+  '.config/gh',
+  '.claude',
+  '.claude.json',
+  '.codex',
+]
+
+const real = (p: string) => (existsSync(p) ? realpathSync(p) : p)
+const quote = (p: string) => `"${real(p).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
+
+export function sandboxProfile(s: SandboxPaths): string {
+  const secrets = [...s.secret, ...HOME_SECRETS.map((d) => join(homedir(), d))]
+  return [
+    '(version 1)',
+    '(allow default)',
+    '(deny file-write*)',
+    `(allow file-write* (subpath ${quote(s.writable)}) (subpath ${quote(s.tmp)}) (literal "/dev/null") (literal "/dev/tty") (regex #"^/dev/fd/"))`,
+    `(deny file-write* (literal ${quote(join(s.writable, '.git'))}))`,
+    ...secrets.map((d) => `(deny file-read* file-write* (subpath ${quote(d)}))`),
+    '(deny network*)',
+  ].join('\n')
+}
+
+/** 오너의 환경 변수는 허용 목록만 넘긴다. API 토큰 같은 값이 verify 코드에 닿지 않게 한다. */
+function verifyEnv(tmp: string): Record<string, string> {
+  const env: Record<string, string> = { HOME: tmp, TMPDIR: tmp, NO_COLOR: '1' }
+  for (const k of ['PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM', 'USER', 'LOGNAME', 'SHELL']) {
+    const v = process.env[k]
+    if (v !== undefined) env[k] = v
+  }
+  return env
+}
+
+export function sandboxAvailable(): boolean {
+  return process.platform === 'darwin' && existsSync(SANDBOX_EXEC)
+}
+
+/** 샌드박스를 쓸 수 없는 환경이면 그냥 실행하고 sandboxed: false를 돌려준다. 호출한 쪽이 기록에 남긴다. */
+export async function runSandboxedShell(
+  command: string,
+  cwd: string,
+  paths: SandboxPaths,
+  timeoutMs = 300_000,
+): Promise<ProcResult & { sandboxed: boolean }> {
+  const env = verifyEnv(paths.tmp)
+  if (!sandboxAvailable())
+    return {
+      ...(await runProc(['sh', '-c', command], { cwd, timeoutMs, env, replaceEnv: true })),
+      sandboxed: false,
+    }
+  const r = await runProc([SANDBOX_EXEC, '-p', sandboxProfile(paths), 'sh', '-c', command], {
+    cwd,
+    timeoutMs,
+    env,
+    replaceEnv: true,
+  })
+  return { ...r, sandboxed: true }
+}

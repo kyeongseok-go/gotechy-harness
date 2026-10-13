@@ -31,7 +31,7 @@ const RULES: Rule[] = [
   {
     rule: 'style-translationese',
     pattern:
-      /에 대해서?|[을를] 통(?:해|하여)|에 있어서?|되어(?:지|진)|(?:에서|에로|으로|으로부터)의/g,
+      /에 대해서?|[을를] 통(?:해|하여)|에 있어(?:서|(?=[\s,]))|되어(?:지|진)|(?:에서|에로|으로|으로부터)의/g,
     message: (h) => `번역투 "${h}"가 있어요.`,
     fix: '"X에 대해 설명" 대신 "X를 설명", "lint를 통해" 대신 "lint로", "되어진" 대신 "된", "실무에서의 사용" 대신 "실무에서 쓰는 법"처럼 바꾸세요.',
   },
@@ -110,7 +110,8 @@ export function extractEnglishTerms(body: string, opts: MaskOptions = {}): strin
   const out = new Set<string>()
   for (const m of text.matchAll(/\b[A-Za-z][A-Za-z0-9+#-]*\b/g)) {
     const t = m[0]
-    if (t.length < 2 || /^[TG]-\d+$/.test(t)) continue
+    // 작업, 게이트, 부채 번호(T-001, TD-005)와 마일스톤, 결정 번호(M1, M2b, D13)는 용어가 아니다
+    if (t.length < 2 || /^[A-Z]{1,3}-\d+$/i.test(t) || /^[A-Z]{1,2}\d+[a-z]?$/i.test(t)) continue
     out.add(t.toLowerCase())
   }
   return [...out]

@@ -1,5 +1,14 @@
 // 테스트용 워커: 녹화 폴더의 files/를 작업 폴더에 덮어쓰고 handoff.md를 HANDOFF 자리에 둔다. LLM 호출 없이 결과를 재현한다.
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { dirname, join } from 'node:path'
 import { handoffPathFor } from '../../core/paths'
 import type { WorkerAdapter, WorkerRequest, WorkerResult } from './types'
@@ -18,6 +27,32 @@ export const fakeAdapter: WorkerAdapter = {
     }
     const files = join(dir, 'files')
     if (existsSync(files)) cpSync(files, req.cwd, { recursive: true })
+    // 공격 재현용: symlinks.json의 [{path, target}]대로 작업 폴더에 심볼릭 링크를 만든다
+    const links = join(dir, 'symlinks.json')
+    if (existsSync(links)) {
+      for (const l of JSON.parse(readFileSync(links, 'utf8')) as {
+        path: string
+        target: string
+      }[]) {
+        const at = join(req.cwd, l.path.replaceAll('{{TASK}}', req.taskId))
+        mkdirSync(dirname(at), { recursive: true })
+        rmSync(at, { force: true })
+        symlinkSync(l.target, at)
+      }
+    }
+    // 공격 재현용: hardlinks.json의 [{path, target}]대로 하드 링크를 만든다
+    const hard = join(dir, 'hardlinks.json')
+    if (existsSync(hard)) {
+      for (const l of JSON.parse(readFileSync(hard, 'utf8')) as {
+        path: string
+        target: string
+      }[]) {
+        const at = join(req.cwd, l.path)
+        mkdirSync(dirname(at), { recursive: true })
+        rmSync(at, { force: true })
+        linkSync(l.target, at)
+      }
+    }
     const handoffSrc = join(dir, 'handoff.md')
     if (existsSync(handoffSrc)) {
       const target = join(req.cwd, handoffPathFor(req.taskId))

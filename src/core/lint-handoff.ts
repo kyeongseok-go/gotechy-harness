@@ -1,7 +1,7 @@
 // HANDOFF 검사: 구조(스키마, 절 순서) + 내용 규칙(contract.md 4.1) + 문체(7절) + 용어 풀이.
 import { parseFrontmatter } from './frontmatter'
 import type { Issue } from './issues'
-import { IGNORE_MARKER } from './prose'
+import { CONTROL_CHAR, IGNORE_MARKER } from './prose'
 import { explainedTerms, handoffRuleIssues } from './rules-handoff'
 import { HANDOFF_SECTIONS, HandoffFrontmatter } from './schema'
 import { schemaIssues } from './schema-issues'
@@ -65,6 +65,16 @@ export function lintHandoff(
 
   const byTitle = new Map(sections.map((s) => [s.title, s]))
   issues.push(...handoffRuleIssues({ file, status: res.data.status, byTitle }))
+  const ctrl = CONTROL_CHAR.exec(text)
+  if (ctrl) {
+    issues.push({
+      file,
+      line: text.slice(0, ctrl.index).split('\n').length,
+      rule: 'handoff-control-char',
+      message: `HANDOFF에 보이지 않는 제어 문자(U+${(ctrl[0].codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')})가 있어요.`,
+      fix: '제어 문자를 지우세요. 터미널 화면을 덮어쓰거나 글자 순서를 속이는 데 쓰일 수 있어요.',
+    })
+  }
   const marker = IGNORE_MARKER.exec(value.body)
   if (marker) {
     issues.push({
@@ -81,9 +91,17 @@ export function lintHandoff(
     ...(opts.knownTerms ?? []),
     ...res.data.new_terms.map((t) => t.toLowerCase()),
   ])
-  for (const t of explainedTerms(byTitle.get('새 용어'))) known.add(t)
+  // 여러 단어 용어(Secure Enclave)는 본문에서 낱말 단위로 뽑히므로 낱말도 풀이된 것으로 본다
+  for (const t of [
+    ...explainedTerms(byTitle.get('새 용어')),
+    ...res.data.new_terms.map((x) => x.toLowerCase()),
+  ])
+    for (const w of [t, ...t.split(/\s+/)]) known.add(w)
   const termsSection = byTitle.get('새 용어')
-  const bodyWithoutTerms = termsSection ? value.body.replace(termsSection.content, '') : value.body
+  // 증거 절은 명령 출력(pass, fail 같은)을 옮겨 적는 곳이라 용어 풀이를 요구하지 않는다
+  let bodyWithoutTerms = value.body
+  for (const sec of [termsSection, byTitle.get('증거')])
+    if (sec) bodyWithoutTerms = bodyWithoutTerms.replace(sec.content, '')
   const unexplained = extractEnglishTerms(bodyWithoutTerms, { honorIgnore: false }).filter(
     (t) => !known.has(t),
   )

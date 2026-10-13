@@ -5,6 +5,8 @@ export const PROTECTED_PREFIXES = [
   'orchestration/tasks/',
   'orchestration/private/',
   'orchestration/.seq',
+  'orchestration/.gate-seq',
+  'orchestration/project.yaml',
   '.gotechy/',
   '.git/',
   '.claude/',

@@ -1,6 +1,8 @@
 // 문체 검사용으로 본문에서 코드·URL·파일명을 같은 길이의 공백으로 가린다. 오프셋과 줄 번호가 원문과 일치해야 한다.
 // 규칙을 설명하느라 금지 패턴을 인용하는 구간: <!-- style-ignore-start --> ... <!-- style-ignore-end -->
 const IGNORE = /<!--\s*style-ignore-start\s*-->[\s\S]*?<!--\s*style-ignore-end\s*-->/g
+// 보이지 않게 화면을 조작하는 문자: 터미널 제어 문자(줄바꿈, 탭, CR 제외)와 양방향 제어 문자
+export const CONTROL_CHAR = /(?![\n\t\r])[\p{Cc}\p{Bidi_Control}]/u
 export const IGNORE_MARKER = /<!--\s*style-ignore-(?:start|end)\s*-->/
 const FENCE = /^\s*(```|~~~)[\s\S]*?^\s*\1\s*$/gm
 const INLINE_CODE = /`[^`\n]*`/g

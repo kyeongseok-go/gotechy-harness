@@ -1,6 +1,19 @@
 // 작업 1건 실행: 검사 → worktree → 워커 → 허용 밖 변경 차단 → 리드 verify → HANDOFF 확정·반영 → lint.
 // 워커의 주장(HANDOFF 본문)과 리드의 측정(verified·usage·changed_files)을 분리해 기록한다(contract.md 0절).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  constants,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parseFrontmatter, serializeFrontmatter } from '../core/frontmatter'
 import { formatIssue, type Issue } from '../core/issues'
@@ -12,18 +25,31 @@ import { HANDOFF_SECTIONS, type HandoffFrontmatter, type TaskFrontmatter } from 
 import { emptyUsage } from '../core/usage'
 import { adapters } from './adapters'
 import type { WorkerAdapter } from './adapters/types'
-import { changedFiles, commitAll, ensureWorktree, headCommit, restoreFiles } from './git'
-import { runShell } from './proc'
+import { gateCheck, openGatesAfterRun } from './gates'
+import {
+  changedFiles,
+  commitAll,
+  commitPaths,
+  discardUncommitted,
+  ensureWorktree,
+  headCommit,
+  restoreFiles,
+} from './git'
+import { gotechyHome, loadActiveKey } from './keys'
 import { appendEvent, type Project, paths, updateFrontmatter } from './project'
+import { runSandboxedShell } from './sandbox'
 import { loadKnownTerms } from './terms'
 
 export type RunOptions = {
   adapter?: WorkerAdapter['name']
   fixtureDir?: string
   log?: (s: string) => void
+  /** 결정 서명 키 위치. 기본은 $GOTECHY_HOME 또는 ~/.gotechy */
+  home?: string
 }
 export type RunOutcome = {
-  status: 'done' | 'failed' | 'needs-decision' | 'refused'
+  /** blocked: 게이트(결정 대기, 검증 실패) 때문에 시작하지 않음 (contract.md 6.6절) */
+  status: 'done' | 'failed' | 'needs-decision' | 'refused' | 'blocked'
   messages: string[]
   handoffFile?: string
 }
@@ -42,10 +68,16 @@ export async function runTask(
     return refuse('작업 명세가 계약을 어깁니다.', lint.issues)
   const task = lint.task
 
-  const pre = preflight(p, task, opts)
+  const pre = preflight(task, opts)
   if (pre) return refuse(pre)
   const adapterName = (opts.adapter ?? task.agent) as WorkerAdapter['name']
   const adapter = adapters[adapterName]
+  const gates = gateCheck(p, opts.home ?? gotechyHome(), task)
+  if (gates.blockers.length > 0)
+    return {
+      status: 'blocked',
+      messages: ['결정이 필요해서 시작하지 않았어요:', ...gates.blockers],
+    }
 
   const wt = paths.worktree(p, task.id)
   const baseFile = `${wt}.base`
@@ -72,13 +104,14 @@ export async function runTask(
   const req = {
     taskId: task.id,
     cwd: wt,
-    prompt: buildWorkerPrompt(task, body),
+    prompt: buildWorkerPrompt(task, body, gates.decisions),
     model: task.model ?? null,
     effort: task.effort ?? null,
     budgetUsd: task.budget_usd ?? 1,
     timeoutMs: (task.timeout_min ?? 20) * 60_000,
     ...(opts.fixtureDir ? { fixtureDir: opts.fixtureDir } : {}),
   }
+  const gitConfigBefore = readIfExists(join(p.root, '.git', 'config'))
   const result = await adapter.run(req)
   saveRawLog(p, task.id, adapterName, result.rawOutput, result.stderr)
 
@@ -88,35 +121,72 @@ export async function runTask(
   if (result.exitCode !== 0)
     notes.push(`워커가 exit ${result.exitCode}로 끝났습니다: ${result.stderr.trim().slice(0, 300)}`)
 
+  const home = opts.home ?? gotechyHome()
+  // 저장소 설정(.git/config)은 병합 드라이버, 필터 같은 명령을 정할 수 있다. 워커가 바꿨으면 되돌리고 실패로 처리한다.
+  const gitConfigNow = readIfExists(join(p.root, '.git', 'config'))
+  const configTampered = gitConfigBefore !== gitConfigNow
+  if (configTampered && gitConfigBefore !== undefined) {
+    writeFileSync(join(p.root, '.git', 'config'), gitConfigBefore)
+    notes.push('워커 실행 중 저장소 설정(.git/config)이 바뀌어 되돌렸습니다.')
+  }
+
   const changed = await changedFiles(wt, base)
-  const bad = disallowedChanges(changed, task.ownership, task.id)
+  // 링크와 하드 링크는 ownership 안이라도 허용하지 않는다. 리드가 그 경로를 읽고 쓸 때 링크를 따라가
+  // 게이트나 키 같은 다른 파일을 건드리거나, 바깥 파일 내용을 커밋하게 된다(보안 감사 1차 높음 2, 2차 중간 D).
+  const links = changed.filter((f) => isSymlink(join(wt, f)))
+  const hard = changed.filter((f) => !links.includes(f) && isHardLinked(join(wt, f)))
+  const key = loadActiveKey(home)
+  const secrets = key.ok ? [key.key.toString('hex')] : []
+  const leaks = changed.filter(
+    (f) => !links.includes(f) && !hard.includes(f) && containsAny(join(wt, f), secrets),
+  )
+  const outside = disallowedChanges(changed, task.ownership, task.id)
+  const bad = [...new Set([...outside, ...links, ...hard, ...leaks])]
   if (bad.length > 0) {
     await restoreFiles(wt, base, bad)
-    notes.push(`허용 밖 파일을 바꿔 되돌렸습니다: ${bad.join(', ')}`)
+    const only = outside.filter((f) => !links.includes(f) && !hard.includes(f))
+    if (only.length > 0) notes.push(`허용 밖 파일을 바꿔 되돌렸습니다: ${only.join(', ')}`)
+    if (links.length > 0) notes.push(`심볼릭 링크를 만들어 되돌렸습니다: ${links.join(', ')}`)
+    if (hard.length > 0) notes.push(`하드 링크를 만들어 되돌렸습니다: ${hard.join(', ')}`)
+    if (leaks.length > 0) notes.push(`서명 키 내용이 들어 있어 되돌렸습니다: ${leaks.join(', ')}`)
   }
   const allowed = changed.filter((f) => !bad.includes(f))
 
-  const verify = await runShell(task.verify, wt)
-  notes.push(`리드 verify: \`${task.verify}\`: exit ${verify.exitCode}`)
-
+  // 워커의 HANDOFF(주장)는 verify 전에 읽고, 워커 변경은 verify 전에 커밋한다.
+  // verify가 만든 파일은 아래에서 모두 지운다. 그래야 verify가 쓴 보호 경로 파일이 브랜치에 들어가지 않는다(2차 높음 B).
   const handoffRel = handoffPathFor(task.id)
-  const workerHandoff = join(wt, handoffRel)
+  const workerText = readRegularFile(wt, handoffRel)
+  await commitAll(wt, `${task.id}: ${task.title} (워커 변경)`)
+
+  const tmp = join(p.root, '.gotechy', 'tmp', `${task.id}-${process.pid}-${Date.now()}`)
+  mkdirSync(tmp, { recursive: true })
+  const verify = await runSandboxedShell(task.verify, wt, {
+    writable: wt,
+    tmp,
+    secret: [home, paths.privateDir(p)],
+  }).finally(() => rmSync(tmp, { recursive: true, force: true }))
+  await discardUncommitted(wt)
+  notes.push(`리드 verify: \`${task.verify}\`: exit ${verify.exitCode}`)
+  if (!verify.sandboxed)
+    notes.push(
+      'verify를 샌드박스 없이 실행했어요 (macOS가 아님). 워커가 쓴 코드가 오너 권한으로 돌았어요.',
+    )
+
   const mainHandoff = paths.handoff(p, task.id)
   const prevRev = readRev(mainHandoff)
   const fm = finalizeHandoff({
-    workerText: existsSync(workerHandoff) ? readFileSync(workerHandoff, 'utf8') : undefined,
+    workerText,
     task,
     adapter: adapterName,
     result,
     verifyExit: verify.exitCode,
-    blocked: bad.length > 0,
+    blocked: bad.length > 0 || configTampered,
     notes,
     rev: prevRev + 1,
     changed: allowed,
   })
-  mkdirSync(dirname(workerHandoff), { recursive: true })
-  writeFileSync(workerHandoff, fm.text)
-  await commitAll(wt, `${task.id}: ${task.title}`)
+  writeNoFollow(wt, handoffRel, fm.text)
+  await commitPaths(wt, [handoffRel], `${task.id}: HANDOFF 확정`)
 
   mkdirSync(dirname(mainHandoff), { recursive: true })
   writeFileSync(mainHandoff, fm.text)
@@ -137,6 +207,20 @@ export async function runTask(
   }
   if (warnings.length > 0)
     messages.push(`HANDOFF 경고 ${warnings.length}건:`, ...warnings.map(formatIssue))
+  // 게이트를 먼저 연다. 열다가 실패했는데 작업이 done으로 남으면 승인 없이 다음 작업이 진행될 수 있다.
+  if (status !== 'failed') {
+    try {
+      for (const g of openGatesAfterRun(p, task))
+        messages.push(
+          `${g.id} 결정 대기: ${g.question} (gotechy decide ${g.id} ${g.options.join('|')})`,
+        )
+    } catch (e) {
+      status = 'failed'
+      const note = `게이트를 열지 못해 실패로 처리했어요: ${(e as Error).message}`
+      messages.push(note)
+      updateFrontmatter(mainHandoff, { status: 'failed', lead_note: note })
+    }
+  }
   updateFrontmatter(taskFile, { status })
   appendEvent(p, {
     type: 'run.end',
@@ -150,21 +234,12 @@ export async function runTask(
   return { status, messages, handoffFile: mainHandoff }
 }
 
-function preflight(p: Project, task: TaskFrontmatter, opts: RunOptions): string | undefined {
+function preflight(task: TaskFrontmatter, opts: RunOptions): string | undefined {
   if (task.status !== 'ready' && task.status !== 'running') {
     return `상태가 ${task.status}인 작업은 실행하지 않습니다. 준비가 끝났으면 status를 ready로 바꾸세요.`
   }
   if (task.data_class !== 'public') {
     return `1a 단계는 공개 데이터 작업만 실행합니다 (data_class: ${task.data_class}). 데이터 경계 배치는 1b에서 지원합니다.`
-  }
-  if (task.gate === 'before') return '실행 전 게이트(gate: before)는 M2의 결정 기능이 필요합니다.'
-  for (const dep of task.deps) {
-    const depFile = paths.task(p, dep)
-    const parsed = existsSync(depFile)
-      ? parseFrontmatter(readFileSync(depFile, 'utf8'), depFile)
-      : undefined
-    const st = parsed?.ok ? parsed.value.data.status : undefined
-    if (st !== 'done') return `선행 작업 ${dep}가 done이 아닙니다 (현재 ${String(st ?? '없음')}).`
   }
   const name = opts.adapter ?? task.agent
   if (!name)
@@ -249,4 +324,72 @@ function saveRawLog(p: Project, id: string, adapter: string, out: string, err: s
 
 function refuse(message: string, issues: Issue[] = []): RunOutcome {
   return { status: 'refused', messages: [message, ...issues.map(formatIssue)] }
+}
+
+function isSymlink(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink()
+  } catch {
+    return false
+  }
+}
+
+function isHardLinked(path: string): boolean {
+  try {
+    const st = lstatSync(path)
+    return st.isFile() && st.nlink > 1
+  } catch {
+    return false
+  }
+}
+
+function readIfExists(path: string): string | undefined {
+  return existsSync(path) ? readFileSync(path, 'utf8') : undefined
+}
+
+/** 10MB 이하 일반 파일에 비밀 값이 들어 있는가. */
+function containsAny(path: string, needles: string[]): boolean {
+  if (needles.length === 0) return false
+  try {
+    const st = lstatSync(path)
+    if (!st.isFile() || st.size > 10 * 1024 * 1024) return false
+    const text = readFileSync(path, 'latin1').toLowerCase()
+    return needles.some((n) => text.includes(n.toLowerCase()))
+  } catch {
+    return false
+  }
+}
+
+/** 경로의 어느 요소도 링크가 아니고, 하드 링크도 아닌 일반 파일일 때만 읽는다. */
+function readRegularFile(root: string, rel: string): string | undefined {
+  const parts = rel.split('/')
+  for (let i = 1; i <= parts.length; i++) {
+    const at = join(root, ...parts.slice(0, i))
+    if (!existsSync(at) || isSymlink(at)) return undefined
+  }
+  const full = join(root, rel)
+  if (!statSync(full).isFile() || isHardLinked(full)) return undefined
+  return readFileSync(full, 'utf8')
+}
+
+/** 링크를 따라가지 않고 쓴다. 자리에 링크나 파일이 있으면 그 이름만 지우고 새로 만든다. */
+function writeNoFollow(root: string, rel: string, text: string): void {
+  const full = join(root, rel)
+  const parts = rel.split('/')
+  for (let i = 1; i < parts.length; i++) {
+    const at = join(root, ...parts.slice(0, i))
+    if (isSymlink(at)) unlinkSync(at)
+  }
+  mkdirSync(dirname(full), { recursive: true })
+  if (existsSync(full) || isSymlink(full)) unlinkSync(full)
+  const fd = openSync(
+    full,
+    constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,
+    0o644,
+  )
+  try {
+    writeSync(fd, text)
+  } finally {
+    closeSync(fd)
+  }
 }

@@ -67,3 +67,17 @@
 {"term": "code coverage", "aliases": ["coverage"], "easy": "테스트를 돌릴 때 코드의 몇 퍼센트 줄이 실제로 실행됐는지 나타내는 값이에요."}
 {"term": "RED GREEN", "aliases": ["red-green", "RED", "GREEN"], "easy": "테스트를 먼저 써서 실패(RED)를 본 뒤, 구현해서 통과(GREEN)시키는 순서예요."}
 {"term": "dogfooding", "aliases": ["dogfood"], "easy": "만든 도구를 만든 사람이 실제 일에 직접 써 보며 문제를 찾는 것이에요."}
+{"term": "HTML", "easy": "웹 화면을 이루는 문서 형식이에요."}
+{"term": "OS", "aliases": ["운영체제"], "easy": "macOS, Windows, Linux 같은 운영체제예요."}
+{"term": "test", "aliases": ["tests", "테스트"], "easy": "코드가 기대대로 동작하는지 자동으로 확인하는 코드예요."}
+{"term": "done", "aliases": ["ready", "running", "failed", "needs-decision", "draft"], "easy": "작업 상태 이름이에요. ready는 실행 준비, running은 실행 중, done은 끝남, failed는 실패, needs-decision은 오너 결정 대기예요."}
+{"term": "accepted", "easy": "작업 상태 이름이에요. 오너가 승인해 작업 결과가 메인에 병합된 상태예요."}
+{"term": "pending", "aliases": ["resolved", "rejected"], "easy": "게이트 상태 이름이에요. pending은 결정 대기, resolved는 결정됨이에요."}
+{"term": "status", "easy": "작업이나 HANDOFF의 상태 칸이에요."}
+{"term": "decide", "aliases": ["accept", "run", "inbox", "render", "check", "keys", "rotate"], "easy": "gotechy 명령 이름이에요. decide는 결정, accept는 병합, run은 실행, inbox는 카드 목록, render는 화면 만들기예요."}
+{"term": "orchestration", "aliases": ["private"], "easy": "프로젝트에서 작업 명세, HANDOFF, 게이트를 두는 폴더예요. 그 안의 private 폴더는 공개 저장소에 올리지 않아요."}
+{"term": "Validation", "easy": "ExecPlan의 수용 기준 목록이에요. 이 항목이 모두 통과해야 단계가 끝나요."}
+{"term": "macOS", "aliases": ["mac"], "easy": "애플 컴퓨터의 운영체제예요."}
+{"term": "Ctrl-C", "easy": "터미널에서 실행 중인 명령을 멈추는 키 조합이에요."}
+{"term": "fail-open", "aliases": ["fail-closed"], "easy": "판단할 수 없을 때 통과시키면 fail-open, 막으면 fail-closed예요. 보안 장치는 닫히는 쪽이어야 해요."}
+{"term": "ID", "aliases": ["id"], "easy": "무언가를 구별하는 고유 번호나 이름이에요."}

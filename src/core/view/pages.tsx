@@ -7,6 +7,8 @@ import {
   type Card,
   cardLabel,
   countLine,
+  decisionLine,
+  gateCommand,
   MAX_DECISION_LINES,
   signalLine,
   sortCards,
@@ -191,11 +193,16 @@ export function renderHandoffPage(input: { card: Card; terms: TermEntry[] }): st
 function InboxCard(props: { card: Card }) {
   const c = props.card
   const name = `${c.id} ${t(c.title ?? '(작업 명세 없음)')}`
+  const linked = !c.problem && c.handoff
   return (
     <section class={`card ${c.group}`}>
       <p class="label">[{cardLabel(c)}]</p>
-      <h2>{c.problem ? name : <a href={`${c.id}.html`}>{name}</a>}</h2>
-      {c.problem ? (
+      <h2>{linked ? <a href={`${c.id}.html`}>{name}</a> : name}</h2>
+      {c.startGate ? (
+        <p>
+          시작 승인 대기 {c.startGate.id}: <code>{t(gateCommand(c.startGate))}</code>
+        </p>
+      ) : c.problem ? (
         <>
           <p>{t(c.problem)}</p>
           <p>
@@ -209,17 +216,25 @@ function InboxCard(props: { card: Card }) {
           {c.blocking.length > 0 ? (
             <ul>
               {c.blocking.slice(0, MAX_DECISION_LINES).map((d) => (
-                <li>
-                  결정: {t(d.question)}
-                  {d.pick ? ` (추천 ${t(d.pick)})` : ''}
-                </li>
+                <li>{t(decisionLine(d))}</li>
               ))}
               {c.blocking.length > MAX_DECISION_LINES ? (
                 <li>결정 외 {c.blocking.length - MAX_DECISION_LINES}건</li>
               ) : null}
             </ul>
           ) : null}
-          {c.group === 'failed' && c.handoff?.lead_note ? (
+          {c.blocking.some((d) => d.gate && !d.decided) ? (
+            <p>
+              결정하려면: <code>gotechy decide &lt;게이트 번호&gt; &lt;선택&gt;</code>
+            </p>
+          ) : null}
+          {c.approval ? (
+            <p>
+              승인 대기 {c.approval.id}: <code>{t(gateCommand(c.approval))}</code>
+            </p>
+          ) : null}
+          {c.newTerms.length > 0 ? <p>새 용어: {t(c.newTerms.join(', '))}</p> : null}
+          {c.handoff?.lead_note && c.group !== 'done' ? (
             <p>리드: {t(truncate(c.handoff.lead_note.replace(/\s*\n\s*/g, ' '), 80))}</p>
           ) : null}
         </>

@@ -158,3 +158,32 @@ describe('HANDOFF 규칙 (오류)', () => {
     for (const i of issues) expect(i.fix?.trim(), i.rule).toBeTruthy()
   })
 })
+
+describe('새 용어 풀이 요구의 오탐 줄이기 (경고 기간 조정, 2026-10-14)', () => {
+  const unexplained = (text: string) =>
+    lintHandoff(text, 'h.md', { now: NOW, knownTerms: new Set(['readme']) })
+      .issues.filter((i) => i.rule === 'style-term-unexplained')
+      .map((i) => i.message)
+      .join(' ')
+
+  test('마일스톤과 결정 번호(M1, M2b, D13, TD-005)는 용어로 보지 않는다', () => {
+    const done = '- M1, M2b, D13, TD-005 기록을 고쳤어요. [확인]'
+    expect(unexplained(handoff({ done }))).toBe('')
+  })
+
+  test('증거 절의 명령 결과(pass, fail)는 용어로 보지 않는다', () => {
+    const evidence = '- `bun test`: 115 pass, 0 fail, success'
+    expect(unexplained(handoff({ evidence }))).toBe('')
+  })
+
+  test('여러 단어 용어(Secure Enclave)를 풀이하면 그 낱말들도 풀이된 것으로 본다', () => {
+    const done = '- Secure Enclave로 키를 옮길 계획이에요. [확인]'
+    const terms = '- Secure Enclave: 맥의 보안 칩이에요.'
+    expect(unexplained(handoff({ done, terms }))).toBe('')
+  })
+
+  test('본문의 진짜 새 용어는 여전히 풀이를 요구한다', () => {
+    const done = '- worktree를 정리했어요. [확인]'
+    expect(unexplained(handoff({ done }))).toContain('worktree')
+  })
+})

@@ -3,7 +3,13 @@ export type ProcResult = { exitCode: number; stdout: string; stderr: string; tim
 
 export async function runProc(
   cmd: string[],
-  opts: { cwd: string; timeoutMs?: number; env?: Record<string, string | undefined> },
+  opts: {
+    cwd: string
+    timeoutMs?: number
+    env?: Record<string, string | undefined>
+    /** true면 opts.env만 넘긴다(오너 환경 변수를 물려주지 않음) */
+    replaceEnv?: boolean
+  },
 ): Promise<ProcResult> {
   const proc = Bun.spawn({
     cmd,
@@ -11,7 +17,11 @@ export async function runProc(
     stdin: 'ignore',
     stdout: 'pipe',
     stderr: 'pipe',
-    env: opts.env ? { ...process.env, ...opts.env } : process.env,
+    env: opts.replaceEnv
+      ? (opts.env ?? {})
+      : opts.env
+        ? { ...process.env, ...opts.env }
+        : process.env,
   })
   let timedOut = false
   let killTimer: ReturnType<typeof setTimeout> | undefined
@@ -31,12 +41,4 @@ export async function runProc(
   if (timer) clearTimeout(timer)
   if (killTimer) clearTimeout(killTimer)
   return { exitCode, stdout, stderr, timedOut }
-}
-
-export async function runShell(
-  command: string,
-  cwd: string,
-  timeoutMs = 300_000,
-): Promise<ProcResult> {
-  return runProc(['sh', '-c', command], { cwd, timeoutMs })
 }

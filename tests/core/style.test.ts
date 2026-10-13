@@ -87,6 +87,18 @@ describe('lintStyle', () => {
   })
 })
 
+describe('번역투 오탐 줄이기 (경고 기간 조정, 2026-10-14)', () => {
+  const rules = (t: string) =>
+    lintStyle(t, 'a.md', 1, new Date('2026-10-14T00:00:00Z')).map((i) => i.rule)
+  test('"~에 있어요"(위치)는 번역투가 아니다', () => {
+    expect(rules('자세한 내용은 문서에 있어요.')).not.toContain('style-translationese')
+  })
+  test('"~에 있어서", "~에 있어 "는 번역투다', () => {
+    expect(rules('개발에 있어서 중요한 점이에요.')).toContain('style-translationese')
+    expect(rules('개발에 있어 중요한 점이에요.')).toContain('style-translationese')
+  })
+})
+
 describe('extractEnglishTerms', () => {
   test('본문의 영어 용어를 중복 없이 소문자로 뽑고, 코드·URL·작업 번호는 뺀다', () => {
     const body =

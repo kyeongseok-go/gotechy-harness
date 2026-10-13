@@ -3,8 +3,30 @@
 import { handoffPathFor } from './paths'
 import { HANDOFF_SECTIONS, type TaskFrontmatter } from './schema'
 
-export function buildWorkerPrompt(task: TaskFrontmatter, taskBody: string): string {
+export type PromptDecision = {
+  gate: string
+  question: string
+  choice: string
+  instruction: string | null
+}
+
+export function buildWorkerPrompt(
+  task: TaskFrontmatter,
+  taskBody: string,
+  decisions: PromptDecision[] = [],
+): string {
   const handoff = handoffPathFor(task.id)
+  const decided =
+    decisions.length === 0
+      ? []
+      : [
+          '## 오너 결정 (이번 실행에 반영하세요)',
+          ...decisions.map(
+            (d) =>
+              `- ${d.gate} ${d.question} 결정: ${d.choice}${d.instruction ? `. 다음 지시: ${d.instruction}` : ''}`,
+          ),
+          '',
+        ]
   return [
     `당신은 gotechy 하네스의 워커입니다. 작업 ${task.id} 하나만 수행하고, 결과를 HANDOFF 파일로 남기세요.`,
     '',
@@ -23,6 +45,7 @@ export function buildWorkerPrompt(task: TaskFrontmatter, taskBody: string): stri
     '## 작업 명세',
     taskBody.trim(),
     '',
+    ...decided,
     `## HANDOFF 작성 (${handoff})`,
     '아래 형식 그대로 쓰세요. 절은 내용이 없어도 두고 "없음"이라고 쓰세요.',
     '',
@@ -32,6 +55,7 @@ export function buildWorkerPrompt(task: TaskFrontmatter, taskBody: string): stri
     `packs: [${task.packs.join(', ')}]`,
     'skills_loaded: []',
     'new_terms: []           # 이번에 처음 쓴 전문 용어 이름',
+    'comprehension_keys: []  # "말해 보기" 질문마다 좋은 답에 들어갈 핵심어 목록. 예: [[해시, salt], [세션]]',
     '---',
     ...HANDOFF_SECTIONS.flatMap((s) => [`## ${s}`, sectionHint(s), '']),
   ].join('\n')

@@ -15,10 +15,14 @@
 orchestration/
   tasks/T-001.md          작업 명세 (리드가 작성)
   handoffs/T-001.md       결과 보고 (워커가 작성, 리드가 측정값을 덧붙여 메인에 반영)
-  gates/G-001.md          결정 (gotechy decide만 작성, M2)
-  private/                이벤트 로그, 이해 게이트 답 (.gitignore, 공개 금지)
+  gates/G-001.md          결정 (리드가 열고 gotechy decide만 닫음, 6절)
+  private/                이벤트 로그, 결정 장부, 이해 게이트 답 (.gitignore, 공개 금지)
     events.jsonl
-  .seq                    번호 발급 상태 (잠금 파일 .seq.lock로 원자적 갱신)
+    decisions.jsonl       결정 장부(nonce 소비 기록, 6.3절)
+    comprehension.jsonl   이해 문항의 답과 핵심어 적중(9.1절)
+  terms.jsonl             프로젝트 용어 은행(9.5절)
+  project.yaml            프로젝트 id, 결정 서명에 들어감(6.3절)
+  .seq, .gate-seq         번호 발급 상태 (잠금 파일 .seq.lock, .gate-seq.lock로 원자적 갱신)
 ```
 
 ## 2. 작업 명세 `tasks/T-###.md`
@@ -50,12 +54,13 @@ frontmatter (YAML):
 
 ```text
 task:  draft → ready → running → done | failed | needs-decision
+       done → accepted (gotechy accept가 메인에 병합한 뒤, M2c)
        needs-decision → ready (결정 해소 후)
        failed → ready (리드가 원인 수정 후 재시도)
-gate:  pending → resolved | rejected
+gate:  pending → resolved (거절도 resolution 값의 하나다)
 ```
 
-- `run`은 `ready`이고 `deps`가 모두 `done`인 작업만 시작한다.
+- `run`은 `ready`이고 `deps`가 모두 `accepted`인 작업만 시작한다. 선행 작업의 변경이 메인에 병합돼 있어야 뒤 작업이 그 결과 위에서 일하기 때문이다(M2c에서 `done`에서 바꿈).
 - 같은 작업을 다시 `run`하면 기존 worktree와 마지막 HANDOFF 판본(`rev`)에서 이어 간다.
 
 ## 4. HANDOFF `handoffs/T-###.md`
@@ -73,6 +78,7 @@ frontmatter:
 | `usage` | 리드 | `{input_tokens, cache_read_tokens, cache_write_tokens, output_tokens, cost_usd}` |
 | `verified` | 리드 | `{command, exit_code, at}` |
 | `changed_files` | 리드 | 워커가 바꾼 파일 목록 |
+| `comprehension_keys` | 워커 | "말해 보기" 질문마다 좋은 답에 들어갈 핵심어 목록(목록의 목록). 이해 게이트 채점용이라 인박스와 화면에 보이지 않는다(9.1절) |
 
 본문 절 (이 순서, 제목 그대로):
 
@@ -99,6 +105,7 @@ frontmatter:
 | `handoff-evidence-format` | "증거" 목록 항목은 `` `명령`: 결과`` 형식 |
 | `handoff-fact-tag` | "한 일"과 "건너뛴 것, 확인 못 한 것, 리스크"의 목록 항목은 `[확인]`, `[추론]`, `[추정]` 중 하나로 끝난다 |
 | `handoff-emphasis` | 굵게(`**`)는 "결정 필요"와 리스크 절에서만 |
+| `handoff-control-char` | HANDOFF 전체(frontmatter 포함)에 터미널 제어 문자(줄바꿈, 탭, CR 제외)나 양방향 제어 문자가 없다 |
 | `handoff-style-ignore` | HANDOFF에는 문체 예외 표지(`<!-- style-ignore-start -->`, `<!-- style-ignore-end -->`)를 쓸 수 없다. 예외 구간은 규칙을 설명하는 문서용이고, HANDOFF에서 쓰면 문체 검사를 통째로 피할 수 있다 |
 
 결정 예:
@@ -120,7 +127,7 @@ frontmatter:
 |---|---|
 | `style-symbol` | 본문에 화살표(→ ← ⇒ ➡), em-dash(—), 가운데점(·) |
 | `style-emoji` | 이모지 |
-| `style-translationese` | "에 대해(서)", "를/을 통해·통하여", "에 있어(서)", "되어지/되어진", "에서의·에로의·으로의·으로부터의" |
+| `style-translationese` | "에 대해(서)", "를/을 통해·통하여", "에 있어서", "에 있어 "("~에 있어요"는 제외), "되어지/되어진", "에서의·에로의·으로의·으로부터의" |
 | `style-cliche` | "시사하는 바가 크다", "주목할 만하다", "본질적으로", "핵심적으로", "인 것이다/한 것이다" 결말 |
 | `style-pivot` | 결산 피벗("결론적으로, 따라서, 이를 통해, 그러므로, 요약하면, 정리하면")이 한 문서에 4회 이상 |
 | `style-hype` | 과장 어휘("파격적, 압도적, 강력한, 획기적, 치명적, 혁신적")가 3회 이상 |
@@ -136,15 +143,92 @@ frontmatter:
 워커가 바꾸면 실행이 `failed`가 되고, 작업 `ownership`에 넣으면 `task lint`가 거부하는 경로:
 
     orchestration/gates/   orchestration/tasks/   orchestration/private/   orchestration/.seq
+    orchestration/.gate-seq   orchestration/project.yaml
     .gotechy/              .git/                  .claude/               .agents/
     AGENTS.md              CLAUDE.md              apm.yml   apm.lock.yaml
     mise.toml              mise.lock              policy/
 
 `irreversible`을 자동으로 참으로 만드는 경로(되돌리기 어려운 결정, 이해 게이트 대상, M2): 파일명에 `schema`, `migration`, `auth`, `security`, `deploy`, `.github/workflows/`가 들어간 경로.
 
-## 6. 게이트 `gates/G-###.md` (M2)
+## 6. 게이트 `gates/G-###.md` (M2c)
 
-M2에서 확정한다: `id, task, class, status, options[], resolution, instruction, task_spec_sha256, handoff_sha256, key_id, nonce, opened_at, decided_at, active_seconds, sig`.
+오너의 결정 하나가 게이트 파일 하나다. 리드가 열고(`pending`), 오너가 `gotechy decide`로 닫는다(`resolved`). 워커는 게이트를 읽거나 쓸 수 없다(5절 보호 경로).
+
+### 6.1 게이트가 열리는 때
+
+| class | 여는 때 | 선택지 |
+|---|---|---|
+| `approval-before` | `gate: before` 작업을 `run`하려는데 결정이 없을 때 | `진행`, `중단` |
+| `decision` | HANDOFF가 `needs-decision`이면 `[막는]` 결정마다 하나 | HANDOFF의 선택지 그대로 |
+| `approval-after` | `gate: after` 작업의 HANDOFF가 `done`일 때 | `승인`, `다시` |
+
+필요한 게이트는 원천(작업 명세의 `gate`, 현재 HANDOFF의 `[막는]` 결정과 status)에서 계산한다. `run`, `accept`, `gate verify`의 강제는 이 계산을 따르고, 맞는 게이트 파일이 없으면 대기 상태로 다시 연다. 게이트 파일을 지우거나 판본을 고쳐 검사를 피할 수 없게 하기 위해서다. 같은 작업, 같은 판본, 같은 class, 같은 질문의 게이트는 두 번 열지 않는다.
+
+번호는 `orchestration/.gate-seq`와 실제 파일 중 큰 번호 다음으로, 잠금 아래에서 발급한다. 새 게이트 파일은 같은 이름이 있으면 실패하게 만든다(덮어쓰지 않음).
+
+### 6.2 frontmatter
+
+| 키 | 쓰는 쪽 | 설명 |
+|---|---|---|
+| `id`, `task`, `class`, `question`, `options`, `recommended`, `handoff_rev`, `irreversible` | 리드 | 게이트를 열 때 쓴다. `handoff_rev`는 `approval-before`면 `null`. decide는 `irreversible`을 작업 명세와 경로 규칙으로 다시 계산해 둘 중 참을 쓴다 |
+| `project_id`, `comprehension` | decide | 서명한 프로젝트 id, 이해 게이트 결과 요약(9.1절) |
+| `status` | 리드, decide | `pending` 또는 `resolved` |
+| `resolution`, `instruction` | decide | 고른 선택지, 다음 지시(없으면 `null`) |
+| `task_spec_sha256`, `handoff_sha256` | decide | 결정 순간의 작업 명세 요약값과 HANDOFF 파일 해시 |
+| `key_id`, `nonce`, `decided_at`, `sig` | decide | 서명 정보 |
+| `opened_at`, `active_seconds` | decide | 측정값(서명 대상 아님). 처음 보여 준 시각, 확인 질문에 머문 초 |
+
+`task_spec_sha256`은 작업 명세에서 `status`를 뺀 frontmatter(키 정렬 JSON)와 본문을 이어 붙여 해시한다. `run`이 상태를 바꿀 때마다 결정이 깨지지 않게 하기 위해서다.
+
+### 6.3 서명
+
+- 대상: 아래 키를 정렬한 JSON(공백 없음)의 HMAC-SHA256. `project_id, task_id, gate_id, class, question, options, handoff_rev, irreversible, task_spec_sha256, handoff_sha256, choice, instruction, key_id, nonce, decided_at`. 질문, 선택지, 판본, 되돌리기 어려움도 넣어서, 결정 뒤에 고치면 서명이 깨진다. `recommended`는 서명하지 않는다(결정의 뜻을 바꾸지 않는 표시값).
+- `project_id`: `orchestration/project.yaml`의 `id`(UUID). `init`이 만들고, 없으면 처음 게이트를 열 때 만든다. 보호 경로다.
+- 키: `$GOTECHY_HOME/keys/<key_id>.key`(기본 `~/.gotechy`), 32바이트 난수를 hex로. 폴더 0700, 파일 0600이고, 권한이 더 넓거나 키 파일이 심볼릭 링크면 서명과 검증을 거부한다. 현재 키는 `keys/active`에 적고, 그 값이 `k-YYYYMMDD-8자리hex` 형식이 아니면 쓰지 않는다.
+- `gotechy keys init`: 키가 없을 때만 만든다. `gotechy keys rotate`: 새 키를 만들어 현재 키로 바꾸고 이전 키 파일을 지운다. 이전 키로 서명한 결정은 모두 다시 결정해야 한다.
+- nonce: 결정마다 16바이트 난수. `orchestration/private/decisions.jsonl`에 `{gate, nonce, key_id, decided_at}`을 남긴다(소비 기록).
+- 위협 모델(1a): 실수, 낡은 판본, 손으로 고친 결정 파일, 다른 프로젝트의 결정 재사용, 격리된 워커를 막는다. 오너와 같은 OS 사용자로 도는 악의적 프로세스의 자가 승인은 막지 못한다(1b에서 다룬다).
+- 워커 코드 실행(verify): 워커가 쓴 테스트를 실행하므로 macOS에서는 `sandbox-exec`로 감싼다. 쓰기는 기본 거부이고 작업 폴더와 verify 전용 임시 폴더만 허용한다(작업 폴더의 `.git` 파일은 제외). 키 폴더, `orchestration/private/`, 홈의 비밀 폴더(.ssh, .aws, .gnupg, .netrc, .config/gh, .claude, .codex)는 읽기도 막는다. 네트워크는 막는다. 환경 변수는 허용 목록(PATH, 언어, 터미널, 사용자 이름)만 넘기고 HOME과 TMPDIR은 임시 폴더로 바꾼다. `accept`의 verify도 같다. 다른 OS에서는 막지 못하고 HANDOFF `lead_note`에 그렇게 적는다.
+- 실행 순서: 워커가 끝나면 변경 범위를 검사하고, 워커 HANDOFF를 읽고, 워커 변경을 커밋한 뒤 verify를 돌린다. verify가 끝나면 커밋하지 않은 모든 것(무시 파일 포함)을 지우고, 확정한 HANDOFF 하나만 커밋한다. verify가 만든 파일은 작업 브랜치에 들어가지 않는다.
+- 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크, 현재 서명 키 값이 들어 있는 파일은 되돌리고 실행을 실패로 처리한다. 워커 실행 중 저장소 설정(`.git/config`)이 바뀌면 되돌리고 실패로 처리한다. `accept`는 병합 전에 작업 브랜치 전체 변경을 다시 검사한다.
+- 리드의 git: 전역, 시스템 설정을 읽지 않고(`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`) 훅과 fsmonitor를 끈 채로 실행한다.
+- 리드는 HANDOFF를 읽고 쓸 때 링크를 따라가지 않는다(경로의 모든 요소 검사, `O_NOFOLLOW`).
+- 알려진 한계(1b에서 다룬다):
+  - Codex 워커의 샌드박스는 읽기를 막지 않아 키 파일을 읽을 수 있다. 키가 HANDOFF에 실려 공개 저장소로 새어 나갈 수 있으므로 gitleaks 검사(M3)가 필요하다.
+  - `decide`의 TTY 검사는 실수를 막는 장치다. `script` 같은 명령으로 의도적으로 우회할 수 있다.
+  - 결정 장부에는 서명이 없다. 같은 OS 사용자가 줄을 더하면 옛 결정 되살리기를 막지 못한다.
+  - `project.yaml`이 커밋되므로 저장소를 통째로 복사해 만든 프로젝트는 id가 같다.
+  - 무시 파일(.gitignore 대상)의 변경은 허용 범위 검사에 잡히지 않는다. verify를 샌드박스에 넣고 verify 뒤 무시 파일까지 지워 피해를 줄였다.
+  - verify가 띄운 백그라운드 프로세스는 verify가 끝난 뒤에도 남을 수 있다. 샌드박스 안이라 작업 폴더 밖을 쓰거나 네트워크를 쓰지는 못한다.
+  - Codex 워커가 저장소의 `.git` 폴더(설정 말고 훅, 정보 파일)를 쓸 수 있는지는 확인하지 않았다. 리드의 git은 훅을 끄고 돌며, 설정 변경은 검사한다.
+
+### 6.4 `gotechy decide G-### <선택> ["다음 지시"]`
+
+- 대화형 터미널(표준 입력과 출력이 모두 TTY)에서만 실행한다. 아니면 exit 2.
+- 질문, 선택지, 추천, 작업 제목, 한 줄 요약을 보여 주고 `확정할까요? [y/N]`에 `y`를 받아야 기록한다.
+- 선택은 선택지 중 하나와 정확히 같아야 한다. 아니면 exit 1과 선택지 목록.
+- 게이트마다 잠금(`G-###.lock` 폴더)을 잡는다. 이미 잠겨 있으면 exit 1. 기록은 임시 파일에 쓴 뒤 이름을 바꿔 원자적으로 한다.
+- 이미 `resolved`이고 검증을 통과하는 게이트는 다시 결정할 수 없다. 검증에 실패하는 게이트(이전 키, 결정 뒤 바뀐 작업 명세나 HANDOFF)는 다시 결정할 수 있다. 지난 판본(`superseded`)의 게이트는 기록으로만 남고 다시 결정할 수 없다.
+- 확인 질문에 보여 주는 질문과 요약에서 제어 문자를 지운다. Ctrl-C로 멈추면 잠금을 풀고 아무것도 기록하지 않는다.
+- 결정 뒤 작업 상태: 그 작업의 현재 판본 `decision` 게이트가 모두 닫히면 `ready`. `approval-after`에서 `다시`를 고르면 `ready`. 다음 `run`의 워커 지시문에 결정과 다음 지시를 넣는다.
+
+### 6.5 `gotechy gate verify [G-###]`
+
+게이트마다 다음 중 하나로 판정하고, `fail`이 하나라도 있으면 exit 1.
+
+| 판정 | 조건 |
+|---|---|
+| `ok` | `resolved`, 선택이 선택지 안, 현재 키로 서명이 맞음, nonce가 그 게이트의 마지막 소비 기록이고 다른 게이트에 쓰이지 않음, 장부에 깨진 줄이 없음, 프로젝트 id 일치, 작업 명세 요약값 일치, (현재 판본이면) HANDOFF 해시 일치 |
+| `pending` | 아직 결정 전 |
+| `superseded` | `handoff_rev`가 현재 HANDOFF 판본보다 작다. 지난 판본의 기록이라 검증 대상이 아니다 |
+| `fail` | 위 `ok` 조건 중 하나라도 어긋남, 또는 게이트 파일을 읽을 수 없음. 사유를 함께 출력한다 |
+
+### 6.6 `run`의 강제
+
+- 읽을 수 없는 게이트 파일이 하나라도 있으면 어떤 작업도 시작하지 않는다(fail-closed).
+- 작업에 필요한 게이트(6.1절)가 모두 `ok`여야 시작한다. `approval-before`는 `진행`이어야 한다. 빠진 게이트는 다시 열고 멈춘다.
+- 선행 작업(`deps`)은 `accepted`여야 하고, 선행 작업에 필요한 게이트도 모두 `ok`이며 승인 계열은 통과 선택(`진행`, `승인`)이어야 한다.
+- 위 이유로 멈추면 exit 1이고, 어떤 게이트를 어떻게 하면 되는지 알려 준다.
 
 ## 8. 인박스와 읽기 전용 화면 (M2b)
 
@@ -192,3 +276,36 @@ M2에서 확정한다: `id, task, class, status, options[], resolution, instruct
 | 링크 | Markdown 링크는 `http:`, `https:`만 링크로 만들고 나머지는 글자로 둔다. 링크마다 `rel="noopener noreferrer"`, `target="_blank"`. 화면끼리의 링크(`index.html`, `T-###.html`)는 렌더러가 직접 만든 것만 |
 | CSP | `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">`와 `<meta name="referrer" content="no-referrer">` |
 | 외부 요청 없음 | 글꼴, 이미지, 스타일시트를 밖에서 불러오지 않는다. 스타일은 문서 안 `<style>` 하나 |
+
+## 9. 이해 게이트, 병합, 용어 누적 (M2c-2)
+
+### 9.1 이해 게이트
+
+- 대상: 게이트의 `irreversible`이 참인 결정. 작업 명세의 `irreversible`이 거짓이어도 `ownership`이나 HANDOFF `changed_files`(실제로 바뀐 파일)가 5절의 경로 규칙에 걸리면 참이 된다(경로 규칙이 이긴다).
+- `decide`는 서명 전에 HANDOFF "말해 보기"의 질문마다 오너의 답을 받는다. `approval-before`처럼 HANDOFF가 없으면 "이 작업이 되돌리기 어려운 이유를 자기 말로 설명해 보세요" 한 문항을 묻는다. 답하는 단계를 건너뛰는 방법은 없지만, 빈 답도 받는다(핵심어 적중 0으로 기록).
+- 채점: 질문 순서대로 HANDOFF `comprehension_keys`의 핵심어가 답에 들어 있는 수를 센다(대소문자 무시). 핵심어가 없으면 적중률을 계산하지 않는다.
+- 기록: `orchestration/private/comprehension.jsonl`에 `{gate, question, answer, keys, hits, at}`. 답과 핵심어는 이 파일 밖(게이트 파일, HTML, 인박스, 이벤트 로그)에 남기지 않는다. 게이트 파일에는 문항 수와 적중 수만 `comprehension: {questions, hits, keys}`로 남긴다.
+
+### 9.2 측정
+
+- 인박스와 화면이 열린 게이트를 처음 보여 줄 때 `orchestration/private/events.jsonl`에 `gate.shown`을 남긴다. `decide`는 가장 이른 `gate.shown` 시각을 `opened_at`으로 쓴다(없으면 확인 질문을 보여 준 시각).
+- `active_seconds`는 확인 질문(이해 문항 포함)을 보여 준 때부터 답할 때까지의 초다.
+
+### 9.3 인박스의 게이트 표시
+
+- 결정 필요 카드의 결정 줄은 열린 게이트가 있으면 번호를 붙인다: `결정 G-001: 질문 (추천 X)`. 마지막 줄에 `결정하려면: gotechy decide G-001 <선택>`.
+- HANDOFF가 아직 없는 작업의 `approval-before` 게이트는 따로 카드를 만든다: `[결정 필요] T-### 제목`, `시작 승인 대기 G-###: gotechy decide G-### 진행|중단`.
+- `approval-after` 게이트가 열린 `done` 작업은 결정 필요 묶음으로 올린다: `승인 대기 G-###: gotechy decide G-### 승인|다시`.
+- `accepted` 작업의 HANDOFF는 인박스와 화면 목록에서 뺀다.
+- 은행에 없는 `new_terms`가 있으면 카드에 `새 용어: a, b` 줄을 넣는다.
+
+### 9.4 `gotechy accept T-###`
+
+- 조건: 작업 `done`, HANDOFF `verified.exit_code` 0, 필요한 게이트(6.1절)가 모두 `ok`이고 승인 계열은 통과 선택, 읽을 수 없는 게이트 파일 없음. 하나라도 어기면 exit 1과 사유.
+- 절차: 메인의 현재 커밋에서 임시 worktree를 만들고, 작업 브랜치 `gotechy/T-###`를 `--no-ff --no-commit`으로 병합한다. 병합 결과에서 `orchestration/` 아래 변경은 메인 커밋의 상태로 되돌린다. 작업 명세, HANDOFF, 게이트는 리드의 기록이라 메인 체크아웃에만 두고, 병합하는 것은 워커가 바꾼 파일뿐이다. 커밋한 뒤 그 자리에서 작업의 `verify`를 다시 실행한다.
+- 충돌이나 verify 실패면 임시 worktree를 지우고 작업을 `needs-decision`으로 바꾸고 HANDOFF에 `lead_note`로 사유를 남긴 뒤 exit 1.
+- 성공하면 메인 체크아웃을 그 병합 커밋으로 fast-forward한다. 메인의 커밋하지 않은 변경과 겹쳐 git이 거부하면 exit 1(메인은 그대로). 성공하면 작업을 `accepted`로 바꾸고 작업 worktree와 임시 worktree를 지운다. 작업 브랜치는 기록으로 남긴다.
+
+### 9.5 프로젝트 용어 은행 누적
+
+- `accept`가 성공하면 HANDOFF "새 용어" 절의 `- 용어: 풀이` 중 은행(라이브러리와 프로젝트)에 없는 것을 `orchestration/terms.jsonl`에 `{term, easy, src: "T-###"}`로 더한다. 오너가 승인한 작업의 풀이만 쌓인다.

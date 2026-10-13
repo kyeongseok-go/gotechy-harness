@@ -3,6 +3,7 @@ import {
   appendFileSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmdirSync,
   writeFileSync,
@@ -19,6 +20,12 @@ export const paths = {
   privateDir: (p: Project) => join(p.root, 'orchestration', 'private'),
   events: (p: Project) => join(p.root, 'orchestration', 'private', 'events.jsonl'),
   seq: (p: Project) => join(p.root, 'orchestration', '.seq'),
+  gateSeq: (p: Project) => join(p.root, 'orchestration', '.gate-seq'),
+  gates: (p: Project) => join(p.root, 'orchestration', 'gates'),
+  gate: (p: Project, id: string) => join(p.root, 'orchestration', 'gates', `${id}.md`),
+  projectFile: (p: Project) => join(p.root, 'orchestration', 'project.yaml'),
+  ledger: (p: Project) => join(p.root, 'orchestration', 'private', 'decisions.jsonl'),
+  comprehension: (p: Project) => join(p.root, 'orchestration', 'private', 'comprehension.jsonl'),
   worktree: (p: Project, id: string) => join(p.root, '.gotechy', 'worktrees', id),
 }
 
@@ -33,7 +40,16 @@ export function findProject(start: string): Project | undefined {
 }
 
 export function allocateTaskId(p: Project): string {
-  const lock = `${paths.seq(p)}.lock`
+  return allocateId(paths.seq(p), 'T', join(p.root, 'orchestration', 'tasks'))
+}
+
+export function allocateGateId(p: Project): string {
+  return allocateId(paths.gateSeq(p), 'G', paths.gates(p))
+}
+
+/** 번호 파일과 실제 파일 중 큰 번호 다음. 번호 파일이 checkout으로 옛 값이 돼도 겹치지 않는다. */
+function allocateId(seqFile: string, prefix: 'T' | 'G', dir: string): string {
+  const lock = `${seqFile}.lock`
   for (let attempt = 0; attempt < 200; attempt++) {
     try {
       mkdirSync(lock)
@@ -42,12 +58,14 @@ export function allocateTaskId(p: Project): string {
       continue
     }
     try {
-      const current = existsSync(paths.seq(p))
-        ? Number(readFileSync(paths.seq(p), 'utf8').trim())
-        : 0
-      const next = (Number.isFinite(current) ? current : 0) + 1
-      writeFileSync(paths.seq(p), `${next}\n`)
-      return `T-${String(next).padStart(3, '0')}`
+      const recorded = existsSync(seqFile) ? Number(readFileSync(seqFile, 'utf8').trim()) : 0
+      const re = new RegExp(`^${prefix}-(\\d+)\\.md$`)
+      const onDisk = existsSync(dir)
+        ? readdirSync(dir).map((f) => Number(re.exec(f)?.[1] ?? 0))
+        : []
+      const next = Math.max(Number.isFinite(recorded) ? recorded : 0, ...onDisk, 0) + 1
+      writeFileSync(seqFile, `${next}\n`)
+      return `${prefix}-${String(next).padStart(3, '0')}`
     } finally {
       rmdirSync(lock)
     }
@@ -68,4 +86,20 @@ export function updateFrontmatter(file: string, patch: Record<string, unknown>):
 export function appendEvent(p: Project, event: Record<string, unknown>): void {
   mkdirSync(paths.privateDir(p), { recursive: true })
   appendFileSync(paths.events(p), `${JSON.stringify({ at: new Date().toISOString(), ...event })}\n`)
+}
+
+/** 프로젝트 id(contract.md 6.3절). 결정을 다른 프로젝트에 옮겨 쓰지 못하게 서명에 넣는다. */
+export function projectId(p: Project, create = false): string | undefined {
+  const file = paths.projectFile(p)
+  if (existsSync(file)) {
+    const m = /^id:\s*"?([0-9a-f-]{36})"?\s*$/m.exec(readFileSync(file, 'utf8'))
+    if (m?.[1]) return m[1]
+  }
+  if (!create) return undefined
+  const id = crypto.randomUUID()
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, `# gotechy 프로젝트 id. 결정 서명에 들어가니 바꾸지 마세요.\nid: ${id}\n`, {
+    flag: 'wx',
+  })
+  return id
 }

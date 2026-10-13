@@ -3,6 +3,7 @@
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { libraryRoot } from './library'
+import { projectId } from './project'
 
 const PACKS: Record<string, string[]> = { owner: ['owner-protocol'] }
 
@@ -21,6 +22,10 @@ export function initProject(root: string, packs: string[]): InitReport {
       writeFileSync(join(d, '.gitkeep'), '')
     note(`orchestration/${dir}/`, made)
   }
+
+  const hadId = projectId({ root }) !== undefined
+  projectId({ root }, true)
+  note('orchestration/project.yaml', !hadId)
 
   for (const f of ['AGENTS.md', 'CLAUDE.md']) {
     const target = join(root, f)

@@ -2,6 +2,7 @@
 // gotechy CLI. 종료코드: 0 성공, 1 검사 실패(고칠 수 있는 문제), 2 환경 문제(도구·경로·상태).
 import { existsSync, readFileSync } from 'node:fs'
 import { relative } from 'node:path'
+import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
 import { Command } from 'commander'
 import { parseFrontmatter } from './core/frontmatter'
@@ -10,8 +11,11 @@ import { formatIssue } from './core/issues'
 import { hasErrors, lintHandoff } from './core/lint-handoff'
 import { lintTask } from './core/lint-task'
 import { lintStyle } from './core/style'
+import { acceptTask } from './runtime/accept'
+import { decideGate, verifyGates } from './runtime/gates'
 import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
+import { gotechyHome, initKey, rotateKey } from './runtime/keys'
 import { findProject } from './runtime/project'
 import { runTask } from './runtime/run'
 import { createTask } from './runtime/task-new'
@@ -149,7 +153,9 @@ program
   .command('inbox')
   .description('HANDOFF를 결정 필요, 실패, 완료 순의 3초 카드로 보여 준다 (contract.md 8.1절)')
   .action(() => {
-    process.stdout.write(formatInbox(loadCards(requireProject())))
+    process.stdout.write(
+      formatInbox(loadCards(requireProject(), process.cwd(), { recordShown: true })),
+    )
   })
 
 program
@@ -157,7 +163,7 @@ program
   .description('읽기 전용 HTML 화면을 .gotechy/view/에 만든다 (contract.md 8.2절)')
   .argument('[taskId]', '이 작업 화면의 주소를 출력 (없으면 인박스 화면)')
   .action((taskId?: string) => {
-    const r = renderViews(requireProject())
+    const r = renderViews(requireProject(), process.cwd(), { recordShown: true })
     const target = taskId ? r.pages.get(taskId) : r.index
     if (!target) {
       console.error(
@@ -186,7 +192,98 @@ program
     for (const m of out.messages) console.log(m)
     if (out.handoffFile)
       console.log(`HANDOFF: ${relative(process.cwd(), out.handoffFile)} (${out.status})`)
-    process.exit(out.status === 'refused' ? 2 : out.status === 'failed' ? 1 : 0)
+    process.exit(
+      out.status === 'refused' ? 2 : out.status === 'failed' || out.status === 'blocked' ? 1 : 0,
+    )
+  })
+
+const keys = program.command('keys').description('결정 서명 키 (contract.md 6.3절)')
+keys
+  .command('init')
+  .description('서명 키가 없으면 만든다')
+  .action(() => {
+    const r = initKey(gotechyHome())
+    console.log(r.created ? `키를 만들었어요: ${r.id}` : `이미 키가 있어요: ${r.id}`)
+  })
+keys
+  .command('rotate')
+  .description('새 키로 바꾸고 이전 키를 지운다. 이전 키로 한 결정은 다시 결정해야 한다')
+  .action(() => {
+    const r = rotateKey(gotechyHome())
+    console.log(`새 키: ${r.id}${r.previous ? ` (지운 키: ${r.previous})` : ''}`)
+    console.log(
+      '이전 키로 서명한 결정은 gotechy gate verify에서 실패해요. 해당 게이트를 다시 결정하세요.',
+    )
+  })
+
+program
+  .command('decide')
+  .description('게이트를 결정한다. 대화형 터미널에서만 (contract.md 6.4절)')
+  .argument('<gateId>')
+  .argument('<choice>', '선택지 중 하나')
+  .argument('[instruction]', '워커에게 줄 다음 지시')
+  .action(async (gateId: string, choice: string, instruction?: string) => {
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      console.error(
+        '결정은 대화형 터미널에서만 받아요. 에이전트나 스크립트가 실수로 결정하는 것을 막는 장치이고, 의도적인 우회(예: script 명령)까지 막지는 못해요. 터미널에서 직접 실행하세요.',
+      )
+      process.exit(2)
+    }
+    const p = requireProject()
+    const rl = createInterface({ input: process.stdin, output: process.stdout })
+    // readline이 Ctrl-C를 가로채면 프로세스 SIGINT가 오지 않아 잠금이 남는다. 프로세스 SIGINT로 넘겨 잠금을 풀게 한다
+    rl.on('SIGINT', () => process.emit('SIGINT', 'SIGINT'))
+    try {
+      let introduced = false
+      const g = await decideGate(p, gotechyHome(), gateId, {
+        choice,
+        instruction: instruction ?? null,
+        answer: async (question) => {
+          if (!introduced) {
+            console.log(
+              '되돌리기 어려운 결정이에요. 결정하기 전에 자기 말로 답해 주세요 (답은 private에만 남아요).',
+            )
+            introduced = true
+          }
+          return rl.question(`${question}\n> `)
+        },
+        confirm: async (summary) => {
+          console.log(summary)
+          const answer = await rl.question('확정할까요? [y/N] ')
+          return answer.trim().toLowerCase() === 'y'
+        },
+      })
+      console.log(`${g.id}: ${g.resolution}로 결정했어요 (서명 키 ${g.key_id}).`)
+    } catch (e) {
+      rl.close()
+      console.error((e as Error).message)
+      process.exit(1)
+    }
+    rl.close()
+  })
+
+program
+  .command('accept')
+  .description('승인한 작업 브랜치를 메인에 병합한다 (contract.md 9.4절)')
+  .argument('<taskId>')
+  .action(async (taskId: string) => {
+    const out = await acceptTask(requireProject(), gotechyHome(), taskId)
+    for (const m of out.messages) console.log(m)
+    process.exit(out.status === 'accepted' ? 0 : 1)
+  })
+
+program
+  .command('gate')
+  .description('게이트')
+  .command('verify')
+  .description('결정 서명과 판본을 검증한다 (contract.md 6.5절)')
+  .argument('[gateIds...]')
+  .action((ids: string[]) => {
+    const verdicts = verifyGates(requireProject(), gotechyHome(), ids.length > 0 ? ids : undefined)
+    if (verdicts.length === 0) console.log('게이트가 없어요')
+    for (const v of verdicts)
+      console.log(`${v.id} ${v.status}${v.reasons.length > 0 ? `: ${v.reasons.join(' / ')}` : ''}`)
+    process.exit(verdicts.some((v) => v.status === 'fail') ? 1 : 0)
   })
 
 await program.parseAsync()

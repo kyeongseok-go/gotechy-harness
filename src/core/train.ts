@@ -19,7 +19,17 @@ export const Train = z
     policy: z
       .object({
         claude: z
-          .object({ env: z.record(z.string(), z.string()), deny: z.array(z.string()) })
+          .object({
+            // 전역 설정에 들어가므로 허용한 키만 받는다(M3 보안 리뷰 중간 4). 예: ANTHROPIC_BASE_URL 같은 키는 거부
+            env: z
+              .object({
+                DISABLE_AUTOUPDATER: z.string().optional(),
+                DISABLE_TELEMETRY: z.string().optional(),
+                DISABLE_ERROR_REPORTING: z.string().optional(),
+              })
+              .strict(),
+            deny: z.array(z.string().regex(/^(Bash|Read|Edit|Write)\(.+\)$/)),
+          })
           .strict(),
         codex: z.object({ check_for_update_on_startup: z.boolean() }).strict(),
       })

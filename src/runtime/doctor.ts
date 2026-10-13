@@ -1,4 +1,5 @@
 // gotechy doctor(contract.md 10.2절): 설치 상태가 train과 같은지, 정책이 들어가 있는지, 라이브러리가 규칙을 지키는지.
+import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseVersion, scriptProblems, skillProblems } from '../core/doctor'
@@ -20,6 +21,8 @@ export type DoctorOptions = {
   home: string
   /** 도구를 찾을 PATH. 기본은 현재 PATH */
   pathEnv?: string
+  /** 부트스트랩이 둔 mise 바이너리를 train 체크섬과 대조한다 */
+  gotechyHome?: string
   /** 주면 이 저장소의 git 이력 전체를 gitleaks로 검사한다 */
   history?: { root: string; gitleaks: string }
 }
@@ -76,6 +79,24 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
       })
     } else {
       checks.push({ name, status: 'ok', detail: got })
+    }
+  }
+
+  if (o.gotechyHome) {
+    const bin = join(o.gotechyHome, 'bin', 'mise')
+    const platform = `${process.platform === 'darwin' ? 'macos' : 'linux'}-${process.arch === 'arm64' ? 'arm64' : 'x64'}`
+    if (existsSync(bin)) {
+      const got = createHash('sha256').update(readFileSync(bin)).digest('hex')
+      checks.push(
+        got === train.mise.sha256[platform]
+          ? { name: 'mise 바이너리', status: 'ok', detail: `${bin} 체크섬이 train과 같아요` }
+          : {
+              name: 'mise 바이너리',
+              status: 'fail',
+              detail: `${bin} 체크섬이 train(${platform})과 달라요`,
+              fix: '그 파일을 지우고 bin/gotechy를 다시 실행해 train의 mise를 받으세요',
+            },
+      )
     }
   }
 
@@ -140,16 +161,10 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
   }
 
   if (o.history) {
-    const config = join(o.history.root, '.gitleaks.toml')
+    // 저장소의 .gitleaks.toml이 아니라 라이브러리의 설정을 쓴다. 저장소가 검사를 끄지 못하게 한다
+    const config = join(o.libRoot, 'templates', 'project', 'gitleaks.toml')
     const r = await runProc(
-      [
-        o.history.gitleaks,
-        'git',
-        '--no-banner',
-        '--redact',
-        ...(existsSync(config) ? ['--config', config] : []),
-        '.',
-      ],
+      [o.history.gitleaks, 'git', '--no-banner', '--redact', '--config', config, '.'],
       { cwd: o.history.root, timeoutMs: 300_000 },
     )
     checks.push(

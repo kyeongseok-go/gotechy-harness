@@ -172,11 +172,13 @@ async function branchScopeProblems(
     .trim()
     .split('\n')
     .filter(Boolean)
+  if (files.length === 0) return []
   const problems = disallowedChanges(files, ownership, id).map((f) => `허용 밖 파일: ${f}`)
   const tree = (await git(['ls-tree', '-r', branch, '--', ...files], root)).stdout
   for (const line of tree.split('\n')) {
     const [meta, path] = line.split('\t')
     if (path && meta?.startsWith('120000')) problems.push(`심볼릭 링크: ${path}`)
+    if (path && meta?.startsWith('160000')) problems.push(`하위 저장소(gitlink): ${path}`)
   }
   return problems
 }

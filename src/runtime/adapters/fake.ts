@@ -1,5 +1,6 @@
 // 테스트용 워커: 녹화 폴더의 files/를 작업 폴더에 덮어쓰고 handoff.md를 HANDOFF 자리에 둔다. LLM 호출 없이 결과를 재현한다.
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   linkSync,
@@ -53,11 +54,43 @@ export const fakeAdapter: WorkerAdapter = {
         linkSync(l.target, at)
       }
     }
+    // 공격 재현용: writes.json의 [{path, content, append}]는 작업 폴더 밖 절대 경로에도 쓴다(격리를 벗어난 워커 흉내)
+    const writes = join(dir, 'writes.json')
+    if (existsSync(writes)) {
+      for (const w of JSON.parse(readFileSync(writes, 'utf8')) as {
+        path: string
+        content: string
+        append?: boolean
+      }[]) {
+        const at = w.path.replaceAll('{{CWD}}', req.cwd)
+        if (w.append) appendFileSync(at, w.content)
+        else writeFileSync(at, w.content)
+      }
+    }
     const handoffSrc = join(dir, 'handoff.md')
     if (existsSync(handoffSrc)) {
       const target = join(req.cwd, handoffPathFor(req.taskId))
       mkdirSync(dirname(target), { recursive: true })
       writeFileSync(target, readFileSync(handoffSrc, 'utf8').replaceAll('{{TASK}}', req.taskId))
+    }
+    // 공격 재현용: commit 파일이 있으면 워커가 직접 커밋한다(셸이 있는 Codex 흉내)
+    if (existsSync(join(dir, 'commit'))) {
+      Bun.spawnSync({ cmd: ['git', 'add', '-A'], cwd: req.cwd })
+      Bun.spawnSync({
+        cmd: [
+          'git',
+          '-c',
+          'user.name=w',
+          '-c',
+          'user.email=w@w',
+          '-c',
+          'core.hooksPath=/dev/null',
+          'commit',
+          '-qm',
+          'worker',
+        ],
+        cwd: req.cwd,
+      })
     }
     return {
       exitCode: 0,

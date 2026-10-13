@@ -7,11 +7,13 @@ if ! command -v "$GITLEAKS" >/dev/null 2>&1; then
   exit 1
 fi
 ROOT=$(git rev-parse --show-toplevel) || exit 1
-if [ -f "$ROOT/.gitleaks.toml" ]; then
-  "$GITLEAKS" git --staged --no-banner --redact --config "$ROOT/.gitleaks.toml" "$ROOT"
-else
-  "$GITLEAKS" git --staged --no-banner --redact "$ROOT"
+# 설정은 저장소가 아니라 hook 옆의 것을 쓴다. 저장소의 .gitleaks.toml이 검사를 끄지 못하게 한다
+CONFIG="$(dirname "$0")/gitleaks.toml"
+if [ ! -f "$CONFIG" ]; then
+  echo "gitleaks 설정($CONFIG)이 없어 커밋을 막았어요. gotechy init을 다시 실행하세요." >&2
+  exit 1
 fi
+"$GITLEAKS" git --staged --no-banner --redact --config "$CONFIG" "$ROOT"
 status=$?
 if [ "$status" -ne 0 ]; then
   echo "비밀 값이나 개인정보로 보이는 내용이 있어 커밋을 막았어요. 지우고 다시 커밋하세요." >&2

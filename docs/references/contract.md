@@ -143,7 +143,7 @@ frontmatter:
 워커가 바꾸면 실행이 `failed`가 되고, 작업 `ownership`에 넣으면 `task lint`가 거부하는 경로:
 
     orchestration/gates/   orchestration/tasks/   orchestration/private/   orchestration/.seq
-    orchestration/.gate-seq   orchestration/project.yaml   .githooks/   .gitleaks.toml
+    orchestration/.gate-seq   orchestration/project.yaml
     .gotechy/              .git/                  .claude/               .agents/
     AGENTS.md              CLAUDE.md              apm.yml   apm.lock.yaml
     mise.toml              mise.lock              policy/
@@ -188,9 +188,10 @@ frontmatter:
 - `gotechy keys init`: 키가 없을 때만 만든다. `gotechy keys rotate`: 새 키를 만들어 현재 키로 바꾸고 이전 키 파일을 지운다. 이전 키로 서명한 결정은 모두 다시 결정해야 한다.
 - nonce: 결정마다 16바이트 난수. `orchestration/private/decisions.jsonl`에 `{gate, nonce, key_id, decided_at}`을 남긴다(소비 기록).
 - 위협 모델(1a): 실수, 낡은 판본, 손으로 고친 결정 파일, 다른 프로젝트의 결정 재사용, 격리된 워커를 막는다. 오너와 같은 OS 사용자로 도는 악의적 프로세스의 자가 승인은 막지 못한다(1b에서 다룬다).
-- 워커 코드 실행(verify): 워커가 쓴 테스트를 실행하므로 macOS에서는 `sandbox-exec`로 감싼다. 쓰기는 기본 거부이고 작업 폴더와 verify 전용 임시 폴더만 허용한다(작업 폴더의 `.git` 파일은 제외). 키 폴더, `orchestration/private/`, 홈의 비밀 폴더(.ssh, .aws, .gnupg, .netrc, .config/gh, .claude, .codex)는 읽기도 막는다. 네트워크는 막는다. 환경 변수는 허용 목록(PATH, 언어, 터미널, 사용자 이름)만 넘기고 HOME과 TMPDIR은 임시 폴더로 바꾼다. `accept`의 verify도 같다. 다른 OS에서는 막지 못하고 HANDOFF `lead_note`에 그렇게 적는다.
-- 실행 순서: 워커가 끝나면 변경 범위를 검사하고, 워커 HANDOFF를 읽고, 워커 변경을 커밋한 뒤 verify를 돌린다. verify가 끝나면 커밋하지 않은 모든 것(무시 파일 포함)을 지우고, 확정한 HANDOFF 하나만 커밋한다. verify가 만든 파일은 작업 브랜치에 들어가지 않는다.
-- 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크, 현재 서명 키 값이 들어 있는 파일은 되돌리고 실행을 실패로 처리한다. 워커 실행 중 저장소 설정(`.git/config`)이 바뀌면 되돌리고 실패로 처리한다. `accept`는 병합 전에 작업 브랜치 전체 변경을 다시 검사한다.
+- 워커 코드 실행(verify): 워커가 쓴 테스트를 실행하므로 macOS에서는 `sandbox-exec`로 감싼다. 쓰기는 기본 거부이고 작업 폴더와 verify 전용 임시 폴더만 허용한다(작업 폴더의 `.git` 파일은 제외). 키 폴더, `orchestration/private/`, 홈의 비밀 폴더(.ssh, .aws, .gnupg, .netrc, .config/gh, .claude, .codex)는 읽기도 막는다. 네트워크는 막는다. 샌드박스 밖 프로세스에 일을 시키는 경로(`osascript`, `launchctl`, `open`, `automator`, `shortcuts` 실행과 Apple Events, LaunchServices 서비스 접근)도 막는다. 환경 변수는 허용 목록(PATH, 언어, 터미널, 사용자 이름)만 넘기고 HOME과 TMPDIR은 임시 폴더로 바꾼다. `accept`의 verify도 같다. 다른 OS에서는 막지 못하고 HANDOFF `lead_note`에 그렇게 적는다.
+- git 연결과 설정 검사: 워커 실행 전에 worktree의 `.git` 파일, worktree 메타 파일(gitdir, commondir, config.worktree), 저장소 설정(`.git/config`)과 포함 파일까지 합친 설정 목록을 찍어 둔다. 워커가 끝나면 git을 한 번이라도 부르기 전에 비교해, 바뀌었으면 되돌리고 그 실행에서는 git을 더 부르지 않고 실패로 처리한다(verify도 돌리지 않음, `verified.exit_code` -1).
+- 실행 순서: 워커가 끝나면 변경 범위를 검사하고, 워커 HANDOFF를 읽고, 워커 변경을 커밋한 뒤 verify를 돌린다. verify가 끝나면 커밋하지 않은 모든 것(무시 파일과 중첩 저장소 포함)을 지우고, 확정한 HANDOFF 하나만 커밋한다. verify가 만든 파일은 작업 브랜치에 들어가지 않는다.
+- 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크, 현재 서명 키 값이 들어 있는 파일은 되돌리고 실행을 실패로 처리한다. 워커가 직접 커밋한 새 파일도 지운다. `accept`는 병합 전에 작업 브랜치 전체 변경(링크, 하위 저장소 포함)을 다시 검사한다.
 - 리드의 git: 전역, 시스템 설정을 읽지 않고(`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`) 훅과 fsmonitor를 끈 채로 실행한다.
 - 리드는 HANDOFF를 읽고 쓸 때 링크를 따라가지 않는다(경로의 모든 요소 검사, `O_NOFOLLOW`).
 - 알려진 한계(1b에서 다룬다):
@@ -322,29 +323,33 @@ frontmatter:
 | `B` | 설치 시점 고정, 자동 업데이트는 정책으로 막음 | 버전이 다르면 실패 |
 | `C` | 고정할 수 없음(예: GUI 앱) | 기록만 하고 실패하지 않음 |
 
-`policy`는 `setup`이 전역 설정에 넣는 값이다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
+`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
 
 ### 10.2 `gotechy doctor [--history]`
 
 - 검사: 도구 버전이 train과 같은가, 정책이 전역 설정에 들어가 있는가, 라이브러리 스킬의 frontmatter(`name`, `description` 필수, description 400자 이하, 본문 150줄 이하, 스킬 수 15개 이하), 저장소 셸 스크립트(`bin/`, `scripts/`, `.claude/hooks/`, `.githooks/`, `templates/`)가 macOS에서 도는가. `#!/bin/sh` 스크립트는 POSIX 밖 문법(`[[`, `declare`, `mapfile`, `readarray`, `<<<`, `${x,,}`, `${x^^}`, `function f {`)을 금지하고, bash 스크립트는 macOS 기본 bash 3.2에 없는 문법(`declare -A`, `mapfile`, `readarray`, `${x,,}`, `${x^^}`, `&>>`, `|&`, `coproc`, `local -n`)만 금지한다. 둘 다 GNU 전용 명령(`sha256sum`, `date -d`)은 금지한다.
 - 실패마다 고치는 명령을 출력한다. 하나라도 실패하면 exit 1, 모두 통과하면 exit 0.
-- `GOTECHY_TRAIN`으로 다른 train 파일을 줄 수 있다(테스트에서 불일치를 주입할 때).
-- `--history`: gitleaks로 저장소 전체 이력을 검사한다. 찾으면 exit 1.
+- `GOTECHY_TRAIN`으로 다른 train 파일을 줄 수 있다(테스트에서 불일치를 주입할 때). train의 `check` 명령을 셸로 실행하므로 라이브러리 안의 파일만 받는다. 부트스트랩이 둔 `$GOTECHY_HOME/bin/mise`가 있으면 train 체크섬과 대조한다.
+- `--history`: 라이브러리의 gitleaks 설정으로 저장소 전체 이력을 검사한다(저장소의 `.gitleaks.toml`은 쓰지 않는다). 찾으면 exit 1.
 
 ### 10.3 `gotechy setup [--dry-run] [--restore <시각>]`
 
-- `--dry-run`: 바꿀 내용만 출력한다. 어떤 파일도, 백업 폴더도, `$GOTECHY_HOME`도 만들지 않는다.
-- 적용: 바꾸기 전에 `$GOTECHY_HOME/backup/<시각>/`에 원본과 `manifest.json`(경로, 원래 있었는지, 바꾸기 전과 후의 sha256, 권한)을 남긴다. 기존 키, 주석, 권한은 지킨다. 심볼릭 링크면 실제 파일을 고친다. 계획을 세운 뒤 쓰기 직전에 파일이 바뀌었으면(다른 프로그램이 동시에 고침) 아무것도 쓰지 않고 멈춘다.
-- `--restore <시각>`: manifest대로 원본 바이트와 권한을 되돌리고, 원래 없던 파일은 지운다. 적용 뒤 사용자가 파일을 바꿨으면(현재 해시가 적용 직후 해시와 다름) 아무것도 바꾸지 않고 멈춘다.
+- `--dry-run`: 바꿀 내용만 출력한다. 어떤 파일도, 백업 폴더도, `$GOTECHY_HOME`도 만들지 않는다. `setup`은 `GOTECHY_TRAIN`을 받지 않고 라이브러리의 `train.yaml`만 따른다.
+- 적용: 바꾸기 전에 `$GOTECHY_HOME/backup/<시각>/`에 원본과 `manifest.json`(경로, 원래 있었는지, 바꾸기 전과 후의 sha256, 권한)을 남긴다. 기존 키, 주석, 권한은 지킨다. 심볼릭 링크면 실제 파일을 고친다. 계획을 세운 뒤 쓰기 직전에 파일이 바뀌었으면(다른 프로그램이 동시에 고침) 아무것도 쓰지 않고 멈춘다. 두 번째 파일을 쓰다 실패하면 이미 쓴 파일을 원래대로 되돌린다(부분 적용 없음). 대상이 없는 깨진 링크는 일반 파일로 바꾸지 않고 멈춘다. TOML은 줄 단위로 고친 뒤 TOML 파서로 다시 읽어, 원하는 값이 되고 다른 값은 그대로일 때만 쓴다. 아니면 손으로 넣을 줄을 알려 주고 멈춘다. 같은 시각의 백업 폴더가 이미 있으면 덮어쓰지 않고 멈춘다.
+- `--restore <시각>`: manifest대로 원본 바이트와 권한을 되돌리고, 원래 없던 파일은 지운다. 이미 원래대로인 항목은 건너뛴다. 적용 뒤 사용자가 파일을 바꿨으면(현재 해시가 적용 직후 해시와 다름) 아무것도 바꾸지 않고 멈춘다. manifest의 경로는 두 설정 파일만, 백업 이름은 `숫자.orig`만 받고, 백업 바이트가 원본 해시와 같은지 확인한다.
 - 1a의 `setup`은 정책만 다룬다. 도구 설치는 부트스트랩과 `mise install --locked`가 한다. mise가 설치한 도구는 복원 대상이 아니다.
 
 ### 10.4 gitleaks hook
 
-- `gotechy init`은 `.githooks/pre-commit`(POSIX sh)과 `.gitleaks.toml`(기본 규칙 + 주민등록번호 규칙)을 만들고 `git config core.hooksPath .githooks`를 설정한다. hook은 staged 변경을 gitleaks로 검사하고, 찾으면 커밋을 막는다. gitleaks가 없으면 설치하라는 안내와 함께 커밋을 막는다(fail-closed).
+- `gotechy init`은 hook(`pre-commit`, POSIX sh)과 gitleaks 설정(기본 규칙 + 주민등록번호 규칙)을 저장소 밖 `$GOTECHY_HOME/githooks/`에 두고, `git config core.hooksPath`를 그 절대 경로로 설정한다. 저장소 안 폴더를 hooksPath로 쓰면 그 저장소가 준비한 다른 hook(post-checkout 등)이 실행되고, 저장소의 `.gitleaks.toml`이 검사를 끌 수 있기 때문이다.
+- 이미 다른 `core.hooksPath`가 있거나 `.git/hooks`에 쓰는 hook이 있으면 바꾸지 않고 알려 준다(기존 hook을 끄지 않는다).
+- hook은 staged 변경을 hook 옆의 설정으로 검사하고, 찾으면 커밋을 막는다. gitleaks나 설정이 없으면 커밋을 막는다(fail-closed).
+- `.gitignore`가 심볼릭 링크면 gotechy 항목을 넣지 않고 알려 준다.
 - hook은 `--no-verify`로 우회할 수 있다. 최종 방어선은 CI의 전체 이력 검사다(2단계).
 
 ### 10.5 `bin/gotechy` 부트스트랩
 
 - POSIX sh. 스크립트 위치로 라이브러리 폴더를 찾는다. `$GOTECHY_HOME/bin/mise`가 없으면 train의 mise 버전과 아키텍처별 sha256으로 내려받아 검증한다(`shasum -a 256`).
+- 다운로드는 https만 쓴다(`curl --proto '=https'`).
 - `--bootstrap-dry-run`이면 무엇을 내려받고 어디에 둘지만 출력하고, 어떤 다운로드나 폴더 생성도 하지 않는다.
-- 그다음 `mise exec -C <라이브러리> -- bun <라이브러리>/src/cli.ts "$@"`.
+- 그다음 `mise exec -C <라이브러리> -- bun <라이브러리>/src/cli.ts "$@"`. `mise exec -C`는 작업 폴더를 라이브러리로 바꾸므로, 원래 작업 폴더를 `GOTECHY_CWD`로 넘기고 CLI가 시작할 때 그 폴더로 돌아간다.

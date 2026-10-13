@@ -5,11 +5,14 @@ import {
   chmodSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
+import { gotechyHome } from './keys'
 import { libraryRoot } from './library'
 import { projectId } from './project'
 
@@ -20,6 +23,8 @@ export type InitReport = { created: string[]; skipped: string[]; warnings: strin
 export type InitOptions = {
   /** 커밋 전 gitleaks hook을 설정한다(contract.md 10.4절). 기본 켜짐 */
   hooks?: boolean
+  /** hook을 둘 곳. 기본은 $GOTECHY_HOME */
+  gotechyHome?: string
 }
 
 export function initProject(root: string, packs: string[], opts: InitOptions = {}): InitReport {
@@ -57,13 +62,20 @@ export function initProject(root: string, packs: string[], opts: InitOptions = {
 
   const gi = join(root, '.gitignore')
   const fragment = readFileSync(join(lib, 'templates', 'project', 'gitignore.fragment'), 'utf8')
-  const current = existsSync(gi) ? readFileSync(gi, 'utf8') : ''
-  if (!current.includes('.gotechy/')) {
-    appendFileSync(gi, `${current && !current.endsWith('\n') ? '\n' : ''}${fragment}`)
-    note('.gitignore (gotechy 항목)', true)
-  } else note('.gitignore', false)
+  // 링크면 그 너머(저장소 밖일 수 있는) 파일에 쓰게 되므로 손대지 않는다
+  if (lstatSync(gi, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    report.warnings.push(
+      '.gitignore가 심볼릭 링크라 gotechy 항목을 넣지 않았어요. 직접 넣어 주세요.',
+    )
+  } else {
+    const current = existsSync(gi) ? readFileSync(gi, 'utf8') : ''
+    if (!current.includes('.gotechy/')) {
+      appendFileSync(gi, `${current && !current.endsWith('\n') ? '\n' : ''}${fragment}`)
+      note('.gitignore (gotechy 항목)', true)
+    } else note('.gitignore', false)
+  }
 
-  if (opts.hooks !== false) installHooks(root, lib, report, note)
+  if (opts.hooks !== false) installHooks(root, lib, opts.gotechyHome ?? gotechyHome(), report, note)
 
   for (const pack of packs) {
     const skills = PACKS[pack]
@@ -83,30 +95,58 @@ export function initProject(root: string, packs: string[], opts: InitOptions = {
   return report
 }
 
+/**
+ * hook과 gitleaks 설정은 저장소 밖($GOTECHY_HOME/githooks)에 두고 절대 경로로 연결한다.
+ * 저장소 안 폴더를 hooksPath로 쓰면 그 저장소가 준비한 다른 hook(post-checkout 등)이 실행되고,
+ * 저장소의 .gitleaks.toml이 검사를 끌 수 있다(M3 보안 리뷰 높음 1, 중간 5).
+ */
 function installHooks(
   root: string,
   lib: string,
+  home: string,
   report: InitReport,
   note: (path: string, made: boolean) => void,
 ): void {
-  const hook = join(root, '.githooks', 'pre-commit')
-  const madeHook = !existsSync(hook)
-  if (madeHook) {
-    mkdirSync(join(root, '.githooks'), { recursive: true })
-    cpSync(join(lib, 'templates', 'project', 'githooks', 'pre-commit'), hook)
-    chmodSync(hook, 0o755)
-  }
-  note('.githooks/pre-commit', madeHook)
-  const config = join(root, '.gitleaks.toml')
-  const madeConfig = !existsSync(config)
-  if (madeConfig) cpSync(join(lib, 'templates', 'project', 'gitleaks.toml'), config)
-  note('.gitleaks.toml', madeConfig)
-  const inRepo = Bun.spawnSync({ cmd: ['git', 'rev-parse', '--git-dir'], cwd: root }).exitCode === 0
-  if (!inRepo) {
+  const git = (args: string[]) =>
+    Bun.spawnSync({ cmd: ['git', ...args], cwd: root, stdout: 'pipe' })
+  if (git(['rev-parse', '--git-dir']).exitCode !== 0) {
     report.warnings.push(
       'git 저장소가 아니라 hook을 연결하지 못했어요. git init 뒤에 gotechy init을 다시 실행하세요.',
     )
     return
   }
-  Bun.spawnSync({ cmd: ['git', 'config', 'core.hooksPath', '.githooks'], cwd: root })
+  const dir = join(home, 'githooks')
+  const existing = git(['config', '--local', '--get', 'core.hooksPath']).stdout.toString().trim()
+  if (existing && existing !== dir) {
+    report.warnings.push(
+      `이미 core.hooksPath(${existing})가 있어 바꾸지 않았어요. 비밀 값 검사를 쓰려면 그 hook에서 ${join(dir, 'pre-commit')}를 부르세요.`,
+    )
+    return
+  }
+  const gitHooks = git(['rev-parse', '--git-path', 'hooks']).stdout.toString().trim()
+  const own = existsSync(join(root, gitHooks)) || existsSync(gitHooks)
+  const hooksDir = existsSync(join(root, gitHooks)) ? join(root, gitHooks) : gitHooks
+  if (own && readdirSync(hooksDir).some((f) => !f.endsWith('.sample'))) {
+    report.warnings.push(
+      '.git/hooks에 이미 쓰는 hook이 있어 core.hooksPath를 바꾸지 않았어요. 바꾸면 그 hook이 꺼져요. 직접 연결해 주세요.',
+    )
+    return
+  }
+  mkdirSync(dir, { recursive: true, mode: 0o700 })
+  writeFileSync(
+    join(dir, 'pre-commit'),
+    readFileSync(join(lib, 'templates', 'project', 'githooks', 'pre-commit')),
+    { mode: 0o755 },
+  )
+  chmodSync(join(dir, 'pre-commit'), 0o755)
+  writeFileSync(
+    join(dir, 'gitleaks.toml'),
+    readFileSync(join(lib, 'templates', 'project', 'gitleaks.toml')),
+    { mode: 0o644 },
+  )
+  if (git(['config', 'core.hooksPath', dir]).exitCode !== 0) {
+    report.warnings.push('core.hooksPath를 설정하지 못했어요. 커밋 전 비밀 값 검사가 꺼져 있어요.')
+    return
+  }
+  note(`core.hooksPath ${dir}`, existing !== dir)
 }

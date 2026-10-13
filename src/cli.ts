@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // gotechy CLI. 종료코드: 0 성공, 1 검사 실패(고칠 수 있는 문제), 2 환경 문제(도구·경로·상태).
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, relative } from 'node:path'
 import { createInterface } from 'node:readline/promises'
@@ -25,6 +25,9 @@ import { runTask } from './runtime/run'
 import { applySetup, formatPlan, planSetup, restoreSetup } from './runtime/setup'
 import { createTask } from './runtime/task-new'
 import { loadKnownTerms } from './runtime/terms'
+
+// 부트스트랩(bin/gotechy)은 mise exec -C로 라이브러리 폴더에서 실행되므로, 사용자가 있던 폴더로 돌아간다(contract.md 10.5절)
+if (process.env.GOTECHY_CWD) process.chdir(process.env.GOTECHY_CWD)
 
 const program = new Command()
 program
@@ -311,10 +314,17 @@ program
       }
       history = { root, gitleaks }
     }
+    const trainFile = process.env.GOTECHY_TRAIN ?? join(lib, 'train.yaml')
+    // train의 check 명령을 셸로 실행하므로 라이브러리 안의 파일만 받는다(M3 보안 리뷰 중간 4)
+    if (!existsSync(trainFile) || !realpathSync(trainFile).startsWith(`${realpathSync(lib)}/`)) {
+      console.error(`GOTECHY_TRAIN은 라이브러리(${lib}) 안의 파일만 쓸 수 있어요: ${trainFile}`)
+      process.exit(2)
+    }
     const report = await runDoctor({
-      trainFile: process.env.GOTECHY_TRAIN ?? join(lib, 'train.yaml'),
+      trainFile,
       libRoot: lib,
       home: homedir(),
+      gotechyHome: gotechyHome(),
       ...(history ? { history } : {}),
     })
     process.stdout.write(formatDoctor(report))
@@ -330,7 +340,8 @@ program
     const opts = {
       home: homedir(),
       gotechyHome: gotechyHome(),
-      trainFile: process.env.GOTECHY_TRAIN ?? join(libraryRoot(), 'train.yaml'),
+      // setup은 GOTECHY_TRAIN을 받지 않는다. 전역 설정에 넣을 값은 라이브러리의 train만 따른다
+      trainFile: join(libraryRoot(), 'train.yaml'),
     }
     try {
       if (o.restore) {

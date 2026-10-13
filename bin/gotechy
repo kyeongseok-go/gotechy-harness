@@ -47,7 +47,7 @@ if [ ! -x "$MISE" ]; then
   command -v curl >/dev/null 2>&1 || { echo "curl이 없어요" >&2; exit 2; }
   mkdir -p "$GHOME/bin"
   tmp="$MISE.download.$$"
-  curl -fsSL "$url" -o "$tmp"
+  curl -fsSL --proto '=https' --tlsv1.2 "$url" -o "$tmp"
   got=$(shasum -a 256 "$tmp" | cut -d ' ' -f 1)
   if [ "$got" != "$sha" ]; then
     rm -f "$tmp"
@@ -58,4 +58,7 @@ if [ ! -x "$MISE" ]; then
   mv "$tmp" "$MISE"
 fi
 
+# mise exec -C는 작업 폴더를 라이브러리로 바꾸므로, 원래 작업 폴더를 넘겨 CLI가 되돌아가게 한다
+GOTECHY_CWD=$(pwd -P)
+export GOTECHY_CWD
 exec "$MISE" exec -C "$LIB" -- bun "$LIB/src/cli.ts" "$@"

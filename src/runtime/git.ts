@@ -1,5 +1,6 @@
 // 워커 격리용 git 조작. 워커는 작업 브랜치의 별도 worktree에서만 일한다(contract.md 0절).
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { runProc } from './proc'
 
 export const GIT_IDENTITY = ['-c', 'user.name=gotechy', '-c', 'user.email=gotechy@localhost']
@@ -76,14 +77,20 @@ export async function restoreFiles(wt: string, base: string, files: string[]): P
   for (const f of files) {
     const tracked = (await gitProc(['cat-file', '-e', `${base}:${f}`], wt)).exitCode === 0
     if (tracked) await git(['checkout', base, '--', f], wt)
-    else await gitProc(['clean', '-fq', '--', f], wt)
+    else {
+      // 워커가 직접 커밋한 새 파일은 추적 중이라 clean으로 지워지지 않는다
+      const inHead = (await gitProc(['cat-file', '-e', `HEAD:${f}`], wt)).exitCode === 0
+      if (inHead) await gitProc(['rm', '-fq', '--', f], wt)
+      else await gitProc(['clean', '-fq', '--', f], wt)
+    }
   }
 }
 
 /** verify가 남긴 부산물을 지운다. 커밋된 워커 변경만 남긴다(보안 감사 2차 높음 B). */
 export async function discardUncommitted(wt: string): Promise<void> {
   await git(['reset', '-q', '--hard', 'HEAD'], wt)
-  await git(['clean', '-fdxq'], wt)
+  // -ff: verify가 만든 중첩 저장소 폴더까지 지운다
+  await git(['clean', '-ffdxq'], wt)
 }
 
 /** 지정한 경로만 커밋한다. */
@@ -93,4 +100,39 @@ export async function commitPaths(wt: string, files: string[], message: string):
   if (staged.exitCode === 0) return false
   await git([...GIT_IDENTITY, 'commit', '-q', '-m', message], wt)
   return true
+}
+
+/** 워커 실행 전에 찍어 두는 git 연결과 설정. 워커가 바꾸면 리드의 git이 워커가 준비한 설정(필터 등)을 따르게 된다. */
+export type GitSnapshot = { files: Map<string, string | null>; configList: string }
+
+async function configList(wt: string): Promise<string> {
+  return (await gitProc(['config', '--list', '--show-origin'], wt)).stdout
+}
+
+export async function gitSnapshot(root: string, wt: string): Promise<GitSnapshot> {
+  const files = new Map<string, string | null>()
+  const read = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : null)
+  const dotGit = join(wt, '.git')
+  const link = read(dotGit)
+  files.set(dotGit, link)
+  files.set(join(root, '.git', 'config'), read(join(root, '.git', 'config')))
+  const meta = /^gitdir:\s*(.+)$/m.exec(link ?? '')?.[1]?.trim()
+  if (meta)
+    for (const f of ['gitdir', 'commondir', 'config.worktree'])
+      files.set(join(meta, f), read(join(meta, f)))
+  return { files, configList: await configList(wt) }
+}
+
+/** 스냅샷과 다른 파일은 되돌리고, 되돌린 뒤에도 설정 목록(포함 파일까지)이 다르면 그것도 문제로 돌려준다. */
+export async function restoreGitSnapshot(snap: GitSnapshot, wt: string): Promise<string[]> {
+  const problems: string[] = []
+  for (const [path, content] of snap.files) {
+    const now = existsSync(path) ? readFileSync(path, 'utf8') : null
+    if (now === content) continue
+    problems.push(path)
+    if (content === null) rmSync(path, { force: true })
+    else writeFileSync(path, content)
+  }
+  if ((await configList(wt)) !== snap.configList) problems.push('git 설정(포함 파일)')
+  return problems
 }

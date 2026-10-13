@@ -44,6 +44,9 @@ export function sandboxProfile(s: SandboxPaths): string {
     `(deny file-write* (literal ${quote(join(s.writable, '.git'))}))`,
     ...secrets.map((d) => `(deny file-read* file-write* (subpath ${quote(d)}))`),
     '(deny network*)',
+    // 샌드박스 밖 프로세스에 일을 시키는 경로를 막는다(감사 3차). 실험: bun test는 그대로 돈다
+    '(deny process-exec (literal "/usr/bin/osascript") (literal "/bin/launchctl") (literal "/usr/bin/open") (literal "/usr/bin/automator") (literal "/usr/bin/shortcuts"))',
+    '(deny mach-lookup (global-name "com.apple.coreservices.appleevents") (global-name "com.apple.coreservices.launchservicesd"))',
   ].join('\n')
 }
 

@@ -32,8 +32,10 @@ import {
   commitPaths,
   discardUncommitted,
   ensureWorktree,
+  gitSnapshot,
   headCommit,
   restoreFiles,
+  restoreGitSnapshot,
 } from './git'
 import { gotechyHome, loadActiveKey } from './keys'
 import { appendEvent, type Project, paths, updateFrontmatter } from './project'
@@ -111,7 +113,7 @@ export async function runTask(
     timeoutMs: (task.timeout_min ?? 20) * 60_000,
     ...(opts.fixtureDir ? { fixtureDir: opts.fixtureDir } : {}),
   }
-  const gitConfigBefore = readIfExists(join(p.root, '.git', 'config'))
+  const gitBefore = await gitSnapshot(p.root, wt)
   const result = await adapter.run(req)
   saveRawLog(p, task.id, adapterName, result.rawOutput, result.stderr)
 
@@ -122,12 +124,14 @@ export async function runTask(
     notes.push(`워커가 exit ${result.exitCode}로 끝났습니다: ${result.stderr.trim().slice(0, 300)}`)
 
   const home = opts.home ?? gotechyHome()
-  // 저장소 설정(.git/config)은 병합 드라이버, 필터 같은 명령을 정할 수 있다. 워커가 바꿨으면 되돌리고 실패로 처리한다.
-  const gitConfigNow = readIfExists(join(p.root, '.git', 'config'))
-  const configTampered = gitConfigBefore !== gitConfigNow
-  if (configTampered && gitConfigBefore !== undefined) {
-    writeFileSync(join(p.root, '.git', 'config'), gitConfigBefore)
-    notes.push('워커 실행 중 저장소 설정(.git/config)이 바뀌어 되돌렸습니다.')
+  // git을 한 번이라도 더 부르기 전에 확인한다. worktree의 .git 연결이나 저장소 설정(포함 파일까지)이 바뀌었으면
+  // 리드의 git이 워커가 준비한 설정(필터, 드라이버)을 오너 권한으로 실행할 수 있다(보안 감사 3차 높음).
+  const tampered = await restoreGitSnapshot(gitBefore, wt)
+  if (tampered.length > 0) {
+    notes.push(
+      `워커 실행 중 git 설정이나 worktree 연결이 바뀌어 되돌렸고, 이 실행에서는 git을 더 부르지 않았습니다: ${tampered.join(', ')}`,
+    )
+    return finishTampered(p, task, adapterName, result, notes, taskFile, log)
   }
 
   const changed = await changedFiles(wt, base)
@@ -180,7 +184,7 @@ export async function runTask(
     adapter: adapterName,
     result,
     verifyExit: verify.exitCode,
-    blocked: bad.length > 0 || configTampered,
+    blocked: bad.length > 0,
     notes,
     rev: prevRev + 1,
     changed: allowed,
@@ -343,10 +347,6 @@ function isHardLinked(path: string): boolean {
   }
 }
 
-function readIfExists(path: string): string | undefined {
-  return existsSync(path) ? readFileSync(path, 'utf8') : undefined
-}
-
 /** 10MB 이하 일반 파일에 비밀 값이 들어 있는가. */
 function containsAny(path: string, needles: string[]): boolean {
   if (needles.length === 0) return false
@@ -392,4 +392,35 @@ function writeNoFollow(root: string, rel: string, text: string): void {
   } finally {
     closeSync(fd)
   }
+}
+
+/** 워커가 git 연결이나 설정을 바꾼 실행: worktree에서는 git을 부르지 않고, 메인에 실패 HANDOFF만 남긴다. */
+function finishTampered(
+  p: Project,
+  task: TaskFrontmatter,
+  adapter: WorkerAdapter['name'],
+  result: Awaited<ReturnType<WorkerAdapter['run']>>,
+  notes: string[],
+  taskFile: string,
+  log: (s: string) => void,
+): RunOutcome {
+  notes.push('verify를 돌리지 않았습니다 (exit_code -1).')
+  const mainHandoff = paths.handoff(p, task.id)
+  const fm = finalizeHandoff({
+    workerText: undefined,
+    task,
+    adapter,
+    result,
+    verifyExit: -1,
+    blocked: true,
+    notes,
+    rev: readRev(mainHandoff) + 1,
+    changed: [],
+  })
+  mkdirSync(dirname(mainHandoff), { recursive: true })
+  writeFileSync(mainHandoff, fm.text)
+  updateFrontmatter(taskFile, { status: 'failed' })
+  appendEvent(p, { type: 'run.end', task: task.id, status: 'failed', tampered: true })
+  log(`${task.id}: failed (git 설정 변경)`)
+  return { status: 'failed', messages: notes, handoffFile: mainHandoff }
 }

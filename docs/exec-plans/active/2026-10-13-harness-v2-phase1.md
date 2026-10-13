@@ -65,6 +65,8 @@
 | 셸 스크립트는 POSIX sh, bash 4 문법·GNU 전용 명령 금지 (lint로 검사) | macOS bash 3.2 | 2026-10-14 | - |
 | 1a의 작업은 공개 데이터·되돌릴 수 있는 로컬 작업만 | Codex RED 7: 경로 규칙으로는 외부 발행을 못 막음 | 2026-10-14 | - |
 | 어댑터 표기 "Orca 1 + native 1(백엔드 claude·codex)", 1a는 native만 | D7 | 2026-10-13 | - |
+| 테스트 방식 = SDD + 수용 테스트 먼저 (외부 경계는 실험 후 고정), `.claude/rules/testing.md` 개정 | 사용자 확정. M1은 테스트를 나중에 써서 규칙 위반 — M2부터 적용 | 2026-10-14 | - |
+| M2에 `gotechy accept` 추가: 오너 승인 후 작업 브랜치를 메인에 병합, 충돌 시 needs-decision | 사용자의 "말해 보기" 답에서 발견된 누락(워커 결과 통합 단계 없음) | 2026-10-14 | - |
 | 하네스 v2 대상 사용자 = 고텍이 1인, 2차 = 채용 담당자 | Y6 | 2026-10-13 | - |
 
 ## Outcomes & Retrospective
@@ -159,6 +161,7 @@
   6. 이해 게이트: 작업의 `ownership`이 경로 규칙(스키마·인증·보안·배포 설정 파일 — `contract.md`에 목록)에 걸리거나 `irreversible: true`면 필수, 경로 규칙이 명세 값보다 우선. 문항 정답 핵심어는 frontmatter `comprehension_keys`에 두고 render·inbox에서 제외. 비대화 테스트용 `--answer-file`. 답·적중은 `orchestration/private/`에만 저장.
   7. 용어 은행: HANDOFF `new_terms` 중 은행에 없는 것만 카드로.
   8. 측정 필드: HANDOFF `skills_loaded`, 게이트 `opened_at`(render/inbox가 해당 게이트를 처음 보여 준 시각)·`decided_at`·`active_seconds`(decide 프롬프트 체류 시간).
+  9. `gotechy accept T-###`: 작업이 `done`이고 (게이트가 있으면) 검증된 결정이 승인일 때만, 작업 브랜치를 메인에 병합한다. 병합 전 메인에서 verify를 다시 실행하고, 충돌이나 verify 실패면 병합을 취소하고 작업을 `needs-decision`으로 올린다. 병합 후 worktree를 정리한다.
 - result: HANDOFF를 이해하고 검증된 결정을 남기며, 검증 실패 결정으로는 다음 작업이 진행되지 않는다.
 - proof: Validation 5~11.
 
@@ -213,6 +216,7 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [ ] 9. `run`은 verify 실패 게이트가 걸린 작업을 시작하지 않고 exit 1.
 - [ ] 10. 경로 규칙에 걸린 작업은 명세에 `irreversible: false`라도 이해 문항 답 없이 결정이 기록되지 않는다. 빈 답·오답은 핵심어 적중 0으로 기록되고, 답은 `orchestration/private/` 밖(HTML·inbox·로그)에 나타나지 않는다.
 - [ ] 11. `keys rotate` 후 이전 키 서명 결정은 거부되고 재결정이 요구된다.
+- [ ] 11b. 서로 다른 파일을 바꾼 두 작업은 `accept`로 차례로 병합되고, 같은 줄을 바꾼 두 번째 작업은 충돌로 병합이 취소되며 `needs-decision`이 된다. 메인 verify가 실패하면 병합하지 않는다.
 - [ ] 12. 격리 셸에서 `setup` → `doctor` exit 0 (fresh-install 로그를 Artifacts에, 현재 맥 아키텍처 기준. 다른 아키텍처는 2단계 CI).
 - [ ] 13. `setup --dry-run` 전후로 `~/.claude/settings.json`·`~/.codex/config.toml`의 sha256과 `~/.gotechy` 존재 여부가 같다.
 - [ ] 14. 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.

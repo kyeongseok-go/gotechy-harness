@@ -48,6 +48,13 @@ mode: overnight
 - force push, 외부 발행, 위키 적재, 배포
 - 실제 Claude나 Codex 워커를 부르는 유료 실행. 반복 검증은 fake 어댑터와 임시 저장소로 한다.
 
+## Validation and Acceptance
+
+1. 아침 보고 폴더에서 `gotechy inbox`를 실행하면 작업마다 카드가 나오고, `gotechy handoff lint orchestration/handoffs/*.md`가 모두 오류 없이 통과한다.
+2. 끝낸 마일스톤마다 `bun run check`가 통과한 커밋이 harness-v2에 있고, 그 커밋의 CI가 성공이다.
+3. 작업 대기열의 각 항목은 완료 판정을 통과했거나, HANDOFF에 멈춘 이유와 다음 단계가 있다.
+4. "하지 않는 것"에 적은 일이 하나도 일어나지 않았다(아침 보고에 그렇게 적는다).
+
 ## 아침 보고
 
 - 입구: `docs/references/evidence/2026-10-14-overnight/README.md`

@@ -27,7 +27,7 @@
 - [x] (2026-10-14 00:24) M2a HANDOFF 규칙과 문체 검사: 계약 v1.1(4.1절 HANDOFF 규칙 8개, 7절 문체 규칙), `handoff lint` 내용 규칙, 문체 lint(2026-10-20까지 경고, 21일부터 오류), `text lint` 명령, 용어 은행 53개, 예외 구간 표지. 테스트 87개 통과
 - [x] (2026-10-14 00:53) M2b 인박스와 읽기 전용 HTML: 계약 8절, `gotechy inbox`(3초 카드, golden test), `gotechy render`(hono/jsx, markdown-it `html: false`, CSP, 허용 요소 목록), HANDOFF 예외 표지 금지, 터미널과 HTML의 제어 문자 제거, 저장소 위생 테스트. 테스트 115개 통과
 - [x] (2026-10-14 01:53) M2c 결정과 반영 (밤샘 루프, `docs/exec-plans/active/2026-10-14-overnight-loop.md`): 계약 6절(게이트, 서명, decide, verify, run의 강제)과 9절(이해 게이트, 측정, 인박스 게이트 표시, accept, 용어 누적). `keys init`, `keys rotate`, `decide`, `gate verify`, `accept`. 보안 감사 1차 지적(높음 3, 중간 3, 낮음 4) 수정. 보안 감사 2차 지적(높음 3, 중간 1, 낮음 2) 수정. 테스트 196개 통과
-- [x] (2026-10-14 02:09) M3 설치 계층 중 격리 환경에서 검증할 수 있는 부분 (밤샘 루프): 계약 10절, `train.yaml`(train 2026.10.0), `gotechy doctor [--history]`, `gotechy setup [--dry-run] [--restore]`, gitleaks hook과 `.gitleaks.toml`(주민등록번호 규칙), `bin/gotechy` 부트스트랩. 테스트 226개 통과
+- [x] (2026-10-14 02:09) M3 설치 계층 중 격리 환경에서 검증할 수 있는 부분 (밤샘 루프): 계약 10절, `train.yaml`(train 2026.10.0), `gotechy doctor [--history]`, `gotechy setup [--dry-run] [--restore]`, gitleaks hook과 `.gitleaks.toml`(주민등록번호 규칙), `bin/gotechy` 부트스트랩. M3 보안 리뷰 수정 뒤 테스트 258개 통과
 - [ ] M3 나머지: 이 맥에 실제 setup 적용과 복원(Validation 14 실측), 격리 셸 fresh install(Validation 12), `init`의 apm 전환(작업 5), train 전체 도구의 mise 락 (오너와 함께)
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음

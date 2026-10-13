@@ -50,10 +50,10 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 
 | 성공 기준 (행동) | 측정 방법 | 측정 시점 | 실패 판정선 |
 |---|---|---|---|
-| 깨끗한 맥에서 setup 한 번으로 doctor 통과 | `gotechy setup` 후 `gotechy doctor` 종료코드 | 1단계 M1 완료 시 | exit ≠ 0 |
-| Claude Code와 Codex가 같은 작업 명세로 같은 형식의 HANDOFF를 낸다 | 같은 T-###를 두 어댑터로 실행 → handoff-lint 통과 | M3 완료 시 | 어느 한쪽이라도 lint 실패 |
+| 깨끗한 맥에서 setup 한 번으로 doctor 통과 | 격리 HOME에서 `gotechy setup` 후 `gotechy doctor` 종료코드 | 1a M3 완료 시 | exit ≠ 0 |
+| Claude Code와 Codex가 같은 작업 명세로 같은 형식의 HANDOFF를 낸다 | claude·codex 백엔드로 각각 실행 → verify 통과 + handoff lint 통과 | 1a M1 완료 시 | 어느 한쪽이라도 lint 실패 |
 | 오너가 HANDOFF 한 건을 이해하고 결정하는 데 3분 이내, 이해도 유지 | 게이트 `active_seconds` + 이해 게이트 핵심어 적중률 | 1a 완료 후 공문서 프로젝트 실사용 10건 | 중앙값 3분 초과, 또는 핵심어 적중률 60% 미만 |
-| 결정이 서명된 파일로 반영되고 위조는 거부된다 | `decide` → `gate verify`, 위조·낡은 판본 주입 | 1a M2 완료 시 | 위조 결정이 통과 |
+| 결정이 서명된 파일로 반영되고 위조는 거부된다 | `decide` → `gate verify`, 수기 편집·낡은 판본·재사용 주입 (같은 OS 사용자의 악의적 위조는 1b 오너 인증에서) | 1a M2 완료 시 | 주입한 결정이 통과 |
 | 결정이 화면에서 바로 반영된다 | 화면 제출 → 게이트 해소 → 다음 작업 시작까지 사람 손 없음 | 1b 완료 시 | 수동 단계 1개 이상 |
 | 하네스가 실제 효과가 있다 | harness-bench 켬/끔 비교 (통과율·완료당 비용) | 2단계 | 켬이 통과율·완료당 비용 둘 다 열위 |
 | 첫 실전 프로젝트(공문서 에이전트)를 하네스로 진행한다 | 그 프로젝트의 ExecPlan·HANDOFF·결정 파일 존재 | 1단계 완료 후 | 하네스 밖에서 진행 |

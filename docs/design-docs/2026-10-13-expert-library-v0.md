@@ -107,7 +107,7 @@ scripts/setup.{sh,ps1}          # 원샷 세팅
 ```markdown
 ---
 task: T-012
-pack: [build-go]
+packs: [build-go]
 status: needs-decision   # done | failed | needs-decision
 evidence: ["go test ./... → 14 passed"]
 new_terms: [connection pool]

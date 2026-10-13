@@ -124,10 +124,10 @@ new_terms: [connection pool]
 
 ## 7. 오케스트레이션 (R8)
 
-- **주력 Orca**(이미 사용 중, MIT, CLI 40여 종, DAG·게이트·ask·worker_done, SSH). 오케스트레이션은 토글 없이 동작(1.4.209 확인), 잦은 릴리스 → 릴리스 파일로 버전 고정 + 오케스트레이션 스킬은 `orca skills get orchestration --full`로 앱 버전에 맞춰 락에 포함. **폴백 herdr**(Apache-2.0 단일 바이너리, Win/Mac/Linux, 게이트는 파일 규약). **최후 스크립트**(worktree + tmux + 헤드리스 CLI).
+- **주력 Orca**(이미 사용 중, MIT, CLI 40여 종, DAG·게이트·ask·worker_done, SSH). 오케스트레이션은 토글 없이 동작(1.4.209 확인), 잦은 릴리스 → 릴리스 파일로 버전 고정 + 오케스트레이션 스킬은 `orca skills get orchestration --full`로 앱 버전에 맞춰 락에 포함. **어댑터는 Orca 1 + native 1(백엔드 claude·codex)** — D7 결정, herdr는 반복 수요가 생길 때만.
 - **전문가 호출 3형태** (같은 팩 원천에서 생성): 인라인(현재 세션에 스킬 로드) / 자문(격리 서브에이전트·읽기 전용 워커, HANDOFF만 회신) / 위임(Orca 워커가 worktree에서 산출물 생성 → 게이트). 기본값과 자동 조정 기준은 D4.
 - **흐름**: 오너+리드가 grill → 스펙 → 작업 DAG(컨텍스트 단위) → 워커가 각자 worktree에서 팩 프로필로 실행 → 검증 워커(읽기 전용) → 게이트에서 오너 결정 → 영역별 단일 쓰기로 병합.
-- **작업 명세** `orchestration/tasks/T-###.md`: frontmatter(id, pack, agent, model, deps, gate) + Orca 5요소. **결과** `orchestration/handoffs/T-###.md` = 6절 스키마. 게이트 결과는 `docs/decisions/`.
+- **작업 명세** `orchestration/tasks/T-###.md`: frontmatter(id, pack, agent, model, deps, gate) + Orca 5요소. **결과** `orchestration/handoffs/T-###.md` = 6절 스키마. 게이트 결과는 `orchestration/gates/G-###.md`(서명, D8·1a ExecPlan), 구조 결정은 ADR(`docs/decisions/`).
 - **원샷 세팅** `scripts/setup.sh --profile go-postgres,grow-kr --agents claude,codex [--company] [--dry-run]`: ①설치된 에이전트 감지 ②팩을 `.agents/skills` + `.claude/skills`에 배치(회사 모드는 복사) ③`gotechy.lock`·AGENTS.md 허브 생성 ④Orca 버전·실험 기능 확인 → 없으면 herdr → 없으면 스크립트 ⑤프로필별 공식 문서 MCP ⑥스모크 테스트: 작업 1건 → HANDOFF.md 생성 → 렌더 뷰 ⑦결과 보고.
 - **비용 상한**: 멀티 에이전트는 3~10배 토큰 → 병렬은 독립 작업만, Run마다 워커 수·예산 상한.
 

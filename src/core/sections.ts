@@ -18,3 +18,15 @@ export function extractSections(body: string, bodyLine: number): Section[] {
   })
   return sections
 }
+
+/** 절 내용을 줄 단위로, 파일 기준 줄 번호와 함께. */
+export function sectionLines(sec: Section): { text: string; line: number }[] {
+  return sec.content.split('\n').map((text, i) => ({ text, line: sec.line + 1 + i }))
+}
+
+/** 들여쓰지 않은 목록 항목만. */
+export function topItems(sec: Section): { text: string; line: number }[] {
+  return sectionLines(sec).filter((l) => /^[-*]\s+/.test(l.text))
+}
+
+export const isNone = (s: string) => s.trim() === '' || s.trim() === '없음'

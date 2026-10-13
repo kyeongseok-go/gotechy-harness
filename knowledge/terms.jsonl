@@ -51,3 +51,19 @@
 {"term": "FDE", "easy": "고객 현장에 들어가 문제를 정의하고 실제로 돌아가게 만드는 엔지니어예요."}
 {"term": "HWP", "easy": "한글 문서 파일 형식이에요. HWPX는 그 XML 판이에요.", "aliases": ["HWPX"]}
 {"term": "OK", "easy": "이상 없음을 뜻해요."}
+{"term": "golden test", "aliases": ["golden", "golden file"], "easy": "정답 출력을 파일로 고정해 두고, 프로그램 출력이 그 파일과 글자 하나까지 같은지 보는 테스트예요."}
+{"term": "mutation test", "aliases": ["mutation", "mutation check", "mutation testing"], "easy": "코드에 일부러 결함을 넣었을 때 테스트가 실패하는지 보는 방법이에요. 테스트가 정말 문제를 잡는지 확인해요."}
+{"term": "characterization test", "easy": "이미 있는 코드의 동작을 그대로 기록해 두는 테스트예요. 나중에 동작이 바뀌면 바로 알 수 있어요."}
+{"term": "fenced code block", "aliases": ["fenced"], "easy": "백틱 세 개로 위아래를 감싼 Markdown 코드 블록이에요. 시작과 끝이 분명해 기계가 구분하기 쉬워요."}
+{"term": "false positive", "aliases": ["오탐"], "easy": "문제가 없는 것을 문제라고 잘못 잡는 것(오탐)이에요. 반대로 진짜 문제를 놓치는 것은 false negative(미탐)예요."}
+{"term": "false negative", "aliases": ["미탐"], "easy": "진짜 문제가 있는데 검사가 놓치는 것(미탐)이에요."}
+{"term": "XSS", "aliases": ["cross-site scripting"], "easy": "남이 넣은 글이 웹 화면에서 스크립트로 실행되는 공격이에요. 글을 이스케이프해 글자로만 보이게 막아요."}
+{"term": "escape", "aliases": ["escaping", "이스케이프"], "easy": "특별한 뜻을 가진 문자를 평범한 글자로 바꿔 쓰는 것이에요. 예를 들어 HTML에서 < 를 &lt; 로 써서 태그가 되지 않게 해요."}
+{"term": "CSP", "aliases": ["content security policy"], "easy": "웹 화면이 어디서 스크립트, 이미지, 스타일을 불러올 수 있는지 브라우저에 알려 주는 규칙이에요. 허용하지 않은 것은 브라우저가 막아요."}
+{"term": "HTML entity", "aliases": ["entity"], "easy": "&lt; 나 &#39; 처럼 특수 문자를 이름이나 번호로 적는 HTML 표기예요. 브라우저가 화면에 보일 때 원래 문자로 바꿔요."}
+{"term": "Trojan Source", "aliases": ["bidi"], "easy": "눈에 안 보이는 양방향 제어 문자로 글이나 코드가 실제와 다르게 보이게 만드는 공격이에요."}
+{"term": "supply chain", "aliases": ["supply chain attack"], "easy": "내가 쓰는 외부 패키지나 도구가 오염돼 내 프로그램까지 위험해지는 것이에요. 버전을 고정하고 해시를 확인해서 줄여요."}
+{"term": "integrity hash", "aliases": ["integrity"], "easy": "내려받은 파일이 원본과 같은지 확인하는 지문 값이에요. 한 글자만 달라도 값이 달라져요."}
+{"term": "code coverage", "aliases": ["coverage"], "easy": "테스트를 돌릴 때 코드의 몇 퍼센트 줄이 실제로 실행됐는지 나타내는 값이에요."}
+{"term": "RED GREEN", "aliases": ["red-green", "RED", "GREEN"], "easy": "테스트를 먼저 써서 실패(RED)를 본 뒤, 구현해서 통과(GREEN)시키는 순서예요."}
+{"term": "dogfooding", "aliases": ["dogfood"], "easy": "만든 도구를 만든 사람이 실제 일에 직접 써 보며 문제를 찾는 것이에요."}

@@ -1,7 +1,7 @@
 // 문체 규칙(contract.md 7절): 사람용 산출물에서 기계 판정이 가능한 "AI 티"를 잡는다.
 // 패턴 출처: im-not-ai (epoko77-ai, MIT) quick-rules A~J 중 정규식으로 판정 가능한 것.
 import type { Issue } from './issues'
-import { lineAt, maskNonProse } from './prose'
+import { lineAt, type MaskOptions, maskNonProse } from './prose'
 
 /** 2026-10-21 00:00 KST부터 오류. 그 전까지는 경고로 오탐률을 본다. */
 export const STYLE_ENFORCE_FROM = new Date('2026-10-20T15:00:00Z')
@@ -75,8 +75,14 @@ export function styleSeverity(now: Date): 'error' | 'warning' {
   return now >= STYLE_ENFORCE_FROM ? 'error' : 'warning'
 }
 
-export function lintStyle(body: string, file: string, bodyLine: number, now = new Date()): Issue[] {
-  const text = maskNonProse(body)
+export function lintStyle(
+  body: string,
+  file: string,
+  bodyLine: number,
+  now = new Date(),
+  opts: MaskOptions = {},
+): Issue[] {
+  const text = maskNonProse(body, opts)
   const severity = styleSeverity(now)
   const issues: Issue[] = []
   for (const r of RULES) {
@@ -99,8 +105,8 @@ export function lintStyle(body: string, file: string, bodyLine: number, now = ne
 }
 
 /** 본문의 영어 용어(소문자, 중복 없음). 코드·URL·파일명·작업 번호는 제외한다. */
-export function extractEnglishTerms(body: string): string[] {
-  const text = maskNonProse(body)
+export function extractEnglishTerms(body: string, opts: MaskOptions = {}): string[] {
+  const text = maskNonProse(body, opts)
   const out = new Set<string>()
   for (const m of text.matchAll(/\b[A-Za-z][A-Za-z0-9+#-]*\b/g)) {
     const t = m[0]

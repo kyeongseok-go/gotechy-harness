@@ -25,7 +25,7 @@
 - [x] (2026-10-13 23:45) 구현 스택 확정 — TypeScript + Bun (ADR 0001), 차선 Python 3.14 + uv
 - [x] (2026-10-13 23:45) M1 관통 경로 — 계약 문서, CLI(init·task new/lint·run·handoff lint), worktree 격리, claude·codex·fake 어댑터. 테스트 49개 통과, 커버리지 91%, 실제 Claude·Codex 워커 각 1회 성공
 - [x] (2026-10-14 00:24) M2a HANDOFF 규칙과 문체 검사: 계약 v1.1(4.1절 HANDOFF 규칙 8개, 7절 문체 규칙), `handoff lint` 내용 규칙, 문체 lint(2026-10-20까지 경고, 21일부터 오류), `text lint` 명령, 용어 은행 53개, 예외 구간 표지. 테스트 87개 통과
-- [ ] M2b 인박스와 읽기 전용 HTML (`inbox`, `render`)
+- [x] (2026-10-14 00:53) M2b 인박스와 읽기 전용 HTML: 계약 8절, `gotechy inbox`(3초 카드, golden test), `gotechy render`(hono/jsx, markdown-it `html: false`, CSP, 허용 요소 목록), HANDOFF 예외 표지 금지, 터미널과 HTML의 제어 문자 제거, 저장소 위생 테스트. 테스트 115개 통과
 - [ ] M2c 결정과 반영 (`decide`, `gate verify`, `keys`, 이해 게이트, 측정 필드, `accept`, 프로젝트 용어 은행 누적)
 - [ ] M3 설치 계층 — 부트스트랩·train·setup·doctor·restore·gitleaks
 - [ ] ADR 작성: D5(배포)·D7(오케스트레이션)·D13(train)·결정 검증 방식
@@ -41,6 +41,15 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**M2b 구현 중 발견 (2026-10-14)**
+- RED, GREEN 순서를 지켰다. 계약 8절을 먼저 쓰고, 인박스 golden test(`tests/e2e/inbox-cli.test.ts`)와 렌더 보안 테스트(`tests/core/render.test.ts`)가 실패하는 것을 본 뒤 구현했다. 결함을 일부러 넣는 mutation check로 테스트가 실제로 잡는지도 봤다(제어 문자 제거를 빼면 2개, `html: true`면 3개, 링크 검사를 끄면 2개 실패). [확인]
+- 악성 HANDOFF(스크립트, 이벤트 속성, `javascript:` 링크, form, iframe)가 구조 lint를 경고 1건으로 통과했다. lint는 보안 경계가 아니고, 막는 곳은 렌더러다. [확인]
+- 실제 M1 HANDOFF 2건으로 dogfooding하자 카드가 "리스크 없음"으로 나왔는데 실제 리스크는 2건이었다. 계약 v1.1 이전 형식이라 리스크 절 제목이 달라 절을 못 찾은 것이다. 없는 절은 "리스크 기록 없음"으로, 계약 위반은 "형식 오류 N건"으로 보이게 고쳤다. [확인]
+- Bun은 스크립트 옆이 아니라 실행 위치의 tsconfig로 JSX를 변환한다. 다른 프로젝트 폴더에서 CLI를 돌려도 되도록 `.tsx` 파일마다 `@jsxImportSource hono/jsx`를 적었다. [확인]
+- Bun HTMLRewriter(lol-html)는 속성 값을 entity 디코딩 없이 돌려준다(`&#39;none&#39;`). 테스트는 브라우저가 보는 값으로 디코딩한 뒤 판정한다. [확인]
+- 편집 도구를 거치며 명령 속 `\u202a` 같은 양방향 문자 escape가 실제 문자로 바뀌어 소스에 들어갔다. Python에서 raw 문자열의 길이가 1로 나와서 알았다. 처음에는 Biome 자동 수정을 의심했지만 작은 파일로 재현되지 않았다. 정규식은 `\p{Cc}`, `\p{Bidi_Control}`로, 테스트 문자열은 `String.fromCodePoint`로 바꾸고, 보이지 않는 문자를 막는 `tests/core/repo-hygiene.test.ts`를 더했다. [확인]
+- 브라우저 확인: Chrome 확장이 `file://`을 열지 못해 scratch 폴더를 임시 `127.0.0.1` 서버로 띄워 봤다. 악성 내용은 모두 글자로 보였고, favicon 요청은 서버에 닿지 않았다(CSP 차단). 콘솔 예외 2건은 정상 화면에도 같이 나와 악성 내용과 무관하다. 확장의 스크립트가 CSP에 막힌 것으로 보인다. [추론]
 
 **M2a 구현 중 발견 (2026-10-14)**
 - 이번에는 순서를 지켰다. HANDOFF 규칙 테스트(`tests/core/handoff-rules.test.ts`)와 문체 테스트(`tests/core/style.test.ts`)를 먼저 쓰고 실패를 확인한 뒤 구현했다. 예외는 Validation 5를 채우려고 나중에 더한 3개(추천 줄 없음, 모든 오류에 고치는 법, HANDOFF 필수 키 누락)로, 이미 있던 동작을 고정한 것이라 처음부터 통과했다. [확인]
@@ -81,6 +90,10 @@
 | 계약 v1.1: 리스크 절 제목을 "건너뛴 것, 확인 못 한 것, 리스크"로, 증거 형식을 `` `명령`: 결과 ``로 바꾸고 HANDOFF 규칙 8개와 문체 규칙(7절)을 계약에 넣는다 | 사용자 지시(산출물과 대화 모두 AI 티 금지), 화살표 표기는 문체 규칙과 충돌 | 2026-10-14 | - |
 | 문체 규칙은 2026-10-20까지 경고, 21일부터 오류. HANDOFF 내용 규칙은 처음부터 오류 | 기존 문서와 워커가 적응할 기간. 경고만으로는 고쳐지지 않으므로 날짜를 박아 둔다 | 2026-10-14 | - |
 | 금지 패턴을 인용해야 하는 구간은 `style-ignore` 표지로 감싼다. 들여쓰기 코드 블록은 지원하지 않고 펜스로 쓴다 | 계약 문서 자체 dogfooding에서 오탐 다수 | 2026-10-14 | - |
+| 렌더 의존성은 hono 4.13.13(의존성 없음)과 markdown-it 15.0.2를 정확한 버전으로 고정한다. 이미지는 만들지 않고 링크는 http(s)만 | HTML 자동 이스케이프와 1b 로컬 서버 재사용. 이미지는 추적 픽셀 같은 외부 요청이 된다 | 2026-10-14 | - |
+| 인박스는 같은 묶음에서 오래 기다린 것부터. "형식 오류" 수에는 문체 규칙을 넣지 않는다 | 오래 막힌 결정이 먼저. 문체는 날짜에 따라 강도가 바뀌어 카드가 저절로 달라진다 | 2026-10-14 | - |
+| HANDOFF에서는 문체 예외 표지를 금지하고(오류), 표지가 있어도 문체 검사를 한다 | 워커가 HANDOFF 전체를 감싸면 검사를 피할 수 있다(미탐) | 2026-10-14 | - |
+| 인박스와 화면의 모든 문자열에서 제어 문자와 양방향 제어 문자를 지운다 | 악성 HANDOFF가 터미널 화면을 덮어쓰거나 글자 순서를 속일 수 있다 | 2026-10-14 | - |
 | 새 영어 용어는 용어 은행(라이브러리 `knowledge/terms.jsonl`, 프로젝트 `orchestration/terms.jsonl`)에 없을 때만 "새 용어" 풀이를 요구한다 | 사용자가 용어를 익히려는 목적, 같은 풀이 반복은 소음 | 2026-10-14 | - |
 
 ## Outcomes & Retrospective
@@ -225,8 +238,8 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [x] 3. 워커 실행 중 `~/.gotechy/keys`와 `orchestration/gates/` 읽기·쓰기 시도가 실패한다(fixture 워커로 검사).
 - [x] 4. `task lint`가 `ownership`의 `orchestration/gates/`, `..` 경로, 글롭·심볼릭 링크 우회를 모두 거부한다.
 - [x] 5. lint 실패 fixture(필수 키 누락·절 순서·중복 키·요약 초과·막는 결정 4개·옵션 1개·추천 없음·리스크 초과·증거 형식·사실 표시 누락·강조 위반·결정 표지 누락)가 각각 교정 메시지와 함께 실패하고, 통과 fixture는 통과한다. (2026-10-14: `tests/core/handoff-rules.test.ts`, `tests/core/lint.test.ts`, 중복 키는 `tests/core/frontmatter.test.ts`)
-- [ ] 6. `inbox` 출력이 고정 fixture의 기대 출력과 일치(순서·동률·빈 상태).
-- [ ] 7. `<script>`·`<SCRIPT>`·`onerror=`·`javascript:` URL이 든 HANDOFF·용어를 render하면, 결과를 `html.parser`로 파싱했을 때 script 요소 0개·`on*` 속성 0개·`javascript:` href 0개이고 CSP meta가 있다. 브라우저 확인은 수동 1회 스크린샷.
+- [x] 6. `inbox` 출력이 고정 fixture의 기대 출력과 일치(순서, 동률, 빈 상태). (2026-10-14: `tests/e2e/inbox-cli.test.ts`, `tests/core/inbox.test.ts`)
+- [x] 7. `<script>`, `<SCRIPT>`, `onerror=`, `javascript:` URL이 든 HANDOFF와 용어를 render하면, 결과를 HTML 파서(Bun HTMLRewriter, 속성은 entity 디코딩 후)로 파싱했을 때 script 요소 0개, `on*` 속성 0개, `javascript:` href 0개이고 CSP meta가 있다. 브라우저 확인은 수동 1회 스크린샷. (2026-10-14: `tests/core/render.test.ts` 12개, 허용 요소 목록 밖 요소 0개까지 검사. 스크린샷 `docs/references/evidence/2026-10-14-m2b/`)
 - [ ] 8. `decide`로 만든 결정은 verify 통과. 다음은 모두 거부: 수기 편집, 같은 rev의 HANDOFF 내용 교체(해시 불일치), 다른 프로젝트 결정 재사용, nonce 재사용, 동시 decide 두 번, 비대화 호출.
 - [ ] 9. `run`은 verify 실패 게이트가 걸린 작업을 시작하지 않고 exit 1.
 - [ ] 10. 경로 규칙에 걸린 작업은 명세에 `irreversible: false`라도 이해 문항 답 없이 결정이 기록되지 않는다. 빈 답·오답은 핵심어 적중 0으로 기록되고, 답은 `orchestration/private/` 밖(HTML·inbox·로그)에 나타나지 않는다.
@@ -248,7 +261,8 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 ## Artifacts and Notes
 
 - M1: 실제 워커 HANDOFF 2건과 작업 명세 — `docs/references/evidence/2026-10-14-m1/` (Claude: verify exit 0, $0.091 / Codex: verify exit 0).
-(구현하며 채운다: fresh-install 로그, 설정 백업·복원 증거, render 스크린샷. 2차 사용자용 데모: 작업 맡기기부터 결정까지 3분 녹화 1건)
+- M2b: 인박스, 결정 필요 화면, 악성 HANDOFF 화면 스크린샷은 `docs/references/evidence/2026-10-14-m2b/`에 있다. 악성 화면에서 스크립트 실행 없음, 모든 태그가 글자로 표시.
+(구현하며 채운다: fresh-install 로그, 설정 백업·복원 증거. 2차 사용자용 데모: 작업 맡기기부터 결정까지 3분 녹화 1건)
 
 ## Interfaces and Dependencies
 

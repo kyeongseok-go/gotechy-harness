@@ -2,12 +2,15 @@
 // gotechy CLI. 종료코드: 0 성공, 1 검사 실패(고칠 수 있는 문제), 2 환경 문제(도구·경로·상태).
 import { existsSync, readFileSync } from 'node:fs'
 import { relative } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { Command } from 'commander'
 import { parseFrontmatter } from './core/frontmatter'
+import { formatInbox } from './core/inbox'
 import { formatIssue } from './core/issues'
 import { hasErrors, lintHandoff } from './core/lint-handoff'
 import { lintTask } from './core/lint-task'
 import { lintStyle } from './core/style'
+import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
 import { findProject } from './runtime/project'
 import { runTask } from './runtime/run'
@@ -141,6 +144,32 @@ program
   .description('문체 규칙(contract.md 7절, AI 티) 검사')
   .argument('<files...>')
   .action((files: string[]) => process.exit(lintFiles(files, 'text')))
+
+program
+  .command('inbox')
+  .description('HANDOFF를 결정 필요, 실패, 완료 순의 3초 카드로 보여 준다 (contract.md 8.1절)')
+  .action(() => {
+    process.stdout.write(formatInbox(loadCards(requireProject())))
+  })
+
+program
+  .command('render')
+  .description('읽기 전용 HTML 화면을 .gotechy/view/에 만든다 (contract.md 8.2절)')
+  .argument('[taskId]', '이 작업 화면의 주소를 출력 (없으면 인박스 화면)')
+  .action((taskId?: string) => {
+    const r = renderViews(requireProject())
+    const target = taskId ? r.pages.get(taskId) : r.index
+    if (!target) {
+      console.error(
+        `${taskId}: 화면을 만들 HANDOFF가 없어요. orchestration/handoffs/${taskId}.md가 없거나 읽을 수 없어요 (gotechy inbox로 확인).`,
+      )
+      process.exit(1)
+    }
+    console.log(
+      `화면 ${r.pages.size + 1}개를 만들었어요: ${relative(process.cwd(), r.dir) || r.dir}`,
+    )
+    console.log(pathToFileURL(target).href)
+  })
 
 program
   .command('run')

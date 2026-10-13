@@ -126,6 +126,19 @@ describe('HANDOFF 규칙 (오류)', () => {
     expect(errors(handoff({ summary: '**중요**한 변경이에요.' }))).toContain('handoff-emphasis')
   })
 
+  test('HANDOFF에 문체 예외 표지가 있으면 실패한다', () => {
+    const done =
+      '<!-- style-ignore-start -->\n- README.md를 고쳤어요. [확인]\n<!-- style-ignore-end -->'
+    expect(errors(handoff({ done }))).toContain('handoff-style-ignore')
+  })
+
+  test('HANDOFF에서는 예외 표지 안의 문장도 문체 검사를 받는다', () => {
+    const done =
+      '<!-- style-ignore-start -->\n- 설치 → 확인을 했어요. [확인]\n<!-- style-ignore-end -->'
+    const rules = lintHandoff(handoff({ done }), 'h.md', { now: NOW }).issues.map((i) => i.rule)
+    expect(rules).toContain('style-symbol')
+  })
+
   test('모든 오류는 고치는 법을 함께 알려 준다', () => {
     const broken = handoff(
       {

@@ -1,6 +1,7 @@
 // HANDOFF 검사: 구조(스키마, 절 순서) + 내용 규칙(contract.md 4.1) + 문체(7절) + 용어 풀이.
 import { parseFrontmatter } from './frontmatter'
 import type { Issue } from './issues'
+import { IGNORE_MARKER } from './prose'
 import { explainedTerms, handoffRuleIssues } from './rules-handoff'
 import { HANDOFF_SECTIONS, HandoffFrontmatter } from './schema'
 import { schemaIssues } from './schema-issues'
@@ -64,7 +65,17 @@ export function lintHandoff(
 
   const byTitle = new Map(sections.map((s) => [s.title, s]))
   issues.push(...handoffRuleIssues({ file, status: res.data.status, byTitle }))
-  issues.push(...lintStyle(value.body, file, value.bodyLine, now))
+  const marker = IGNORE_MARKER.exec(value.body)
+  if (marker) {
+    issues.push({
+      file,
+      line: value.bodyLine + value.body.slice(0, marker.index).split('\n').length - 1,
+      rule: 'handoff-style-ignore',
+      message: 'HANDOFF에 문체 예외 표지가 있어요.',
+      fix: '예외 구간은 규칙을 설명하는 문서에서만 써요. 표지를 지우고 걸리는 문장을 고치세요.',
+    })
+  }
+  issues.push(...lintStyle(value.body, file, value.bodyLine, now, { honorIgnore: false }))
 
   const known = new Set([
     ...(opts.knownTerms ?? []),
@@ -73,7 +84,9 @@ export function lintHandoff(
   for (const t of explainedTerms(byTitle.get('새 용어'))) known.add(t)
   const termsSection = byTitle.get('새 용어')
   const bodyWithoutTerms = termsSection ? value.body.replace(termsSection.content, '') : value.body
-  const unexplained = extractEnglishTerms(bodyWithoutTerms).filter((t) => !known.has(t))
+  const unexplained = extractEnglishTerms(bodyWithoutTerms, { honorIgnore: false }).filter(
+    (t) => !known.has(t),
+  )
   if (unexplained.length > 0) {
     issues.push({
       file,

@@ -1,18 +1,12 @@
 // HANDOFF 내용 규칙(contract.md 4.1절). 절 구조 검사는 lint-handoff.ts가, 여기서는 각 절 안의 형식을 본다.
+import { parseDecisions } from './decisions'
 import type { Issue } from './issues'
-import type { Section } from './sections'
+import { isNone, sectionLines as lines, type Section, topItems } from './sections'
 
 const FACT_TAG = /\[(확인|추론|추정)\]\s*$/
 const RISK = '건너뛴 것, 확인 못 한 것, 리스크'
-const isNone = (s: string) => s.trim() === '' || s.trim() === '없음'
 
 type Ctx = { file: string; status: string; byTitle: Map<string, Section> }
-
-/** 절 내용을 줄 단위로, 파일 기준 줄 번호와 함께. */
-function lines(sec: Section): { text: string; line: number }[] {
-  return sec.content.split('\n').map((text, i) => ({ text, line: sec.line + 1 + i }))
-}
-const topItems = (sec: Section) => lines(sec).filter((l) => /^[-*]\s+/.test(l.text))
 
 export function handoffRuleIssues(ctx: Ctx): Issue[] {
   const out: Issue[] = []
@@ -46,35 +40,16 @@ export function handoffRuleIssues(ctx: Ctx): Issue[] {
 
   const decision = ctx.byTitle.get('결정 필요')
   if (decision && !isNone(decision.content)) {
-    let blocking = 0
-    type D = { marker: string; line: number; options?: string[]; pick?: string; reason?: string }
-    const ds: D[] = []
-    for (const l of lines(decision)) {
-      if (l.text.trim() === '') continue
-      const top = /^[-*]\s+\[(막는|기본값|알림)\]\s*\S/.exec(l.text)
-      const sub = /^\s+[-*]\s+(선택지|추천|이유):\s*(.*)$/.exec(l.text)
-      const current = ds.at(-1)
-      if (top?.[1]) {
-        ds.push({ marker: top[1], line: l.line })
-        if (top[1] === '막는') blocking++
-      } else if (sub && current) {
-        const [, key, value = ''] = sub
-        if (key === '선택지')
-          current.options = value
-            .split(/,\s*/)
-            .map((v) => v.trim())
-            .filter(Boolean)
-        if (key === '추천') current.pick = value.trim()
-        if (key === '이유') current.reason = value.trim()
-      } else {
-        add(
-          l.line,
-          'handoff-decision-format',
-          '결정은 `- [막는]`, `- [기본값]`, `- [알림]` 표지로 시작하는 목록 항목이어야 해요.',
-          '결정마다 표지를 붙이고, 막는·기본값 결정에는 선택지·추천·이유 하위 항목을 다세요.',
-          '- [막는] 캐시 만료를 얼마로 할까요?\n  - 선택지: 5분, 1분\n  - 추천: 5분\n  - 이유: 조회 빈도에 비해 충분해요',
-        )
-      }
+    const { items: ds, stray } = parseDecisions(decision)
+    const blocking = ds.filter((d) => d.marker === '막는').length
+    for (const l of stray) {
+      add(
+        l.line,
+        'handoff-decision-format',
+        '결정은 `- [막는]`, `- [기본값]`, `- [알림]` 표지로 시작하는 목록 항목이어야 해요.',
+        '결정마다 표지를 붙이고, 막는 결정과 기본값 결정에는 선택지, 추천, 이유 하위 항목을 다세요.',
+        '- [막는] 캐시 만료를 얼마로 할까요?\n  - 선택지: 5분, 1분\n  - 추천: 5분\n  - 이유: 조회 빈도에 비해 충분해요',
+      )
     }
     for (const d of ds) {
       if (d.marker === '알림') continue
@@ -149,7 +124,7 @@ export function handoffRuleIssues(ctx: Ctx): Issue[] {
           item.line,
           'handoff-fact-tag',
           `"${title}" 항목 끝에 사실 표시가 없어요.`,
-          '[확인](직접 실행·확인), [추론](확인한 사실을 이어 판단), [추정](근거 없음) 중 하나를 붙이세요.',
+          '[확인](직접 실행해 확인), [추론](확인한 사실을 이어 판단), [추정](근거 없음) 중 하나를 붙이세요.',
           '- README.md에 설치 줄을 추가했어요. [확인]',
         )
       }

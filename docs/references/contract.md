@@ -99,6 +99,7 @@ frontmatter:
 | `handoff-evidence-format` | "증거" 목록 항목은 `` `명령`: 결과`` 형식 |
 | `handoff-fact-tag` | "한 일"과 "건너뛴 것, 확인 못 한 것, 리스크"의 목록 항목은 `[확인]`, `[추론]`, `[추정]` 중 하나로 끝난다 |
 | `handoff-emphasis` | 굵게(`**`)는 "결정 필요"와 리스크 절에서만 |
+| `handoff-style-ignore` | HANDOFF에는 문체 예외 표지(`<!-- style-ignore-start -->`, `<!-- style-ignore-end -->`)를 쓸 수 없다. 예외 구간은 규칙을 설명하는 문서용이고, HANDOFF에서 쓰면 문체 검사를 통째로 피할 수 있다 |
 
 결정 예:
 
@@ -144,3 +145,50 @@ frontmatter:
 ## 6. 게이트 `gates/G-###.md` (M2)
 
 M2에서 확정한다: `id, task, class, status, options[], resolution, instruction, task_spec_sha256, handoff_sha256, key_id, nonce, opened_at, decided_at, active_seconds, sig`.
+
+## 8. 인박스와 읽기 전용 화면 (M2b)
+
+오너가 HANDOFF를 3초 카드, 30초 요약, 3분 세부의 3단으로 읽게 한다. 원천은 메인 체크아웃의 `orchestration/handoffs/T-###.md`이고, 두 명령 모두 파일을 읽기만 한다(화면 파일 생성 제외).
+
+### 8.1 `gotechy inbox`
+
+- 묶음 순서: 결정 필요(`needs-decision`), 실패(`failed`와 읽을 수 없는 HANDOFF), 완료(`done`).
+- 묶음 안에서는 `verified.at`이 오래된 것부터(오래 기다린 일이 위로). `verified.at`이 없으면 묶음 맨 뒤, 그다음은 작업 번호 순.
+- 맨 위 줄은 묶음별 건수(`결정 필요 1건, 실패 1건, 완료 2건`), 0건인 묶음은 뺀다. HANDOFF가 하나도 없으면 `대기 중인 일 없음` 한 줄만.
+- 카드 형식:
+
+```text
+[결정 필요] T-003 캐시 만료 설정
+  막는 결정 1, 기본값 1, 검증 통과, 리스크 2, $0.09, 파일 3개
+  캐시 만료를 5분으로 두고 조회 API에 적용했어요.
+  결정: 캐시 만료를 얼마로 할까요? (추천 5분)
+```
+
+| 줄 | 내용 |
+|---|---|
+| 1 | `[묶음] 작업 번호 제목`. 제목은 작업 명세에서 읽고, 명세가 없으면 `(작업 명세 없음)` |
+| 2 | 신호 줄. 막는 결정 수와 기본값 결정 수(0이면 생략), 계약 위반 수(`형식 오류 N건`, 4절과 4.1절 규칙만 세고 문체 규칙은 빼며 0이면 생략), 검증(`검증 통과`, `검증 실패 exit N`, `검증 기록 없음`), 리스크 수(`리스크 N`, 절이 "없음"이면 `리스크 없음`, 절 자체가 없으면 `리스크 기록 없음`), 비용(`$0.00`, 모르면 `비용 모름`), 바뀐 파일 수(`파일 N개`, HANDOFF 파일 자신은 세지 않음, 기록이 없으면 `파일 기록 없음`) |
+| 3 | 한 줄 요약 |
+| 4~ | 막는 결정마다 `결정: 질문 (추천 X)`, 최대 3줄. 넘치면 `결정 외 N건` |
+| 실패 카드 | `리드: lead_note` 한 줄(80자에서 자름) |
+
+- 읽을 수 없는 HANDOFF(frontmatter나 스키마 오류)는 `[읽기 실패]` 카드로 실패 묶음에 넣고, 둘째 줄에 첫 오류, 셋째 줄에 `gotechy handoff lint <경로>`를 쓴다. 한 파일이 깨져도 인박스 전체는 멈추지 않는다.
+- 화면에 보여 주는 모든 문자열에서 터미널 제어 문자(ESC 등 C0, C1 제어 문자, 줄바꿈과 탭 제외)와 양방향 제어 문자(U+202A~U+202E, U+2066~U+2069)를 지운다. 악성 HANDOFF가 터미널 화면을 덮어쓰거나 글자 순서를 뒤바꿔 보이게 하는 것을 막는다. HTML 화면에도 같은 규칙을 적용한다.
+- 종료코드는 항상 0이다(보기 명령). 병합한 작업을 인박스에서 빼는 규칙은 M2c의 `accept`에서 정한다.
+
+### 8.2 `gotechy render [T-###]`
+
+- `.gotechy/view/index.html`(인박스 카드)과 읽을 수 있는 HANDOFF마다 `.gotechy/view/T-###.html`을 다시 만든다(이전 화면 파일은 지운다). 읽기 실패 카드는 화면 없이 인박스에만 나온다. 없는 작업 번호를 주면 exit 1. 작업 번호를 주면 그 화면의, 안 주면 인박스 화면의 `file://` 주소를 출력한다. `.gotechy/`는 git에 올리지 않는다.
+- 화면 구성(한 가지 배치, 시안 비교는 1b):
+  - 3초: 인박스 카드와 같은 신호 줄.
+  - 30초(펼침): 한 줄 요약, 결정 필요, 한 일, 건너뛴 것, 확인 못 한 것, 리스크.
+  - 3분(접힘, `<details>`): 증거, 새 용어와 용어 은행 풀이, 말해 보기, 다음 단계, 리드 측정값(verify 명령과 결과, 모델, effort, 토큰, 비용, 바뀐 파일).
+- 보안 규칙. HANDOFF, 작업 명세, 용어 은행은 모두 신뢰하지 않는 입력으로 다룬다.
+
+| 규칙 | 내용 |
+|---|---|
+| 이스케이프 | 파일에서 읽은 모든 문자열은 HTML 이스케이프한다. 본문 Markdown은 원시 HTML을 허용하지 않는 설정(`html: false`)으로만 변환한다 |
+| 스크립트 없음 | `<script>`, 이벤트 처리 속성(`on*`), `<form>`, `<iframe>`, `<object>`, `<embed>`, `<base>`, `<img>`를 만들지 않는다. 허용 요소 목록 밖의 요소가 나오면 테스트가 실패한다 |
+| 링크 | Markdown 링크는 `http:`, `https:`만 링크로 만들고 나머지는 글자로 둔다. 링크마다 `rel="noopener noreferrer"`, `target="_blank"`. 화면끼리의 링크(`index.html`, `T-###.html`)는 렌더러가 직접 만든 것만 |
+| CSP | `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">`와 `<meta name="referrer" content="no-referrer">` |
+| 외부 요청 없음 | 글꼴, 이미지, 스타일시트를 밖에서 불러오지 않는다. 스타일은 문서 안 `<style>` 하나 |

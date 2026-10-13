@@ -24,7 +24,7 @@
 - [x] (2026-10-13 23:09) M0 전제 확인 — mise·apm·uv 락·Claude restricted·Codex 샌드박스 검증, 공통 worktree 격리로 설계 보강
 - [x] (2026-10-13 23:45) 구현 스택 확정 — TypeScript + Bun (ADR 0001), 차선 Python 3.14 + uv
 - [x] (2026-10-13 23:45) M1 관통 경로 — 계약 문서, CLI(init·task new/lint·run·handoff lint), worktree 격리, claude·codex·fake 어댑터. 테스트 49개 통과, 커버리지 91%, 실제 Claude·Codex 워커 각 1회 성공
-- [x] (2026-10-14 00:24) M2a HANDOFF 규칙과 문체 검사: 계약 v1.1(4.1절 HANDOFF 규칙 8개, 7절 문체 규칙), `handoff lint` 내용 규칙, 문체 lint(2026-10-20까지 경고, 21일부터 오류), `text lint` 명령, 용어 은행 53개, 예외 구간 표지. 테스트 86개 통과
+- [x] (2026-10-14 00:24) M2a HANDOFF 규칙과 문체 검사: 계약 v1.1(4.1절 HANDOFF 규칙 8개, 7절 문체 규칙), `handoff lint` 내용 규칙, 문체 lint(2026-10-20까지 경고, 21일부터 오류), `text lint` 명령, 용어 은행 53개, 예외 구간 표지. 테스트 87개 통과
 - [ ] M2b 인박스와 읽기 전용 HTML (`inbox`, `render`)
 - [ ] M2c 결정과 반영 (`decide`, `gate verify`, `keys`, 이해 게이트, 측정 필드, `accept`, 프로젝트 용어 은행 누적)
 - [ ] M3 설치 계층 — 부트스트랩·train·setup·doctor·restore·gitleaks

@@ -41,7 +41,7 @@ gotechy render        # 마지막 줄의 file:// 주소를 브라우저로 열�
 
 | 작업 | 내용 | HANDOFF | 설명 문서 |
 |---|---|---|---|
-| T-001 | M2b 인박스와 읽기 전용 화면 (자기 전에 보고한 것) | `orchestration/handoffs/T-001.md` | 없음 |
+| T-001 | M2b 인박스와 읽기 전용 화면 (자기 전에 보고한 것) | `orchestration/handoffs/T-001.md` | `explain/m2b-inbox-and-render.md` |
 | T-002 | M2c-1 결정 서명과 검증 | `orchestration/handoffs/T-002.md` | `explain/m2c-1-decision-signing.md` |
 | T-003 | M2c-2 이해 게이트, 병합, 용어 누적 | `orchestration/handoffs/T-003.md` | `explain/m2c-2-comprehension-and-accept.md` |
 | T-004 | M2 보안 리뷰 두 바퀴 | `orchestration/handoffs/T-004.md` | `explain/security-review-rounds.md` |
@@ -60,7 +60,7 @@ gotechy render        # 마지막 줄의 file:// 주소를 브라우저로 열�
 ## 못 한 것, 확인 못 한 것
 
 - M3 중 이 맥에 실제 `setup` 적용과 복원(Validation 14 실측), 격리 셸 처음 설치(Validation 12), `init`의 apm 전환은 오너와 함께 할 일로 남겼어요.
-- 실제 TTY에서 `decide`를 Ctrl-C로 멈췄을 때 잠금이 풀리는지는 직접 확인하지 못했어요.
+- `decide`를 Ctrl-C로 멈추는 경우는 가상 터미널 실험으로 확인했어요(잠금 해제, 기록 없음). 실제 터미널 앱에서 손으로 누른 확인은 아직이에요.
 - 3차 보안 감사는 돌리지 않았어요.
 - CLAUDE.md의 위키 경로가 이 맥에 없어서, 설명 문서는 frontmatter만 달고 위키에 넣지 않았어요.
 

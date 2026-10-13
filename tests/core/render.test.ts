@@ -2,7 +2,8 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildCard } from '../../src/core/inbox'
+import type { Gate } from '../../src/core/gate'
+import { attachGates, buildCard, startGateCard } from '../../src/core/inbox'
 import type { TermEntry } from '../../src/core/terms'
 import { CSP, renderHandoffPage, renderInboxPage } from '../../src/core/view/pages'
 
@@ -139,5 +140,69 @@ describe('HANDOFF 화면 내용', () => {
 
   test('3초 카드의 신호 줄을 화면 맨 위에 보여 준다', () => {
     expect(page).toContain('막는 결정 1, 검증 통과, 리스크 1, $0.10, 파일 2개')
+  })
+})
+
+describe('HTML 인박스의 게이트 표시 (contract.md 9.3절)', () => {
+  const doneText = (note?: string) =>
+    [
+      '---',
+      'task: T-002',
+      'status: done',
+      'new_terms: [frobnicate]',
+      'rev: 1',
+      ...(note ? [`lead_note: "${note}"`] : []),
+      '---',
+      '## 결정 필요\n없음\n',
+      '## 한 줄 요약\n끝났어요.\n',
+      '## 한 일\n- 했어요. [확인]\n',
+      '## 증거\n- `true`: exit 0\n',
+      '## 건너뛴 것, 확인 못 한 것, 리스크\n없음\n',
+      '## 새 용어\n- frobnicate: 가짜 용어예요.\n',
+      '## 말해 보기\n- 왜?\n',
+      '## 다음 단계\n- 없음\n',
+    ].join('\n')
+  const gate = (over: Record<string, unknown>) =>
+    ({
+      id: 'G-001',
+      task: 'T-002',
+      class: 'approval-after',
+      status: 'pending',
+      question: 'T-002를 승인할까요?',
+      options: ['승인', '다시'],
+      recommended: null,
+      handoff_rev: 1,
+      irreversible: false,
+      ...over,
+    }) as unknown as Gate
+
+  test('승인 대기, 새 용어, 시작 승인 카드를 보여 주고 링크는 HANDOFF가 있을 때만 만든다', async () => {
+    const after = attachGates(
+      buildCard({ id: 'T-002', file: 'h.md', text: doneText(), knownTerms: new Set() }),
+      [gate({})],
+    )
+    const start = startGateCard(
+      'T-003',
+      '시작 전 작업',
+      gate({
+        id: 'G-002',
+        task: 'T-003',
+        class: 'approval-before',
+        options: ['진행', '중단'],
+        handoff_rev: null,
+      }),
+    )
+    const html = renderInboxPage([after, start])
+    expect(html).toContain('승인 대기 G-001')
+    expect(html).toContain('새 용어: frobnicate')
+    expect(html).toContain('시작 승인 대기 G-002')
+    const s = await scan(html)
+    expect(s.links.map((l) => l.href)).toEqual(['T-002.html'])
+  })
+
+  test('완료 작업의 리드 메모는 화면의 리드 측정값 안에 보인다', () => {
+    const card = buildCard({ id: 'T-002', file: 'h.md', text: doneText('병합 전 확인 필요') })
+    const html = renderHandoffPage({ card, terms: [] })
+    expect(html).toContain('병합 전 확인 필요')
   })
 })

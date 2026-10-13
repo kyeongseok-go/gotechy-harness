@@ -1,32 +1,21 @@
-# /gotechy-ship 게이트 중 "기계 검증 가능한 항목"의 CI 미러 — 격리된 채점자.
-# (커버리지 수치·QUALITY_SCORE·3종 출력 등 판단이 필요한 항목은 스킬이 담당하며 여기서 재검하지 않는다)
-# 미설정 스크립트는 명시적으로 실패한다 ("명령 부재 = 게이트 실패, 스킵 아님").
-# lockfile(package-lock.json)을 커밋한 뒤에는 npm install을 npm ci로, setup-node에 cache: npm을 추가할 것.
+# 하네스 v2 CI — 라이브러리 자체의 검사 (lint·타입·테스트). 템플릿 무결성 검사(init.sh)는 2단계에서 templates/로 이관.
 name: ci
 on: [push, pull_request]
 jobs:
-  gate:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-      - run: npm install
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
-      - name: layer boundaries
-        run: npm run check:boundaries
-      - name: docs drift (generated/)
-        run: |
-          npm run gen:docs
-          git diff --exit-code docs/generated/ || { echo "generated/ 문서가 코드와 어긋남 — gen:docs 재생성 후 커밋하라"; exit 1; }
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun test --coverage
       - name: exec-plan hygiene
         run: |
           for f in docs/exec-plans/active/*.md; do
             [ -e "$f" ] || continue
             grep -q "## Validation" "$f" || { echo "$f 에 Validation 섹션 없음"; exit 1; }
           done
-      - name: harness integrity (init.sh)
-        run: bash scripts/init.sh

@@ -1,0 +1,23 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "num_turns": 5,
+  "result": "Only task 3 worked.",
+  "total_cost_usd": 0.1777,
+  "usage": {
+    "input_tokens": 12,
+    "cache_creation_input_tokens": 9000,
+    "cache_read_input_tokens": 40000,
+    "output_tokens": 700
+  },
+  "modelUsage": {
+    "claude-opus-5-5": {
+      "inputTokens": 12,
+      "outputTokens": 700,
+      "cacheReadInputTokens": 40000,
+      "cacheCreationInputTokens": 9000,
+      "costUSD": 0.1777
+    }
+  }
+}

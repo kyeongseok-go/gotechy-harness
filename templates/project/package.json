@@ -1,0 +1,17 @@
+{
+  "name": "gotechy-harness-project",
+  "private": true,
+  "version": "0.0.0",
+  "description": "(교체) 이 package.json은 하네스 게이트가 참조하는 명령의 스텁이다. 미설정 명령은 명시적으로 실패한다 — '명령 부재 = 게이트 실패(스킵 아님)'.",
+  "scripts": {
+    "dev": "echo '[하네스] dev 미설정 — 프로젝트의 개발 서버로 교체하라' && exit 1",
+    "lint": "echo '[하네스] lint 미설정 — 프로젝트의 린터로 교체하라' && exit 1",
+    "build": "echo '[하네스] build 미설정 — 프로젝트의 빌드로 교체하라' && exit 1",
+    "test": "echo '[하네스] test 미설정 — 프로젝트의 테스트 러너로 교체하라' && exit 1",
+    "eval": "echo '[하네스] eval 미설정 — docs/evals/README.md의 러너를 연결하라' && exit 1",
+    "gen:docs": "echo '[하네스] gen:docs 미설정 — docs/generated/ 재생성 명령을 연결하라 (없으면 exit 0으로 교체)' && exit 1",
+    "check:boundaries": "echo '[하네스] check:boundaries 미설정 — dependency-cruiser 등 레이어 검사를 연결하라' && exit 1",
+    "llm:report": "echo '[하네스] llm:report 미설정 — LLM 호출 JSONL 집계를 연결하라 (docs/AI_PLAYBOOK.md 5절)' && exit 1",
+    "init:harness": "bash scripts/init.sh"
+  }
+}

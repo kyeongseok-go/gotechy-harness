@@ -19,3 +19,8 @@ CLAUDE.local.md
 
 # LLM 관측 로그 (집계 결과만 generated/로)
 logs/llm/*.jsonl
+
+# 하네스 v2
+dist/
+.gotechy/
+orchestration/private/

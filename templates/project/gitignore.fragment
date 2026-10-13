@@ -1,0 +1,4 @@
+# gotechy 하네스 (gotechy init이 추가)
+.gotechy/
+orchestration/private/
+orchestration/.seq.lock

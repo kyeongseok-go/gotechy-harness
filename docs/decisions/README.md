@@ -19,3 +19,4 @@
 
 | # | 결정 | 상태 | 날짜 |
 |---|---|---|---|
+| [0001](0001-harness-stack-typescript-bun.md) | 하네스 구현 스택: TypeScript + Bun (차선: Python 3.14 + uv) | 승인됨 | 2026-10-14 |

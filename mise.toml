@@ -1,0 +1,6 @@
+# 하네스 개발용 도구 고정 (M3에서 train 전체로 확장)
+[tools]
+bun = "1.4.3"
+
+[settings]
+lockfile = true

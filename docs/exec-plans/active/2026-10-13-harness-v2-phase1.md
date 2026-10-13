@@ -20,8 +20,8 @@
 - [x] (2026-10-13 23:40) spec-reviewer 검토(🔴6 🟡6 🟢2) 반영 — 1단계를 1a/1b로 분할
 - [x] (2026-10-14 00:30) 구현 전 독립 교차 검토(Fable 5.1 🔴4 🟡7 🟢4, Codex GPT-6.1 Sol RED 7) 반영 — 순서 재배치, 결정 검증의 위협 모델 축소·정직화, Python 3.12 고정, 검증 항목 객관화
 - [x] (2026-10-14 01:30) M0 전제 확인 — mise·apm·uv 락·Claude restricted·Codex 샌드박스 검증, 공통 worktree 격리로 설계 보강
-- [ ] 구현 스택 확정 (사용자 요청: 최신 기준 리서치 후 결정)
-- [ ] M1 관통 경로 — 계약 → 작업 1건 → HANDOFF → verify (이미 설치된 claude·codex 사용)
+- [x] (2026-10-14 02:10) 구현 스택 확정 — TypeScript + Bun (ADR 0001), 차선 Python 3.14 + uv
+- [x] (2026-10-14 03:30) M1 관통 경로 — 계약 문서, CLI(init·task new/lint·run·handoff lint), worktree 격리, claude·codex·fake 어댑터. 테스트 49개 통과, 커버리지 91%, 실제 Claude·Codex 워커 각 1회 성공
 - [ ] M2 오너 코어 — lint·인박스·읽기 전용 HTML·결정·이해 게이트·용어 은행
 - [ ] M3 설치 계층 — 부트스트랩·train·setup·doctor·restore·gitleaks
 - [ ] ADR 작성: D5(배포)·D7(오케스트레이션)·D13(train)·결정 검증 방식
@@ -37,6 +37,13 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**M1 구현 중 발견 (2026-10-14)**
+- 테스트를 코드보다 나중에 썼다(.claude/rules/testing.md의 RED→GREEN 위반). 대신 왕복 직렬화 테스트가 실제 버그(저장할 때마다 본문 앞에 빈 줄 추가)를 잡았다 → `serializeFrontmatter`가 본문을 손대지 않도록 수정. M2부터는 실패하는 테스트를 먼저 쓴다.
+- `--restricted` 모드의 Claude 워커는 스킬을 로드하지 않았다(HANDOFF `skills_loaded: []`). 지시문에 계약을 직접 담은 설계(스킬 로딩에 기대지 않음)가 맞았다. 대신 명령 실행 도구가 없어 워커가 verify를 직접 못 돌리고, 그 사실을 HANDOFF에 정직하게 적었다 → 리드 verify가 필수인 이유. [확인]
+- Codex 워커는 셸이 있어 verify를 스스로 실행하고 결과를 증거에 적었다. 같은 계약, 다른 능력 — HANDOFF의 `verified`(리드 측정)와 본문(워커 주장)을 분리한 설계가 이 차이를 흡수한다. [확인]
+- 실제 실행 비용: Claude Opus 5.5 low effort $0.091(출력 1,543 토큰), Codex GPT-6.1 Sol low 입력 6,233 + 캐시 49,920 + 출력 413 토큰. 증거: `docs/references/evidence/2026-10-14-m1/`. [확인]
+- zsh에서 명령을 변수에 넣으면 단어로 쪼개지지 않는다 → 문서·스크립트 예시는 래퍼 스크립트나 함수로.
 
 **M0 전제 확인 결과 (2026-10-14, macOS arm64)**
 - mise v2026.10.8: 릴리스 바이너리 sha256이 공식 `SHASUMS256.txt`와 일치(`dd77de9a…`, 목록 줄은 `./` 접두사). 레지스트리에 전부 있음 — python·node(core), uv·claude-code·codex·gh·gitleaks(aqua), apm(github:microsoft/apm). `mise lock --platform macos-arm64,macos-x64,linux-x64` → 24개 플랫폼 항목(URL·sha256, gh는 provenance=github-attestations). `mise install --locked`로 8개 도구가 격리 폴더에 79초에 설치: Python 3.12.15, uv 0.13.0, node 24.21.0, claude 2.1.296, codex 0.162.1, gh 2.102.0, apm 0.33.0, gitleaks 8.30.1. [확인]
@@ -54,7 +61,7 @@
 | 1단계를 1a·1b로 분할, 1b는 필수 | spec-reviewer R1, 사용자 지시 | 2026-10-13 | - |
 | 순서: 관통 경로(M1) → 오너 코어(M2) → 설치 계층(M3) | Fable 🔴2: 설치 가정이 깨져도 HANDOFF가 먼저 나와야 한다 | 2026-10-14 | - |
 | 1a 결정 검증 = 서명 + 워커 실행 격리, 위협 모델은 "실수·낡은 판본·수기 편집·격리된 워커" | Fable 🔴1, Codex RED 4·5: 같은 사용자 대칭 키는 자가 승인을 못 막음 | 2026-10-14 | ADR |
-| CLI는 Python 3.12(mise·uv가 관리, 시스템 Python 미사용) + PEP 723 의존성 + `uv lock --script`로 잠근 lock 파일 커밋 | 3.9에 tomllib 없음, PEP 723만으로는 전이 의존성 미고정 | 2026-10-14 | - |
+| ~~CLI는 Python 3.12 + uv~~ → **TypeScript 7 + Bun 1.4.3** (ADR 0001, 차선 Python 3.14 + uv 기록) | 스택 리서치: mod가 TS 전용이라 계약 한 벌 공유, 단일 실행 파일, 사용자 확정 | 2026-10-14 | ADR 0001 |
 | 셸 스크립트는 POSIX sh, bash 4 문법·GNU 전용 명령 금지 (lint로 검사) | macOS bash 3.2 | 2026-10-14 | - |
 | 1a의 작업은 공개 데이터·되돌릴 수 있는 로컬 작업만 | Codex RED 7: 경로 규칙으로는 외부 발행을 못 막음 | 2026-10-14 | - |
 | 어댑터 표기 "Orca 1 + native 1(백엔드 claude·codex)", 1a는 native만 | D7 | 2026-10-13 | - |
@@ -195,10 +202,10 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 
 ## Validation and Acceptance
 
-- [ ] 1. T-001(fake)은 patch 적용 후 `verify` exit 0, HANDOFF status `done`. 테스트 스위트 안에서 반복 실행해도 같은 결과.
-- [ ] 2. T-002(claude)·T-003(codex)이 각각 실제 1회 실행되어 README가 바뀌고 `verify` exit 0, HANDOFF가 구조 lint를 통과(증거 로그를 Artifacts에).
-- [ ] 3. 워커 실행 중 `~/.gotechy/keys`와 `orchestration/gates/` 읽기·쓰기 시도가 실패한다(fixture 워커로 검사).
-- [ ] 4. `task lint`가 `ownership`의 `orchestration/gates/`, `..` 경로, 글롭·심볼릭 링크 우회를 모두 거부한다.
+- [x] 1. T-001(fake)은 patch 적용 후 `verify` exit 0, HANDOFF status `done`. 테스트 스위트 안에서 반복 실행해도 같은 결과.
+- [x] 2. T-002(claude)·T-003(codex)이 각각 실제 1회 실행되어 README가 바뀌고 `verify` exit 0, HANDOFF가 구조 lint를 통과(증거 로그를 Artifacts에).
+- [x] 3. 워커 실행 중 `~/.gotechy/keys`와 `orchestration/gates/` 읽기·쓰기 시도가 실패한다(fixture 워커로 검사).
+- [x] 4. `task lint`가 `ownership`의 `orchestration/gates/`, `..` 경로, 글롭·심볼릭 링크 우회를 모두 거부한다.
 - [ ] 5. lint 실패 fixture(필수 키 누락·절 순서·중복 키·요약 초과·막는 결정 4개·옵션 1개·추천 없음·리스크 초과·증거 형식·사실 표시 누락·강조 위반·결정 표지 누락)가 각각 교정 메시지와 함께 실패하고, 통과 fixture는 통과한다.
 - [ ] 6. `inbox` 출력이 고정 fixture의 기대 출력과 일치(순서·동률·빈 상태).
 - [ ] 7. `<script>`·`<SCRIPT>`·`onerror=`·`javascript:` URL이 든 HANDOFF·용어를 render하면, 결과를 `html.parser`로 파싱했을 때 script 요소 0개·`on*` 속성 0개·`javascript:` href 0개이고 CSP meta가 있다. 브라우저 확인은 수동 1회 스크린샷.
@@ -221,7 +228,8 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 
 ## Artifacts and Notes
 
-(구현하며 채운다: HANDOFF 예시, 실제 실행 로그, fresh-install 로그, 설정 백업·복원 증거, render 스크린샷. 2차 사용자용 데모: 작업 맡기기부터 결정까지 3분 녹화 1건)
+- M1: 실제 워커 HANDOFF 2건과 작업 명세 — `docs/references/evidence/2026-10-14-m1/` (Claude: verify exit 0, $0.091 / Codex: verify exit 0).
+(구현하며 채운다: fresh-install 로그, 설정 백업·복원 증거, render 스크린샷. 2차 사용자용 데모: 작업 맡기기부터 결정까지 3분 녹화 1건)
 
 ## Interfaces and Dependencies
 

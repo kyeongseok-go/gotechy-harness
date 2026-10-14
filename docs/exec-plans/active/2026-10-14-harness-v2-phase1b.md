@@ -22,7 +22,7 @@
 
 - [x] (2026-10-14) 초안 작성 (밤샘 루프, 오너 부재)
 - [x] (2026-10-14 13:05) 오너 검토와 범위 승인 (밤샘 보고 T-007)
-- [ ] N0 전제 확인 (실험)
+- [x] (2026-10-14 18:40) N0 전제 확인 (실험). Touch ID를 실제로 통과시키는 확인과 Claude Code 확장 경로 일부는 오너 확인으로 남김
 - [ ] N1 오너 인증 관통: Secure Enclave 서명과 Touch ID
 - [ ] N2 화면에서 결정: `gotechy serve`
 - [ ] N3 무인 루프: `gotechy loop`와 아침 보고서
@@ -34,7 +34,16 @@
 
 ## Surprises & Discoveries
 
-(진행하며 채운다. 1a 밤샘 루프의 발견은 1a ExecPlan에 있다.)
+**N0 전제 확인 (2026-10-14 18:28~18:40, 오너 외출, macOS arm64, Swift 6.1.2)** 증거 `docs/references/evidence/2026-10-14-n0/`
+- 1. Secure Enclave 도구: CryptoKit으로 쓴 Swift 도구(70줄)가 `swiftc -O`로 5초에 빌드됐다. 서명을 위한 entitlement나 코드 서명 없이 동작한다. 키 파일(blob)은 개인 키 원문이 아니라 Secure Enclave가 감싼 ASN.1 구조(사람 확인 없는 키 324바이트, 있는 키 427바이트)다. [확인]
+- 1. 사람 확인(userPresence) 키로 서명하면 결과 없이 기다렸다(5초 제한에서 끝냄). Touch ID를 실제로 통과시키거나 취소하는 확인은 오너가 한다. [확인, Touch ID 통과는 미확인]
+- 2. CryptoKit 서명(DER)과 공개 키(SPKI DER)를 Bun의 `crypto.verify('sha256', ..., { dsaEncoding: 'der' })`가 검증한다. 원문을 한 글자 바꾸면 false. [확인]
+- 3. TTY가 없는 백그라운드 프로세스에서도 인증 대기가 걸렸고, 127.0.0.1 `Bun.serve`가 요청마다 Swift 도구를 불러 서명하고 검증하는 경로가 동작했다(사람 확인 없는 키로). [확인]
+- **verify 샌드박스 안에서도 Secure Enclave 서명이 된다.** 지금 프로필로 감싼 프로세스가 사람 확인 없는 키로 서명에 성공했다. `com.apple.ctkd.token-client`, `com.apple.CoreAuthentication.daemon`, `com.apple.coreauthd`의 mach-lookup을 막자 "Sandbox restriction"으로 실패했다. N1에서 샌드박스에 넣는다. 막지 않으면 워커가 쓴 테스트가 오너 키 blob으로 인증 창을 띄워 오너를 속일 수 있다. [확인]
+- 4. Orca 1.4.209: 워커는 `orca orchestration send --type worker_done --outcome succeeded|failed --report-path <path> --files-modified <csv>`로 완료를 보고한다. Orca에도 `gate-create`, `gate-resolve`가 있지만 서명이 없어, 결정의 원천은 gotechy 게이트로 둔다(D7). [확인]
+- 4. `claude agents`는 서브에이전트 정의가 아니라 백그라운드 세션을 관리한다(`--json`, `--all`). [확인]
+- 4. Claude Code 확장(공식 문서 조사, claude-code-guide 서브에이전트): mod는 v2.1.287 이상의 터미널에서 토스트, 입력창 위 띠, 창, 도구 호출 가드를 그릴 수 있다(`-p`와 VS Code 패널에서는 그리지 않음). 상태 줄은 stdin JSON을 받는 명령으로 글자만 보여 준다(`refreshInterval` 최소 1초). PreToolUse hook은 `permissionDecision: "deny"`와 이유로 명령을 막고, PostToolUse hook은 exit 2나 `decision: "block"`으로 lint 오류를 모델에 돌려준다. [확인, 문서]
+- 4. **폰 푸시는 스크립트가 직접 보낼 방법이 문서에 없다.** Remote Control의 "Push when actions required" 설정으로 Claude가 판단해 보내는 것뿐이다. 실행 중인 세션에 밖에서 알림을 넣는 방법은 Channels(연구 미리보기, MCP 서버, 개발용 플래그 필요)와 세션 inbox 소켓(메시지 형식 미공개)이다. N4의 폰 알림 방식은 오너 결정으로 올린다. [확인, 문서]
 
 ## Decision Log
 

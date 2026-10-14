@@ -24,3 +24,6 @@ logs/llm/*.jsonl
 dist/
 .gotechy/
 orchestration/private/
+
+# bun 변환 캐시(테스트가 HOME을 저장소로 두면 생김, 2026-10-15 실수)
+Library/

@@ -25,6 +25,7 @@ describe('막는 명령 (Validation 9)', () => {
       'bash -c "gotechy decide G-001 x"',
       "sh -c 'cd /p && gotechy serve'",
       'command gotechy keys rotate',
+      'gotechy loop --budget 50',
       'nohup gotechy serve &',
       'echo $(gotechy decide G-001 x)',
       'echo `gotechy serve`',

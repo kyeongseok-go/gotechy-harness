@@ -25,6 +25,8 @@ Commands:
   decide <gateId> <choice> [instruction]  게이트를 결정한다. 대화형 터미널에서만 (contract.md 6.4절)
   serve [options]                         화면에서 게이트를 결정하는 로컬 서버를 연다 (contract.md 8.3절)
   loop [options]                          autonomy L2 이상인 작업을 예산과 멈춤 규칙 안에서 차례로 돌리고 아침 보고서를 만든다 (contract.md 11절)
+  guard                                   Claude Code PreToolUse hook: 리드의 부작용 명령을 막는다. 표준 입력의 hook JSON을 읽는다 (contract.md 12절)
+  status [options]                        열린 결정 수를 보여 준다. --line은 Claude Code 상태 줄용 한 줄 (contract.md 12절)
   accept <taskId>                         승인한 작업 브랜치를 메인에 병합한다 (contract.md 9.4절)
   gate                                    게이트
   doctor [options]                        설치 상태가 train과 같은지, 정책과 라이브러리 규칙을 검사한다 (contract.md 10.2절)
@@ -193,6 +195,30 @@ Options:
   --max-attempts <N>  작업마다 시도 상한 (default: "3")
   --reset             이어 가기 상태를 비우고, 루프가 멈춘 작업도 다시 시도한다
   -h, --help          display help for command
+```
+
+## gotechy guard
+
+```text
+Usage: gotechy guard [options]
+
+Claude Code PreToolUse hook: 리드의 부작용 명령을 막는다. 표준 입력의 hook JSON을 읽는다 (contract.md
+12절)
+
+Options:
+  -h, --help  display help for command
+```
+
+## gotechy status
+
+```text
+Usage: gotechy status [options]
+
+열린 결정 수를 보여 준다. --line은 Claude Code 상태 줄용 한 줄 (contract.md 12절)
+
+Options:
+  --line      한 줄로
+  -h, --help  display help for command
 ```
 
 ## gotechy accept

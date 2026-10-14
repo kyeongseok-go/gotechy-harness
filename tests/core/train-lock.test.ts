@@ -2,6 +2,7 @@
 // 둘이 어긋나면 새 설치(부트스트랩)가 train과 다른 버전을 깔거나, 락에 없는 도구에서 설치가 멈춘다.
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseTrain } from '../../src/core/train'
 
@@ -77,7 +78,7 @@ describe('train의 팩 고정', () => {
       cwd: LIB,
       stdout: 'pipe',
       stderr: 'pipe',
-      env: { PATH: process.env.PATH ?? '', HOME: LIB, GIT_CONFIG_GLOBAL: '/dev/null' },
+      env: { PATH: process.env.PATH ?? '', HOME: tmpdir(), GIT_CONFIG_GLOBAL: '/dev/null' },
     })
 
   test('출처는 GitHub 저장소, ref는 커밋 SHA 40자리다', () => {

@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import { initProject } from '../../src/runtime/init'
 import { LIB, makeHome, makeProject, newTask, runFake, sh } from './helpers'
 
+// HOME을 저장소로 두면 bun이 그 안에 변환 캐시(Library/Caches)를 쓴다(2026-10-15 실수). 늘 임시 HOME을 쓴다
+const HOME = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-gh-')))
 const cli = (args: string[], cwd: string, stdin?: string) => {
   const r = Bun.spawnSync({
     cmd: [process.execPath, join(LIB, 'src', 'cli.ts'), ...args],
@@ -13,7 +15,7 @@ const cli = (args: string[], cwd: string, stdin?: string) => {
     stdin: stdin === undefined ? 'ignore' : Buffer.from(stdin),
     stdout: 'pipe',
     stderr: 'pipe',
-    env: { PATH: process.env.PATH ?? '', HOME: cwd },
+    env: { PATH: process.env.PATH ?? '', HOME },
   })
   return { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() }
 }

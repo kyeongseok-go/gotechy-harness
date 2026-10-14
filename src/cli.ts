@@ -24,9 +24,15 @@ import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
 import { gotechyHome, initOwnerKey, rotateOwnerKey } from './runtime/keys'
 import { libraryRoot } from './runtime/library'
-import { runLoop } from './runtime/loop'
+import { LOOP_BUDGET_CAP, runLoop } from './runtime/loop'
 import { installPacks } from './runtime/packs'
-import { findProject, linkedPaths, PROJECT_DIRS } from './runtime/project'
+import {
+  CONTRACT_FILE_DIRS,
+  findProject,
+  linkedEntries,
+  linkedPaths,
+  PROJECT_DIRS,
+} from './runtime/project'
 import { runTask } from './runtime/run'
 import { startServe } from './runtime/serve'
 import { applySetup, formatPlan, planSetup, restoreSetup } from './runtime/setup'
@@ -53,8 +59,11 @@ function requireProject() {
     )
     process.exit(2)
   }
-  // 남의 저장소가 커밋한 링크를 따라 저장소 밖에 쓰지 않는다(보안 감사 7차 중간 4)
-  const linked = linkedPaths(p.root, PROJECT_DIRS)
+  // 남의 저장소가 커밋한 링크를 따라 저장소 밖에 쓰지 않는다(보안 감사 7차 중간 4, 9차 중간 1과 2)
+  const linked = [
+    ...linkedPaths(p.root, PROJECT_DIRS),
+    ...linkedEntries(p.root, CONTRACT_FILE_DIRS),
+  ]
   if (linked.length > 0) {
     console.error(
       `심볼릭 링크라서 멈췄어요: ${linked.join(', ')}. 링크를 지우거나 실제 폴더로 바꾼 뒤 다시 실행하세요.`,
@@ -381,8 +390,17 @@ program
     const home = gotechyHome()
     const budgetUsd = Number(o.budget)
     const maxAttempts = Number(o.maxAttempts)
-    if (!(budgetUsd > 0) || !Number.isInteger(maxAttempts) || maxAttempts < 1) {
-      console.error('--budget은 0보다 큰 수, --max-attempts는 1 이상의 정수여야 해요')
+    if (
+      !Number.isFinite(budgetUsd) ||
+      budgetUsd <= 0 ||
+      budgetUsd > LOOP_BUDGET_CAP ||
+      !Number.isInteger(maxAttempts) ||
+      maxAttempts < 1 ||
+      maxAttempts > 10
+    ) {
+      console.error(
+        `--budget은 0보다 크고 ${LOOP_BUDGET_CAP} 이하인 수, --max-attempts는 1~10의 정수여야 해요`,
+      )
       process.exit(2)
     }
     const log = (line: string) => console.log(line)

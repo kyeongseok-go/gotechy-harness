@@ -7,7 +7,7 @@ const ALLOW: GuardDecision = { deny: false, reason: '' }
 const deny = (reason: string): GuardDecision => ({ deny: true, reason })
 
 /** 오너만 하는 gotechy 명령 */
-const OWNER_ONLY = new Set(['decide', 'serve', 'keys'])
+const OWNER_ONLY = new Set(['decide', 'serve', 'keys', 'loop'])
 /** TTY가 있는 척해서 decide와 serve의 터미널 검사를 속이는 도구 */
 const TTY_FAKERS = new Set(['script', 'expect', 'unbuffer'])
 /** 앞에 붙어 다른 명령을 실행하는 것들. 벗기고 뒤의 명령을 본다 */

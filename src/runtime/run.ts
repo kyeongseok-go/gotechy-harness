@@ -214,10 +214,7 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
   }).finally(() => rmSync(tmp, { recursive: true, force: true }))
   await discardUncommitted(wt)
   notes.push(`리드 verify: \`${task.verify}\`: exit ${verify.exitCode}`)
-  if (!verify.sandboxed)
-    notes.push(
-      'verify를 샌드박스 없이 실행했어요 (macOS가 아님). 워커가 쓴 코드가 오너 권한으로 돌았어요.',
-    )
+  if (!verify.sandboxed) notes.push(UNSANDBOXED)
 
   const mainHandoff = paths.handoff(p, task.id)
   const prevRev = readRev(mainHandoff)
@@ -231,6 +228,7 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     notes,
     rev: prevRev + 1,
     changed: allowed,
+    sandboxed: verify.sandboxed,
   })
   writeNoFollow(wt, handoffRel, fm.text)
   await commitPaths(wt, [handoffRel], `${task.id}: HANDOFF 확정`)
@@ -312,7 +310,12 @@ type FinalizeInput = {
   notes: string[]
   rev: number
   changed: string[]
+  /** verify를 샌드박스 안에서 돌렸는가(macOS 밖이면 false) */
+  sandboxed: boolean
 }
+
+const UNSANDBOXED =
+  'verify를 샌드박스 없이 실행했어요 (macOS가 아님). 워커가 쓴 코드가 오너 권한으로 돌았어요.'
 
 function finalizeHandoff(i: FinalizeInput): {
   text: string
@@ -330,6 +333,8 @@ function finalizeHandoff(i: FinalizeInput): {
     const parsed = parseFrontmatter(i.workerText, handoffPathFor(i.task.id))
     if (parsed.ok) {
       data = { ...parsed.value.data }
+      // lead_note는 리드만 쓴다. 워커가 적은 값은 인박스에 "리드:"로 보여 리드인 척할 수 있어 버린다(doc-gardener 2026-10-15)
+      delete data.lead_note
       body = parsed.value.body
     } else {
       body = stubBody(
@@ -355,6 +360,8 @@ function finalizeHandoff(i: FinalizeInput): {
   }
   const out = { ...data, task: i.task.id, status, ...lead } as Record<string, unknown>
   if (i.notes.length > 0 && (failed || i.blocked)) out.lead_note = i.notes.join(' / ')
+  // 성공해도 샌드박스 없이 돈 verify는 기록한다(contract.md 6.3절)
+  else if (!i.sandboxed) out.lead_note = UNSANDBOXED
   return { text: serializeFrontmatter(out, body), status }
 }
 
@@ -446,6 +453,7 @@ function finishTampered(
     notes,
     rev: readRev(mainHandoff) + 1,
     changed: [],
+    sandboxed: true,
   })
   mkdirSync(dirname(mainHandoff), { recursive: true })
   writeFileSync(mainHandoff, fm.text)

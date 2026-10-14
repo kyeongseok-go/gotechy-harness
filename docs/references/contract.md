@@ -66,6 +66,8 @@ gate:  pending → resolved (거절도 resolution 값의 하나다)
 
 ## 4. HANDOFF `handoffs/T-###.md`
 
+`lead_note`는 리드만 쓴다. 워커가 HANDOFF frontmatter에 적은 `lead_note`는 run이 버린다(인박스와 화면에 "리드:"로 보여 리드인 척할 수 있기 때문, 2026-10-15). 리드는 실패나 차단 사유, 그리고 verify를 샌드박스 없이 돌렸으면 그 사실을 적는다.
+
 frontmatter:
 
 | 키 | 작성자 | 설명 |
@@ -200,7 +202,7 @@ frontmatter:
 - 리드의 git: 전역, 시스템 설정을 읽지 않고(`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`) 훅과 fsmonitor를 끈 채로 실행한다. 오너 셸의 다른 `GIT_*` 변수(`GIT_DIR`, `GIT_CONFIG_COUNT` 등)는 넘기지 않는다.
 - 워커 환경 변수: 워커(claude, codex)에는 허용 목록만 넘긴다. PATH, HOME, 사용자 이름, 셸, 언어, 터미널, TMPDIR, 프록시와 인증서 변수, 그리고 어댑터별 로그인 변수(claude는 `ANTHROPIC_API_KEY`, `CLAUDE_CONFIG_DIR`, codex는 `OPENAI_API_KEY`, `CODEX_HOME`)다. 오너 셸의 다른 토큰은 넘기지 않는다. 셸이 있는 codex 워커가 받은 값을 파일에 써서 메인에 들여오지 못하게 하려는 것이다(보안 감사 5차 중간 1). claude와 codex의 로그인은 HOME 아래 설정과 키체인을 쓰므로 이것으로 충분하다(2026-10-14 `claude auth status`, `codex login status`로 확인).
 - 리드는 HANDOFF를 읽고 쓸 때 링크를 따라가지 않는다(경로의 모든 요소 검사, `O_NOFOLLOW`).
-- 프로젝트 명령은 `orchestration/`과 그 아래 폴더, `.gotechy/`, `.gotechy/view/`, `.gotechy/worktrees/` 중 하나라도 심볼릭 링크면 exit 2로 멈추고, `init`은 그 폴더들과 AGENTS.md, CLAUDE.md가 링크면 아무것도 쓰지 않는다. 남의 저장소가 커밋한 링크를 따라 저장소 밖에 쓰거나 지우지 않게 한다(보안 감사 7차 중간 4).
+- 프로젝트 명령은 `orchestration/`과 그 아래 폴더, `.gotechy/`와 그 아래 폴더(`view`, `worktrees`, `loop`, `digest`, `runs`, `tmp`, `accept`) 중 하나라도 심볼릭 링크이거나, `orchestration/`과 그 아래 폴더 안의 파일 하나라도 링크면 exit 2로 멈추고(보안 감사 9차 중간 1, 2), `init`은 그 폴더들과 AGENTS.md, CLAUDE.md가 링크면 아무것도 쓰지 않는다. 남의 저장소가 커밋한 링크를 따라 저장소 밖에 쓰거나 지우지 않게 한다(보안 감사 7차 중간 4).
 - 알려진 한계:
   - Touch ID는 "이 키를 쓴다"를 승인할 뿐 무엇에 서명하는지 보여 주지 않는다. 인증 창의 문구도 서명을 요청한 프로그램이 정한다. 같은 OS 사용자로 도는 악성 프로세스가 도구를 직접 불러 그럴듯한 문구로 인증 창을 띄울 수 있다. 오너는 자기가 decide를 실행한 직후에 뜬 창만 승인한다.
   - 같은 OS 사용자 프로세스가 `$GOTECHY_HOME/owner`의 공개 키와 blob을 사람 확인 없는 자기 키로 바꾸면 그 뒤의 결정을 위조할 수 있다. 프로젝트에 공개 키 지문을 고정하는 일은 다음 단계로 남긴다(TD-013).
@@ -362,7 +364,7 @@ frontmatter:
 
 `packs`는 프로젝트에 설치할 팩의 출처다. `source`는 라이브러리의 GitHub 저장소(`owner/repo`), `ref`는 그 저장소의 커밋 SHA(40자리)다. 태그 대신 커밋으로 고정하는 이유는 커밋은 바뀌지 않고, 태그를 따로 푸시하지 않아도 되기 때문이다. `ref`는 라이브러리 HEAD의 조상이어야 하고, 그 커밋의 `skills/`는 작업 폴더의 `skills/`와 같아야 한다(`tests/core/train-lock.test.ts`). 스킬을 바꾸면 그 변경을 커밋한 뒤 `ref`를 그 커밋으로 올린다.
 
-`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008), `Bash(gotechy serve:*)`(8.3절), `Bash(gotechy keys:*)`(리드가 오너 키를 바꿔 모든 결정을 무효로 만들지 않게, 보안 감사 7차 낮음 8). 마지막 둘은 2026-10-15에 더했다. Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
+`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008), `Bash(gotechy serve:*)`(8.3절), `Bash(gotechy keys:*)`(리드가 오너 키를 바꿔 모든 결정을 무효로 만들지 않게, 보안 감사 7차 낮음 8), `Bash(gotechy loop:*)`(리드가 큰 예산으로 무인 루프를 돌리지 않게, 보안 감사 9차 낮음 7). 마지막 셋은 2026-10-15에 더했다. Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
 
 ### 10.2 `gotechy doctor [--history]`
 
@@ -424,14 +426,15 @@ frontmatter:
 
 오너가 자리를 비운 동안 리드 대신 작업 대기열을 돌린다(설계 D14의 자리 비움, 야간 모드). 결과를 만들기만 하고, 결정과 반영은 오너가 한다.
 
-- 대상: 상태가 `ready`이고 `autonomy`가 `L2` 이상인 작업. 작업 번호 순으로 하나씩 돌린다(병렬 없음).
+- 대상: 상태가 `ready`이고 `autonomy`가 `L2` 이상인 작업. 작업 번호 순(숫자 순)으로 하나씩 돌린다(병렬 없음). 명세의 `id`가 파일 이름과 다르면 돌리지 않고 멈춘다(검사한 작업과 돌리는 작업이 달라지지 않게, 보안 감사 9차 중간 3). `agent: codex` 작업은 비용 상한이 없어(TD-015) 루프가 돌리지 않는다.
+- 하나만: 루프는 `.gotechy/loop/lock`을 잡는다. 다른 루프가 돌고 있으면 시작하지 않는다. 리드는 루프를 실행하지 않는다(정책 deny `Bash(gotechy loop:*)`, 12절 가드). CLI의 `--budget`은 50달러 이하, `--max-attempts`는 10 이하다.
 - 시작 조건: `run`의 강제(6.6절)와 같다. 필요한 게이트가 ok가 아니거나 선행 작업이 `accepted`가 아니면 그 작업은 "기다림"으로 두고 다음 작업으로 간다. 이때 `run`처럼 빠진 게이트를 연다.
-- 예산: 시작한 작업의 `budget_usd`(없으면 1.0)를 최악의 비용으로 더한다. 다음 작업을 시작하면 합이 `--budget`(기본 5.0달러)을 넘으면 그 작업은 시작하지 않는다. 실제 비용(HANDOFF `usage.cost_usd`의 합)은 보고서에 따로 적는다.
-- 실패: `run` 결과가 `failed`면 실패 표시(리드 메모 첫 줄과 verify 종료 코드)를 남기고 작업을 `ready`로 돌려 다시 시도한다. 같은 실패 표시가 두 번 이어지거나 시도가 `--max-attempts`(기본 3)에 닿으면 그 작업만 멈추고 다른 작업은 계속한다. `run`이 거부(`refused`)하면 그 작업도 멈춘다.
+- 예산: 시도마다 그 작업의 `budget_usd`(없으면 1.0, 최소 0.1)를 최악의 비용으로 예약하고, 실제 비용(HANDOFF `usage.cost_usd`)이 예약보다 크면 차이를 더한다. 다음 시도를 시작하면 합이 `--budget`(기본 5.0달러)을 넘으면 그 작업은 시작하지 않는다. 보고서에는 시도마다 모은 실제 비용 합을 따로 적는다(비용을 모르는 시도는 0으로 센다).
+- 실패: `run` 결과가 `failed`면 실패 표시(리드가 잰 값만: verify 종료 코드, 시간 초과, 되돌린 변경, HANDOFF lint 실패)를 남기고 작업을 `ready`로 돌려 다시 시도한다. 워커가 쓴 글은 표시에 넣지 않는다(워커가 시도마다 바꿔 멈춤을 피하지 못하게, 보안 감사 9차 중간 5). 같은 실패 표시가 두 번 이어지거나 시도가 `--max-attempts`(기본 3)에 닿으면 그 작업만 멈추고 다른 작업은 계속한다. `run`이 거부(`refused`)하거나 예외로 끝나면 그 작업도 멈춘다. 멈춘 작업은 `failed`로 남긴다.
 - 결정 필요: `run` 결과가 `needs-decision`이면 그 작업은 기다리고(게이트는 `run`이 연다) 다른 작업은 계속한다.
 - 하지 않는 것: `decide`, `accept`, `git push`, 배포, 외부 발행. 결정을 대신 내리지 않는다.
-- 상태: `.gotechy/loop/state.json`에 작업마다 시도 수, 마지막 실패 표시, 멈춘 사유를 남긴다. 중단 뒤 다시 실행하면 이어 간다. 멈춘 작업은 `failed`로 남아 다시 시도하지 않는다. 오너가 원인을 고치고 `ready`로 돌리면 시도 수를 비우고 새로 시작한다. `--reset`이면 상태를 비우고, 루프가 멈춘 작업(`failed`)을 `ready`로 돌린 뒤 시작한다.
-- 아침 보고서: 끝나면 `.gotechy/digest/<시각>.md`를 만든다. 작업마다 결과(완료, 결정 필요, 기다림, 멈춤과 사유, 예산으로 시작 안 함), 시도 수, 실제 비용, HANDOFF 경로와 한 줄 요약, 열린 게이트와 결정 방법(`gotechy serve` 또는 `gotechy decide`), 그리고 인박스 카드를 적는다. 보고서가 가리키는 HANDOFF는 `run`이 lint를 통과시킨 것만이다(lint에 실패한 HANDOFF는 `failed`가 된다).
+- 상태: `.gotechy/loop/state.json`에 작업마다 시도 수, 마지막 실패 표시, 멈춘 사유, 실제 비용을 남긴다. 링크를 따라가지 않게 임시 파일에 쓰고 이름을 바꾼다. 읽을 때 형식을 검증하고(키는 작업 번호만), 맞지 않으면 빈 상태로 본다. 중단 뒤 다시 실행하면 이어 간다. 멈춘 작업은 `failed`로 남아 다시 시도하지 않는다. 오너가 원인을 고치고 `ready`로 돌리면 시도 수를 비우고 새로 시작한다. `--reset`이면 상태를 비우고, 루프가 멈춘 작업(`failed`)을 `ready`로 돌린 뒤 시작한다.
+- 아침 보고서: 끝나면 `.gotechy/digest/<시각>.md`를 만든다. 작업마다 결과(완료, 결정 필요, 기다림, 멈춤과 사유, 예산으로 시작 안 함), 시도 수, 실제 비용, HANDOFF 경로와 한 줄 요약, 열린 게이트와 결정 방법(`gotechy serve` 또는 `gotechy decide`), 그리고 인박스 카드를 적는다. 보고서가 가리키는 HANDOFF는 `run`이 lint를 통과시킨 것만이다(lint에 실패한 HANDOFF는 `failed`가 된다). 보고서에 들어가는 워커 글(요약, 질문, 선택지)은 제어 문자를 지우고 마크다운 문법을 무력화한다. 인박스는 코드 울타리 안에 넣는다.
 - 종료 코드: 루프가 정상으로 끝나면 0(돌린 작업이 없어도), 프로젝트나 환경 문제면 2.
 
 ## 12. 부작용 가드와 상태 줄 (1b N4)
@@ -440,13 +443,13 @@ frontmatter:
 
 - `gotechy guard`: Claude Code PreToolUse hook이 Bash 명령마다 부른다. 표준 입력의 hook JSON(`tool_name`, `tool_input.command`)을 읽고, 막을 명령이면 `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}`를 출력한다. 통과면 아무것도 출력하지 않는다. 입력을 읽을 수 없으면 막는다(fail-closed). Bash가 아닌 도구는 보지 않는다.
 - 막는 것:
-  - 오너만 하는 gotechy 명령(`decide`, `serve`, `keys`). `bin/gotechy`, `bun src/cli.ts`, `bun run dev --` 같은 다른 이름으로 불러도 막는다.
+  - 오너만 하는 gotechy 명령(`decide`, `serve`, `keys`, `loop`). `bin/gotechy`, `bun src/cli.ts`, `bun run dev --` 같은 다른 이름으로 불러도 막는다.
   - 터미널이 있는 척하는 도구(`script`, `expect`, `unbuffer`).
   - force push(`-f`, `--force`, `--force-with-lease`, `--mirror`, `+` refspec)와 원격 브랜치 삭제(`--delete`, `-d`, `:` refspec).
   - 패키지 발행(`npm`, `bun`, `pnpm`, `yarn publish`), `gh release`(조회 제외), `gh pr merge`, 배포(`vercel --prod`, `wrangler deploy`, `fly deploy`, `netlify deploy --prod`), 위키 폴더(`Gotechy-Wiki`)에 쓰는 명령.
 - 판정 방법: 셸 연결자(`;`, `&&`, `||`, `|`, `&`, 줄바꿈)로 나누고, `$(...)`와 백틱 안도 따로 본다. 앞의 환경 변수 대입과 감싸는 명령(`env`, `command`, `exec`, `nohup`, `time`, `sudo`, `nice`)을 벗기고, `sh -c`, `bash -c`, `eval`의 문자열은 다시 판정한다. 변수로 만든 명령 이름 같은 것은 잡지 못한다.
 - 설치: `gotechy init`이 프로젝트에 둘을 만든다(이미 있으면 바꾸지 않고 알린다).
-  - `.claude/settings.json`(커밋): `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(gotechy serve:*)`, `Bash(gotechy keys:*)`, `Bash(script:*)`, `Bash(expect:*)`.
+  - `.claude/settings.json`(커밋): `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(gotechy serve:*)`, `Bash(gotechy keys:*)`, `Bash(gotechy loop:*)`, `Bash(script:*)`, `Bash(expect:*)`.
   - `.claude/settings.local.json`(개인, `.gitignore`에 넣음): Bash용 PreToolUse hook. 라이브러리의 `bin/gotechy guard`를 절대 경로로 부른다. 경로가 들어가서 커밋하지 않는다. 그 실행 파일이 없으면 exit 2로 모든 Bash 명령을 막아 오너가 바로 알게 한다.
 - `gotechy status --line`: 프로젝트의 열린 게이트 수를 한 줄로 출력한다(`gotechy 결정 대기 2`, 없으면 `gotechy 대기 없음`). Claude Code 상태 줄(`statusLine`)에 쓴다. 프로젝트 밖이면 아무것도 출력하지 않는다. 오너의 전역 상태 줄 설정은 바꾸지 않는다(오너가 원하면 직접 연결).
 - 하지 않은 것: Codex hook(같은 가드를 Codex에 붙이는 일)과 Claude Code mod(결정 대기 띠, 토스트)는 1b N4의 남은 일이다. 폰 알림 방식은 오너 결정이다.

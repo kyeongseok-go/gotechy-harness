@@ -134,4 +134,30 @@ export const PROJECT_DIRS = [
   '.gotechy',
   '.gotechy/view',
   '.gotechy/worktrees',
+  '.gotechy/loop',
+  '.gotechy/digest',
+  '.gotechy/runs',
+  '.gotechy/tmp',
+  '.gotechy/accept',
 ] as const
+
+/** 리드가 읽고 쓰는 계약 파일이 있는 폴더. 안의 파일 하나라도 링크면 멈춘다(보안 감사 9차 중간 2) */
+export const CONTRACT_FILE_DIRS = [
+  'orchestration',
+  'orchestration/tasks',
+  'orchestration/handoffs',
+  'orchestration/gates',
+  'orchestration/private',
+] as const
+
+/** 폴더 안(한 단계)의 심볼릭 링크 파일. 남의 저장소가 커밋한 링크 파일을 따라 밖에 쓰지 않게 한다 */
+export function linkedEntries(root: string, dirs: readonly string[]): string[] {
+  const out: string[] = []
+  for (const d of dirs) {
+    const dir = join(root, d)
+    if (!existsSync(dir) || lstatSync(dir).isSymbolicLink()) continue
+    for (const name of readdirSync(dir))
+      if (lstatSync(join(dir, name)).isSymbolicLink()) out.push(`${d}/${name}`)
+  }
+  return out
+}

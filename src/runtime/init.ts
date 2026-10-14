@@ -160,6 +160,7 @@ const CLAUDE_DENY = [
   'Bash(gotechy decide:*)',
   'Bash(gotechy serve:*)',
   'Bash(gotechy keys:*)',
+  'Bash(gotechy loop:*)',
   'Bash(script:*)',
   'Bash(expect:*)',
 ]

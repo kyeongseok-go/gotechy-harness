@@ -17,6 +17,8 @@ export type NewTaskInput = {
   status?: TaskFrontmatter['status']
   gate?: TaskFrontmatter['gate']
   deps?: string[]
+  autonomy?: TaskFrontmatter['autonomy']
+  irreversible?: boolean
 }
 
 export function createTask(p: Project, input: NewTaskInput): { id: string; file: string } {
@@ -30,9 +32,9 @@ export function createTask(p: Project, input: NewTaskInput): { id: string; file:
     deps: input.deps ?? [],
     ownership: input.ownership,
     data_class: 'public',
-    autonomy: 'L0',
+    autonomy: input.autonomy ?? 'L0',
     verify: input.verify,
-    irreversible: false,
+    irreversible: input.irreversible ?? false,
     gate: input.gate ?? 'none',
     created_at: new Date().toISOString(),
     ...(input.agent ? { agent: input.agent } : {}),

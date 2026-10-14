@@ -320,7 +320,14 @@ export type DecideOptions = {
   answer?: (question: string) => Promise<string>
   /** 테스트용: nonce 재사용 공격을 재현할 때만 쓴다 */
   nonce?: string
+  /** 화면(serve)에서 결정 화면을 보여 준 시각. active_seconds를 화면 기준으로 잰다(contract.md 8.3절) */
+  shownAt?: Date
+  /** 화면을 그릴 때의 gateView 값. 잠금을 잡은 뒤 다시 계산해 다르면 기록하지 않는다(낡은 화면 거부) */
+  expectView?: string
 }
+
+/** 화면을 그린 뒤 게이트, 작업 명세, HANDOFF가 바뀌었다 */
+export class StaleViewError extends Error {}
 
 const GENERIC_QUESTION = '이 작업이 되돌리기 어려운 이유를 자기 말로 설명해 보세요'
 
@@ -347,6 +354,50 @@ function comprehensionQuestions(
     if (qs.length > 0) return qs.map((question, i) => ({ question, keys: allKeys[i] ?? [] }))
   }
   return [{ question: GENERIC_QUESTION, keys: [] }]
+}
+
+function viewDigest(
+  gateText: string,
+  taskText: string | undefined,
+  handoff: HandoffState | undefined,
+): string {
+  return sha256(
+    JSON.stringify({
+      gate: gateText,
+      task: taskText === undefined ? null : taskSpecDigest(taskText),
+      handoff: handoff ? sha256(handoff.text) : null,
+    }),
+  )
+}
+
+/** 결정 화면에 보여 줄 것: 게이트, 이해 문항(되돌리기 어려울 때), 낡은 화면을 알아챌 값(contract.md 8.3절) */
+export function gateView(
+  p: Project,
+  id: string,
+): { gate: Gate; title: string; summary: string; questions: string[]; view: string } | undefined {
+  if (!GateId.safeParse(id).success) return undefined
+  const file = paths.gate(p, id)
+  const text = readText(file)
+  if (text === undefined) return undefined
+  const gate = readGateFile(file).gate
+  if (!gate) return undefined
+  const taskText = readText(paths.task(p, gate.task))
+  const task = readTask(p, gate.task)
+  const handoff = handoffState(p, gate.task)
+  const current = gate.handoff_rev !== null ? handoff : undefined
+  const irreversible =
+    gate.irreversible ||
+    (task ? effectiveIrreversible(task, handoff?.handoff?.changed_files ?? []) : false)
+  const sec = current
+    ? extractSections(current.body, current.bodyLine).find((x) => x.title === '한 줄 요약')
+    : undefined
+  return {
+    gate,
+    title: task?.title ?? '(작업 명세 없음)',
+    summary: sec?.content.trim().split('\n')[0] ?? '',
+    questions: irreversible ? comprehensionQuestions(current).map((q) => q.question) : [],
+    view: viewDigest(text, taskText, handoff),
+  }
 }
 
 function firstShown(p: Project, gateId: string): string | undefined {
@@ -410,6 +461,7 @@ async function decideLocked(
   opts: DecideOptions,
 ): Promise<Gate> {
   const now = opts.now ?? (() => new Date())
+  const gateText = readText(file)
   const gf = readGateFile(file)
   const gate = gf.gate
   if (!gate) throw new Error(`${id}를 읽을 수 없어요: ${gf.problem}`)
@@ -435,11 +487,18 @@ async function decideLocked(
   const task = readTask(p, gate.task)
   if (!taskText || !task) throw new Error(`작업 명세(${gate.task})가 없거나 읽을 수 없어요`)
   if (gate.handoff_rev !== null && !handoff) throw new Error(`${gate.task}의 HANDOFF가 없어요`)
+  if (
+    opts.expectView !== undefined &&
+    viewDigest(gateText ?? '', taskText, handoff) !== opts.expectView
+  )
+    throw new StaleViewError(
+      `${id}의 화면을 그린 뒤 게이트, 작업 명세, HANDOFF 중 하나가 바뀌었어요. 아무것도 기록하지 않았어요. 새로 고침해서 다시 보세요`,
+    )
   // 게이트 파일의 irreversible만 믿지 않는다. 작업 명세와 경로 규칙으로 다시 계산한다.
   const irreversible =
     gate.irreversible || effectiveIrreversible(task, handoff?.handoff?.changed_files ?? [])
 
-  const shownAt = now()
+  const shownAt = opts.shownAt ?? now()
   const rows: ComprehensionRow[] = []
   if (irreversible) {
     if (!opts.answer)

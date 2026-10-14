@@ -31,5 +31,6 @@ policy:
       - "Bash(gotechy decide:*)"
       - "Bash(script:*)"
       - "Bash(expect:*)"
+      - "Bash(gotechy serve:*)"
   codex:
     check_for_update_on_startup: false

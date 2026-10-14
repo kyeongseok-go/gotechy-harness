@@ -25,6 +25,7 @@ import { libraryRoot } from './runtime/library'
 import { installPacks } from './runtime/packs'
 import { findProject } from './runtime/project'
 import { runTask } from './runtime/run'
+import { startServe } from './runtime/serve'
 import { applySetup, formatPlan, planSetup, restoreSetup } from './runtime/setup'
 import { createTask } from './runtime/task-new'
 import { loadKnownTerms } from './runtime/terms'
@@ -295,6 +296,33 @@ program
       process.exit(1)
     }
     rl.close()
+  })
+
+program
+  .command('serve')
+  .description('화면에서 게이트를 결정하는 로컬 서버를 연다 (contract.md 8.3절)')
+  .option('--port <번호>', '포트 (기본은 빈 포트)', '0')
+  .action((o: { port: string }) => {
+    const p = requireProject()
+    const home = gotechyHome()
+    const port = Number(o.port)
+    if (!Number.isInteger(port) || port < 0 || port > 65535) {
+      console.error(`포트는 0~65535의 정수여야 해요: ${o.port}`)
+      process.exit(2)
+    }
+    const s = startServe({
+      project: p,
+      home,
+      port,
+      log: (line) => console.log(line),
+      // autonomy가 허용한 작업만 온다(serve가 확인). 워커는 작업 명세의 agent로 돈다
+      autoRun: (taskId) =>
+        runTask(p, taskId, { home, log: (line) => console.log(line) }).then((r) =>
+          console.log(`${taskId}: ${r.status}`),
+        ),
+    })
+    console.log(`열 주소: ${s.origin}/auth?t=${s.token}`)
+    console.log('이 주소는 이번 실행에서만 쓸 수 있어요. 끝내려면 Ctrl-C.')
   })
 
 program

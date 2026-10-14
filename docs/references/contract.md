@@ -41,7 +41,7 @@ frontmatter (YAML):
 | `deps` | 작업 id 목록 | ✓ | 모두 `done`이어야 시작 |
 | `ownership` | 상대 경로 목록 (파일 또는 `/`로 끝나는 폴더) | ✓ | 워커가 바꿀 수 있는 범위. 보호 경로(5절), `..`, 절대 경로, 글롭 금지 |
 | `data_class` | `public`, `internal`, `confidential` | ✓ | 1a는 `public`만 실행 |
-| `autonomy` | `L0`~`L3` | ✓ | 무인 실행 등급 (1b) |
+| `autonomy` | `L0`~`L3` | ✓ | 무인 실행 등급. `L0` 사람이 매번 `run`. `L1` 화면(8.3절)에서 결정하면 다음 `run`을 바로 시작. `L2` L1에 더해 무인 루프(1b N3)가 시작할 수 있음. `L3` 예약(지금은 L2와 같음) |
 | `verify` | 셸 명령 문자열 | ✓ | 리드가 워커 worktree에서 실행, exit 0이면 통과 |
 | `irreversible` | 불리언 | ✓ | 보호 경로 규칙(5절)에 걸리면 명세 값과 무관하게 참으로 본다 |
 | `gate` | `none`, `before`, `after` | ✓ | `before`: 게이트 해소 전 실행 불가, `after`: HANDOFF 후 게이트 생성 (M2) |
@@ -286,6 +286,22 @@ frontmatter:
 | CSP | `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">`와 `<meta name="referrer" content="no-referrer">` |
 | 외부 요청 없음 | 글꼴, 이미지, 스타일시트를 밖에서 불러오지 않는다. 스타일은 문서 안 `<style>` 하나 |
 
+### 8.3 `gotechy serve [--port <번호>]` (1b N2)
+
+화면에서 게이트를 결정하는 로컬 서버다. 결정은 `decide`와 같은 경로(6.4절, 이해 게이트 9.1절 포함)를 지나고, 같은 오너 키와 Touch ID 서명을 요구한다. 화면에서 바뀌는 것은 확인을 받는 방법뿐이다.
+
+- 주소: `127.0.0.1`의 포트(기본은 운영체제가 고른 빈 포트)에서만 연다. 시작하면 `http://127.0.0.1:<포트>/auth?t=<토큰>`을 출력한다. 토큰은 실행마다 새로 만드는 32바이트 난수이고 서버가 끝나면 쓸모없다.
+- 세션: `/auth?t=<토큰>`이 맞으면 새 세션 쿠키(`HttpOnly`, `SameSite=Strict`, `Path=/`)를 주고 `/`로 보낸다. 그 밖의 모든 요청은 세션 쿠키가 있어야 한다. 토큰과 쿠키는 일정 시간 비교로 확인한다. 실패하면 403이다.
+- Host 검사: 모든 요청의 `Host`가 `127.0.0.1:<포트>`여야 한다. 아니면 403이다(DNS rebinding으로 다른 사이트가 이 서버를 부르는 것을 막음).
+- 상태를 바꾸는 요청(POST): `Origin`이 `http://127.0.0.1:<포트>`이고, `Sec-Fetch-Site`가 있으면 `same-origin`이고, 폼의 `csrf` 값이 세션의 CSRF 토큰과 같아야 한다. 하나라도 어긋나면 403이고 아무것도 기록하지 않는다.
+- 응답 헤더: `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. 화면은 8.2절과 같은 렌더러를 쓰고, serve 화면에서만 결정 폼 요소(`form`, `input`, `textarea`, `button`, `label`, `fieldset`, `legend`)를 더 허용한다. 스크립트는 여전히 없다.
+- 경로: `GET /` 인박스, `GET /T-###` HANDOFF 화면, `GET /G-###` 게이트 결정 화면, `POST /G-###` 결정. 열린 게이트 번호는 인박스와 HANDOFF 화면에서 결정 화면으로 이어진다.
+- 결정 화면: 작업 제목, 질문, 선택지(라디오, 추천 표시), 한 줄 요약, 다음 지시(선택), 되돌리기 어려운 결정이면 이해 문항마다 답 칸(9.1절. 빈 답도 받는다), 숨은 값 `csrf`와 `view`를 보여 준다. 화면을 보여 줄 때 `gate.shown` 이벤트를 남긴다(9.2절).
+- 낡은 화면 거부: `view`는 화면을 그릴 때의 게이트 파일, 작업 명세 요약값, HANDOFF 해시를 묶은 sha256이다. `decide`가 게이트 잠금을 잡은 뒤 다시 계산해 다르면 아무것도 기록하지 않고 409와 "새로 고침해서 다시 보세요"를 보여 준다. 오너가 본 내용과 다른 판본에 서명하지 않게 한다.
+- 제출: 폼 제출이 6.4절의 `확정할까요? [y/N]`의 `y`를 대신한다. 그다음 Touch ID 창(문구 `gotechy <게이트 번호>: <선택>`)이 뜬다. 취소하거나 실패하면 아무것도 기록하지 않고 그 이유를 화면에 보여 준다. `active_seconds`는 결정 화면을 보여 준 때부터 제출까지의 초다.
+- 결정 뒤 자동 실행: 작업이 `ready`가 되었고 `autonomy`가 `L1` 이상이면 serve가 그 작업의 `run`을 바로 시작하고, 화면에 그렇게 알린다. `run`의 강제(6.6절)는 그대로라, 필요한 게이트가 남았으면 시작하지 않는다. `L0`이면 결정만 기록한다.
+- 리드 에이전트는 serve를 실행하지 않는다(정책 deny `Bash(gotechy serve:*)`). serve가 출력하는 토큰을 리드가 보면 오너 몰래 결정을 제출해 Touch ID 창을 띄울 수 있기 때문이다. 오너는 자기가 제출한 직후에 뜬 창만 승인한다(6.3절 알려진 한계).
+
 ## 9. 이해 게이트, 병합, 용어 누적 (M2c-2)
 
 ### 9.1 이해 게이트
@@ -335,7 +351,7 @@ frontmatter:
 
 `packs`는 프로젝트에 설치할 팩의 출처다. `source`는 라이브러리의 GitHub 저장소(`owner/repo`), `ref`는 그 저장소의 커밋 SHA(40자리)다. 태그 대신 커밋으로 고정하는 이유는 커밋은 바뀌지 않고, 태그를 따로 푸시하지 않아도 되기 때문이다. `ref`는 라이브러리 HEAD의 조상이어야 하고, 그 커밋의 `skills/`는 작업 폴더의 `skills/`와 같아야 한다(`tests/core/train-lock.test.ts`). 스킬을 바꾸면 그 변경을 커밋한 뒤 `ref`를 그 커밋으로 올린다.
 
-`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
+`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008), `Bash(gotechy serve:*)`(8.3절, 2026-10-15 추가). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
 
 ### 10.2 `gotechy doctor [--history]`
 

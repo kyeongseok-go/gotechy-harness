@@ -57,7 +57,7 @@ function shownGateIds(cards: Card[]): string[] {
   ])
 }
 
-function recordShown(p: Project, ids: string[]): void {
+export function recordShown(p: Project, ids: string[]): void {
   if (ids.length === 0) return
   const log = paths.events(p)
   const seen = new Set(

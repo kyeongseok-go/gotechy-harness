@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 // gotechy CLI. 종료코드: 0 성공, 1 검사 실패(고칠 수 있는 문제), 2 환경 문제(도구·경로·상태).
+import { randomBytes } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
@@ -283,11 +284,15 @@ program
     const rl = createInterface({ input: process.stdin, output: process.stdout })
     // readline이 Ctrl-C를 가로채면 프로세스 SIGINT가 오지 않아 잠금이 남는다. 프로세스 SIGINT로 넘겨 잠금을 풀게 한다
     rl.on('SIGINT', () => process.emit('SIGINT', 'SIGINT'))
+    // 확인 코드(nonce 앞 4자리)를 Touch ID 창 문구에도 넣는다. 같은 코드가 보이는 창만 승인하게 한다(감사 8차 중간 5)
+    const nonce = randomBytes(16).toString('hex')
+    const code = nonce.slice(0, 4).toUpperCase()
     try {
       let introduced = false
       const g = await decideGate(p, gotechyHome(), gateId, {
         choice,
         instruction: instruction ?? null,
+        nonce,
         answer: async (question) => {
           if (!introduced) {
             console.log(
@@ -300,7 +305,10 @@ program
         confirm: async (summary) => {
           console.log(summary)
           const answer = await rl.question('확정할까요? [y/N] ')
-          return answer.trim().toLowerCase() === 'y'
+          const yes = answer.trim().toLowerCase() === 'y'
+          if (yes)
+            console.log(`Touch ID 창에 "확인 ${code}"가 보이면 승인하세요. 다른 코드면 취소하세요.`)
+          return yes
         },
       })
       console.log(`${g.id}: ${g.resolution}로 결정했어요 (오너 키 ${g.key_id}).`)
@@ -317,6 +325,13 @@ program
   .description('화면에서 게이트를 결정하는 로컬 서버를 연다 (contract.md 8.3절)')
   .option('--port <번호>', '포트 (기본은 빈 포트)', '0')
   .action((o: { port: string }) => {
+    // decide처럼 대화형 터미널에서만 연다. 에이전트의 셸이 토큰을 받아 오너 몰래 제출하지 못하게 한다(감사 8차 중간 4)
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+      console.error(
+        'serve는 대화형 터미널에서만 열어요. 출력되는 주소에 한 번 쓰는 토큰이 들어 있어서, 에이전트나 스크립트가 받지 않게 하는 장치예요. 터미널에서 직접 실행하세요.',
+      )
+      process.exit(2)
+    }
     const p = requireProject()
     const home = gotechyHome()
     const port = Number(o.port)
@@ -328,7 +343,7 @@ program
       project: p,
       home,
       port,
-      log: (line) => console.log(line),
+      log: (line) => console.log(`[${new Date().toLocaleTimeString('ko-KR')}] ${line}`),
       // autonomy가 허용한 작업만 온다(serve가 확인). 워커는 작업 명세의 agent로 돈다
       autoRun: (taskId) =>
         runTask(p, taskId, { home, log: (line) => console.log(line) }).then((r) =>
@@ -336,7 +351,18 @@ program
         ),
     })
     console.log(`열 주소: ${s.origin}/auth?t=${s.token}`)
-    console.log('이 주소는 이번 실행에서만 쓸 수 있어요. 끝내려면 Ctrl-C.')
+    console.log(
+      '이 주소는 한 번만 열 수 있어요. 제출과 자동 실행은 여기에 한 줄씩 남아요. 끝내려면 Ctrl-C.',
+    )
+    process.on('SIGINT', () => {
+      const busy = s.running()
+      if (busy.length > 0)
+        console.log(
+          `실행 중이던 작업: ${busy.join(', ')}. 상태가 running으로 남을 수 있어요. 다시 run하면 이어서 돌아요.`,
+        )
+      s.stop()
+      process.exit(130)
+    })
   })
 
 program

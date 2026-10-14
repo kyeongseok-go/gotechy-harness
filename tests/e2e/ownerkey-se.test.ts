@@ -56,6 +56,7 @@ const pair = (): [string, string] => {
     gate_id: 'G-001',
     key_id: 'o-0000000000000001',
     nonce: 'n1',
+    task_id: 'T-001',
   })
   const line = JSON.stringify({
     gate: 'G-001',
@@ -114,7 +115,7 @@ describe.skipIf(!swiftc)('Secure Enclave 서명 도구', () => {
   test('중간 1: 확인 창 문구는 서명 대상의 게이트와 선택으로 도구가 직접 만든다', () => {
     // 테스트 빌드는 창 대신 stderr에 문구를 남긴다. blob이 없어 서명은 실패하지만 문구는 그 전에 정해진다
     const r = run(['sign', join(dir, 'none.blob'), '--reason', '다른 문구'], JSON.stringify(pair()))
-    expect(r.err).toContain('확인 문구: gotechy G-001: 5분')
+    expect(r.err).toContain('확인 문구: gotechy G-001 T-001: 5분 (확인 N1)')
     expect(r.err).not.toContain('다른 문구')
   })
 

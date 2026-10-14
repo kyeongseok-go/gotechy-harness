@@ -1,6 +1,7 @@
 // 테스트용 오너 키 도구. native/ownerkey.swift와 같은 명령, 출력, 종료 코드를 소프트웨어 키로 흉내 낸다(사람 확인 없음).
 // 실제 도구와 달리 blob에 개인 키(PKCS8 PEM)를 그대로 둔다. 테스트 전용이고 src에서는 쓰지 않는다.
 // 오너의 취소를 흉내 내려면 <blob>.cancel 파일을 둔다(exit 4). 확인 창 문구는 <blob>.reasons에 줄마다 남긴다.
+// 오너가 창을 읽느라 늦는 것을 흉내 내려면 <blob>.delay에 밀리초를 적는다.
 // 실제 도구처럼 메시지는 [결정 서명 대상, 그 장부 줄] 두 개만 받고, 문구는 서명 대상에서 만든다. probe는 늘 사람 확인이 있는 척한다.
 import {
   createHash,
@@ -45,8 +46,12 @@ if (cmd === 'create') {
     line.payload_sha256 !== createHash('sha256').update(m0).digest('hex')
   )
     bad()
+  if (existsSync(`${blob}.delay`)) await Bun.sleep(Number(readFileSync(`${blob}.delay`, 'utf8')))
   if (existsSync(`${blob}.cancel`)) fail('오너 확인을 받지 못했어요: 취소', 4)
-  appendFileSync(`${blob}.reasons`, `gotechy ${p.gate_id}: ${p.choice}\n`)
+  appendFileSync(
+    `${blob}.reasons`,
+    `gotechy ${p.gate_id} ${p.task_id}: ${p.choice} (확인 ${String(p.nonce).slice(0, 4).toUpperCase()})\n`,
+  )
   const key = createPrivateKey(readFileSync(blob as string, 'utf8'))
   console.log(
     JSON.stringify(

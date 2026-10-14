@@ -60,14 +60,16 @@ function shownGateIds(cards: Card[]): string[] {
 export function recordShown(p: Project, ids: string[]): void {
   if (ids.length === 0) return
   const log = paths.events(p)
-  const seen = new Set(
-    existsSync(log)
-      ? readFileSync(log, 'utf8')
-          .split('\n')
-          .filter((l) => l.includes('"gate.shown"'))
-          .map((l) => (JSON.parse(l) as { gate: string }).gate)
-      : [],
-  )
+  const seen = new Set<string>()
+  if (existsSync(log))
+    for (const l of readFileSync(log, 'utf8').split('\n')) {
+      if (!l.includes('"gate.shown"')) continue
+      try {
+        seen.add((JSON.parse(l) as { gate: string }).gate)
+      } catch {
+        // 깨진 이벤트 줄은 측정에서만 빠진다. 화면 전체를 멈추지 않는다(감사 8차 낮음 7)
+      }
+    }
   for (const id of ids) if (!seen.has(id)) appendEvent(p, { type: 'gate.shown', gate: id })
 }
 

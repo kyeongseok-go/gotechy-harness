@@ -33,11 +33,11 @@ func sha256Hex(_ data: Data) -> String {
   SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
 }
 
-/** 제어 문자와 양방향 제어 문자를 지운다. 문구는 워커가 쓴 선택지에서 나온다 */
+/** 제어 문자(Cc)와 형식 문자(Cf: 양방향 제어, 폭 없는 공백, U+061C 포함)를 지운다. 문구는 워커가 쓴 선택지에서 나온다 */
 func plain(_ text: String) -> String {
   let kept = text.unicodeScalars.filter { u in
-    !(u.properties.generalCategory == .control || (0x200E...0x200F).contains(u.value)
-      || (0x202A...0x202E).contains(u.value) || (0x2066...0x2069).contains(u.value))
+    let c = u.properties.generalCategory
+    return !(c == .control || c == .format)
   }
   return String(String.UnicodeScalarView(kept).prefix(120))
 }
@@ -51,13 +51,15 @@ func checkedReason(_ messages: [String]) -> String {
     let d0 = messages[0].data(using: .utf8),
     let p = (try? JSONSerialization.jsonObject(with: d0)) as? [String: Any],
     let gate = p["gate_id"] as? String, let choice = p["choice"] as? String,
+    let task = p["task_id"] as? String,
     let nonce = p["nonce"] as? String, let keyId = p["key_id"] as? String,
     let d1 = messages[1].data(using: .utf8),
     let line = (try? JSONSerialization.jsonObject(with: d1)) as? [String: Any],
     line["gate"] as? String == gate, line["nonce"] as? String == nonce,
     line["key_id"] as? String == keyId, line["payload_sha256"] as? String == sha256Hex(d0)
   else { fail("서명 입력은 [결정 서명 대상, 그 결정의 장부 줄] 두 개여야 해요. 서명하지 않았어요", 2) }
-  return plain("gotechy \(gate): \(choice)")
+  // 작업 번호와 확인 코드(nonce 앞 4자리)를 넣는다. 화면에 같은 코드가 보여서 오너가 자기 결정의 창인지 알아본다(감사 8차 중간 5)
+  return plain("gotechy \(gate) \(task): \(choice) (확인 \(nonce.prefix(4).uppercased()))")
 }
 
 func publicKeyText(_ key: SecureEnclave.P256.Signing.PrivateKey) -> String {

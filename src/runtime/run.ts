@@ -61,6 +61,47 @@ export async function runTask(
   taskId: string,
   opts: RunOptions = {},
 ): Promise<RunOutcome> {
+  if (!/^T-\d{3,}$/.test(taskId)) return refuse(`작업 번호 형식이 아니에요: ${taskId} (예: T-001)`)
+  // 같은 작업을 두 run이 같은 worktree에서 돌리지 않게 한다. serve의 자동 실행과 리드의 run이 겹칠 수 있다(감사 8차 중간 3)
+  const lock = join(paths.orch(p), 'private', `run-${taskId}.lock`)
+  const held = acquireRunLock(lock)
+  if (held !== true) return refuse(held)
+  try {
+    return await runTaskLocked(p, taskId, opts)
+  } finally {
+    rmSync(lock, { recursive: true, force: true })
+  }
+}
+
+const processAlive = (pid: number) => {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+/** 작업별 실행 잠금. 살아 있는 프로세스가 잡고 있으면 사유를, 죽은 run의 잠금이면 회수한 뒤 잡는다 */
+function acquireRunLock(lock: string): true | string {
+  mkdirSync(dirname(lock), { recursive: true })
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      mkdirSync(lock)
+      writeFileSync(join(lock, 'pid'), String(process.pid))
+      return true
+    } catch {
+      const pidFile = join(lock, 'pid')
+      const pid = existsSync(pidFile) ? Number(readFileSync(pidFile, 'utf8').trim()) : Number.NaN
+      if (!Number.isInteger(pid) || pid <= 0 || processAlive(pid))
+        return `다른 run이 이 작업을 실행하고 있어요${Number.isInteger(pid) && pid > 0 ? ` (pid ${pid})` : ''}. 끝난 뒤 다시 실행하세요. 멈춘 것이 확실하면 ${lock} 폴더를 지우세요`
+      rmSync(lock, { recursive: true, force: true })
+    }
+  }
+  return `실행 잠금(${lock})을 잡지 못했어요`
+}
+
+async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Promise<RunOutcome> {
   const log = opts.log ?? (() => {})
   const taskFile = paths.task(p, taskId)
   if (!existsSync(taskFile)) return refuse(`작업 파일이 없습니다: ${taskFile}`)

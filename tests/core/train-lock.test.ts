@@ -91,14 +91,25 @@ describe('train의 팩 고정', () => {
     expect(() => parseTrain(text.replace(train.packs.ref, train.packs.ref.slice(0, 12)))).toThrow()
   })
 
-  test('ref는 HEAD의 조상이다 (HEAD를 푸시하면 ref도 원격에 있다)', () => {
-    expect(git(['merge-base', '--is-ancestor', train.packs.ref, 'HEAD']).exitCode).toBe(0)
-  })
+  // 이 맥의 저장소는 네트워크 공유에 있어 git 객체 읽기가 느리다(2026-10-15). git을 부르는 두 테스트는 시간을 넉넉히 준다
+  const GIT_TIMEOUT = 60_000
 
-  test('ref의 skills/는 작업 폴더의 skills/와 같다 (스킬을 바꾸면 ref도 올린다)', () => {
-    const r = git(['diff', '--stat', train.packs.ref, '--', 'skills/'])
-    expect({ exit: r.exitCode, diff: r.stdout.toString() }).toEqual({ exit: 0, diff: '' })
-    const untracked = git(['ls-files', '--others', '--exclude-standard', '--', 'skills/'])
-    expect(untracked.stdout.toString()).toBe('')
-  })
+  test(
+    'ref는 HEAD의 조상이다 (HEAD를 푸시하면 ref도 원격에 있다)',
+    () => {
+      expect(git(['merge-base', '--is-ancestor', train.packs.ref, 'HEAD']).exitCode).toBe(0)
+    },
+    GIT_TIMEOUT,
+  )
+
+  test(
+    'ref의 skills/는 작업 폴더의 skills/와 같다 (스킬을 바꾸면 ref도 올린다)',
+    () => {
+      const r = git(['diff', '--stat', train.packs.ref, '--', 'skills/'])
+      expect({ exit: r.exitCode, diff: r.stdout.toString() }).toEqual({ exit: 0, diff: '' })
+      const untracked = git(['ls-files', '--others', '--exclude-standard', '--', 'skills/'])
+      expect(untracked.stdout.toString()).toBe('')
+    },
+    GIT_TIMEOUT,
+  )
 })

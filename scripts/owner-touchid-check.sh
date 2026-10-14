@@ -1,10 +1,11 @@
 #!/bin/sh
 # 오너가 터미널 앱에서 직접 실행하는 Touch ID 확인 (1b N1, contract.md 6.3, 6.4절).
 # 실제 $GOTECHY_HOME(기본 ~/.gotechy)에 오너 키를 만들고, 임시 프로젝트에서 결정 두 건을 해 본다.
-#   G-001: y를 누른 뒤 지문으로 승인한다. 창 문구가 "gotechy G-001: 5분"인지, 지문을 한 번만 묻는지 본다.
+#   G-001: y를 누른 뒤 지문으로 승인한다. 창 문구가 "gotechy G-001 T-001: 5분 (확인 XXXX)"이고 코드가 터미널에
+#          보인 확인 코드와 같은지, 지문을 한 번만 묻는지 본다.
 #   G-002: y를 누른 뒤 지문 창에서 "취소"를 누른다. 아무것도 기록되지 않아야 한다.
 # 처음 실행하면 부트스트랩이 mise와 train 도구를 내려받는다(이 맥에서 새 HOME 기준 약 2분 30초).
-# 임시 프로젝트는 지우지 않고 경로만 알려 준다.
+# 임시 프로젝트는 지우지 않고 경로만 알려 준다. 마지막에 화면 결정(serve)으로 G-002를 다시 해 보는 방법을 알려 준다.
 set -eu
 
 LIB=$(cd "$(dirname "$0")/.." && pwd -P)
@@ -22,7 +23,8 @@ echo "2/5 임시 프로젝트: $WORK"
 cd "$WORK"
 git init -q -b main
 printf '# Touch ID 확인용 임시 프로젝트\n' > README.md
-"$G" init
+# Touch ID 확인에는 팩이 필요 없다. 팩 설치(apm, 네트워크)를 건너뛴다
+"$G" init --packs ''
 git add -A
 # 버리는 임시 프로젝트의 첫 커밋이라 gitleaks hook을 거치지 않는다(이 맥 전역에 gitleaks가 없으면 hook이 막는다)
 git -c core.hooksPath=/dev/null -c user.name=owner -c user.email=owner@localhost commit -qm init
@@ -32,7 +34,7 @@ echo "3/5 녹화된 워커로 결정 두 건 열기"
 "$G" run T-001 --adapter fake --fixture "$LIB/tests/fixtures/fake/needs-decision" || true
 
 echo
-echo "4/5 G-001: y를 누르고, 지문 창의 문구를 본 뒤 지문으로 승인하세요"
+echo "4/5 G-001: y를 누르면 확인 코드가 나와요. 지문 창의 코드가 같은지 본 뒤 지문으로 승인하세요"
 "$G" decide G-001 5분
 
 echo
@@ -48,3 +50,6 @@ echo "결과: G-001은 ok, G-002는 pending이어야 해요"
 "$G" gate verify || true
 echo "결정 장부 줄 수: $(wc -l < orchestration/private/decisions.jsonl | tr -d ' ') (1이어야 해요)"
 echo "임시 프로젝트는 그대로 두었어요: $WORK"
+echo
+echo "(선택) 화면 결정도 확인하려면: cd $WORK && $G serve"
+echo "  출력된 주소를 브라우저로 열고 G-002를 결정해 보세요. 화면의 확인 코드와 지문 창의 코드가 같은지 보세요."

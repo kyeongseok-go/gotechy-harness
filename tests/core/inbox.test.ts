@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { serializeFrontmatter } from '../../src/core/frontmatter'
-import { buildCard, formatInbox } from '../../src/core/inbox'
+import { buildCard, displayText as displayTextForTest, formatInbox } from '../../src/core/inbox'
 import { loadCards } from '../../src/runtime/inbox'
 
 const body = (summary: string, decision = '없음') =>
@@ -105,4 +105,8 @@ describe('인박스 정렬과 읽기 실패 (프로세스 안)', () => {
     const out = formatInbox([buildCard({ id: 'T-001', file: 'h.md', text })])
     expect(out).toContain(`  리드: 첫 줄 ${'가'.repeat(76)}…\n`)
   })
+})
+
+test('보안 감사 8차 중간 5: 화면 글자 정리는 형식 문자(폭 없는 공백, U+061C, BOM)도 지운다', () => {
+  expect(displayTextForTest('5분\u200b \u061c유지\ufeff')).toBe('5분 유지')
 })

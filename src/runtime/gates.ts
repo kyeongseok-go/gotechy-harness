@@ -52,8 +52,13 @@ import {
 type GateFile = { id: string; file: string; gate?: Gate; body: string; problem?: string }
 
 function readGateFile(file: string): GateFile {
+  return parseGateText(file, readFileSync(file, 'utf8'))
+}
+
+/** 이미 읽은 문자열에서 게이트를 읽는다. 해시를 잴 문자열과 결정에 쓸 값이 같은 읽기에서 나오게 한다(감사 8차 낮음 5) */
+function parseGateText(file: string, text: string): GateFile {
   const id = file.replace(/^.*\/|\.md$/g, '')
-  const parsed = parseFrontmatter(readFileSync(file, 'utf8'), file)
+  const parsed = parseFrontmatter(text, file)
   if (!parsed.ok)
     return { id, file, body: '', problem: parsed.issues[0]?.message ?? '읽을 수 없어요' }
   const res = GateFrontmatter.safeParse(parsed.value.data)
@@ -137,7 +142,10 @@ function handoffState(p: Project, taskId: string): HandoffState | undefined {
 
 export function readTask(p: Project, id: string): TaskFrontmatter | undefined {
   const text = readText(paths.task(p, id))
-  if (!text) return undefined
+  return text ? parseTaskText(id, text) : undefined
+}
+
+function parseTaskText(id: string, text: string): TaskFrontmatter | undefined {
   const parsed = parseFrontmatter(text, id)
   if (!parsed.ok) return undefined
   const t = TaskFrontmatter.safeParse(parsed.value.data)
@@ -207,7 +215,15 @@ const matches = (g: Gate, r: Requirement) =>
   g.handoff_rev === r.handoff_rev &&
   g.question === r.question
 
+/** 보이지 않는 글자, 공백, 호환 글자를 지운 모양. 이 모양이 같은 선택지는 화면과 Touch ID 창에서 구분되지 않는다 */
+const looks = (o: string) => o.normalize('NFKC').replace(/[\p{Cc}\p{Cf}\s]/gu, '')
+
 function openFor(p: Project, r: Requirement): Gate {
+  const shapes = r.options.map(looks)
+  if (new Set(shapes).size !== shapes.length || shapes.some((x) => x === ''))
+    throw new Error(
+      `${r.task}의 결정 "${displayText(r.question)}"의 선택지가 화면에서 서로 구분되지 않아요(보이지 않는 글자나 공백만 다름). 게이트를 열지 않았어요. HANDOFF의 선택지를 고치게 하세요`,
+    )
   projectId(p, true)
   const gate = GateFrontmatter.parse({ id: allocateGateId(p), status: 'pending', ...r })
   const body = [
@@ -318,7 +334,10 @@ export type DecideOptions = {
   now?: () => Date
   /** 되돌리기 어려운 결정의 이해 문항에 답을 받는다(contract.md 9.1절). 없으면 그런 결정은 거부한다 */
   answer?: (question: string) => Promise<string>
-  /** 테스트용: nonce 재사용 공격을 재현할 때만 쓴다 */
+  /**
+   * 결정의 nonce. 주지 않으면 만든다. serve와 CLI는 미리 만들어 확인 코드(앞 4자리)를 화면과 Touch ID 창에
+   * 함께 보여 준다(감사 8차 중간 5). 테스트는 nonce 재사용 공격을 재현할 때 쓴다
+   */
   nonce?: string
   /** 화면(serve)에서 결정 화면을 보여 준 시각. active_seconds를 화면 기준으로 잰다(contract.md 8.3절) */
   shownAt?: Date
@@ -371,10 +390,19 @@ function viewDigest(
 }
 
 /** 결정 화면에 보여 줄 것: 게이트, 이해 문항(되돌리기 어려울 때), 낡은 화면을 알아챌 값(contract.md 8.3절) */
-export function gateView(
-  p: Project,
-  id: string,
-): { gate: Gate; title: string; summary: string; questions: string[]; view: string } | undefined {
+export type GateView = {
+  gate: Gate
+  title: string
+  summary: string
+  questions: string[]
+  view: string
+  /** 화면에 보여 줄 HANDOFF 해시 앞 12자리(HANDOFF가 없으면 null) */
+  handoffSha: string | null
+  autonomy: TaskFrontmatter['autonomy'] | undefined
+  budgetUsd: number | undefined
+}
+
+export function gateView(p: Project, id: string): GateView | undefined {
   if (!GateId.safeParse(id).success) return undefined
   const file = paths.gate(p, id)
   const text = readText(file)
@@ -397,6 +425,9 @@ export function gateView(
     summary: sec?.content.trim().split('\n')[0] ?? '',
     questions: irreversible ? comprehensionQuestions(current).map((q) => q.question) : [],
     view: viewDigest(text, taskText, handoff),
+    handoffSha: current ? sha256(current.text).slice(0, 12) : null,
+    autonomy: task?.autonomy,
+    budgetUsd: task?.budget_usd,
   }
 }
 
@@ -436,20 +467,25 @@ export async function decideGate(
       `${id}는 다른 decide가 잠금 중이에요. 그 decide가 끝나지 않았는데 멈춘 것이라면 ${lock} 폴더를 지우세요`,
     )
   }
-  // 확인 질문에서 Ctrl-C를 눌러도 잠금이 남지 않게 한다
-  const onSigint = () => {
-    try {
-      rmdirSync(lock)
-    } finally {
-      process.exit(130)
-    }
-  }
-  process.once('SIGINT', onSigint)
+  // 확인 질문에서 Ctrl-C를 눌러도 잠금이 남지 않게 한다. serve는 여러 decide를 함께 돌릴 수 있어서,
+  // 처리기 하나가 잡고 있는 잠금을 모두 풀고 끝낸다(감사 8차 낮음 7)
+  heldLocks.add(lock)
+  if (heldLocks.size === 1) process.once('SIGINT', releaseLocksAndExit)
   try {
     return await decideLocked(p, home, id, file, opts)
   } finally {
-    process.off('SIGINT', onSigint)
+    heldLocks.delete(lock)
+    if (heldLocks.size === 0) process.off('SIGINT', releaseLocksAndExit)
     rmdirSync(lock)
+  }
+}
+
+const heldLocks = new Set<string>()
+function releaseLocksAndExit(): void {
+  try {
+    for (const l of heldLocks) rmdirSync(l)
+  } finally {
+    process.exit(130)
   }
 }
 
@@ -462,9 +498,9 @@ async function decideLocked(
 ): Promise<Gate> {
   const now = opts.now ?? (() => new Date())
   const gateText = readText(file)
-  const gf = readGateFile(file)
-  const gate = gf.gate
-  if (!gate) throw new Error(`${id}를 읽을 수 없어요: ${gf.problem}`)
+  const gf = gateText === undefined ? undefined : parseGateText(file, gateText)
+  const gate = gf?.gate
+  if (!gate) throw new Error(`${id}를 읽을 수 없어요: ${gf?.problem ?? '파일이 없어요'}`)
   const ledger = readSignedLedger(p, home)
   const handoff = handoffState(p, gate.task)
   if (isSuperseded(gate, handoff?.rev))
@@ -484,7 +520,7 @@ async function decideLocked(
   if (!key.ok) throw new Error(key.problem)
   const pid = projectId(p, true) as string
   const taskText = readText(paths.task(p, gate.task))
-  const task = readTask(p, gate.task)
+  const task = taskText ? parseTaskText(gate.task, taskText) : undefined
   if (!taskText || !task) throw new Error(`작업 명세(${gate.task})가 없거나 읽을 수 없어요`)
   if (gate.handoff_rev !== null && !handoff) throw new Error(`${gate.task}의 HANDOFF가 없어요`)
   if (
@@ -588,7 +624,7 @@ async function decideLocked(
   appendFileSync(paths.ledger(p), `${JSON.stringify(entry)}\n`)
   // 이해 문항의 답과 핵심어는 private에만 남긴다(contract.md 9.1절)
   for (const r of rows) appendFileSync(paths.comprehension(p), `${JSON.stringify(r)}\n`)
-  replaceGate(p, decided, gf.body)
+  replaceGate(p, decided, gf?.body ?? '')
   appendEvent(p, { type: 'gate.decided', gate: id, task: gate.task, choice: opts.choice })
   updateTaskAfterDecision(p, task)
   return decided

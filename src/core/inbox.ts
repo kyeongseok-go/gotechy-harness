@@ -44,7 +44,8 @@ const RISK = '건너뛴 것, 확인 못 한 것, 리스크'
 
 // 터미널 제어 문자(줄바꿈, 탭 제외)와 양방향 제어 문자. 화면을 덮어쓰거나 글자 순서를 속이는 데 쓰인다.
 // 유니코드 속성으로 쓴다: \u escape는 편집 도구를 거치며 실제 문자로 바뀌어 소스에 보이지 않는 문자가 들어간 적이 있다.
-const UNSAFE = /(?![\n\t])[\p{Cc}\p{Bidi_Control}]/gu
+// 형식 문자(Cf: 폭 없는 공백, U+061C 등)도 지운다. 선택지가 화면에서 같아 보이게 만들 수 있다(감사 8차 중간 5)
+const UNSAFE = /(?![\n\t])[\p{Cc}\p{Cf}\p{Bidi_Control}]/gu
 export function displayText(s: string): string {
   return s.replace(UNSAFE, '')
 }

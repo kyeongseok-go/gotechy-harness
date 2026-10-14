@@ -60,7 +60,9 @@ describe('Validation 1: 오너가 확인을 취소하면 아무것도 기록하�
 
   test('확인 창의 문구에 게이트 번호와 선택이 보인다', async () => {
     await decideGate({ root }, home, 'G-001', { choice: '5분', confirm: yes })
-    expect(readFileSync(`${ownerBlob(home)}.reasons`, 'utf8')).toBe('gotechy G-001: 5분\n')
+    expect(readFileSync(`${ownerBlob(home)}.reasons`, 'utf8')).toMatch(
+      /^gotechy G-001 T-\d{3}: 5분 \(확인 [0-9A-F]{4}\)\n$/,
+    )
   })
 
   test('게이트 서명과 장부 줄 서명을 한 번의 확인으로 받는다', async () => {
@@ -235,6 +237,8 @@ describe('보안 감사 6차', () => {
   test('중간 1: 서명 도구에는 결정 하나와 그 장부 줄만 넘긴다', async () => {
     // 가짜 도구도 실제 도구처럼 두 메시지가 서로 맞지 않으면 exit 2로 거부한다
     await decideGate({ root }, home, 'G-001', { choice: '5분', confirm: yes })
-    expect(readFileSync(`${ownerBlob(home)}.reasons`, 'utf8')).toBe('gotechy G-001: 5분\n')
+    expect(readFileSync(`${ownerBlob(home)}.reasons`, 'utf8')).toMatch(
+      /^gotechy G-001 T-\d{3}: 5분 \(확인 [0-9A-F]{4}\)\n$/,
+    )
   })
 })

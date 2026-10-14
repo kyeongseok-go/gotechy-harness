@@ -68,7 +68,8 @@ function Layout(props: { title: string; mode?: ViewMode; children?: Child }) {
           http-equiv="Content-Security-Policy"
           content={props.mode === 'serve' ? SERVE_CSP : CSP}
         />
-        <meta name="referrer" content="no-referrer" />
+        {/* serve는 same-origin: no-referrer면 Chrome이 같은 출처 폼 POST에도 Origin: null을 보내 결정이 막힌다(2026-10-15 실험) */}
+        <meta name="referrer" content={props.mode === 'serve' ? 'same-origin' : 'no-referrer'} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{t(props.title)}</title>
         <style>{raw(CSS)}</style>
@@ -341,6 +342,14 @@ export type GateForm = {
   questions: string[]
   csrf: string
   view: string
+  /** 확인 코드. Touch ID 창 문구에도 같은 코드가 들어간다 */
+  code: string
+  handoffRev: number | null
+  handoffSha: string | null
+  autonomy: string | undefined
+  budgetUsd: number | undefined
+  /** 결정했지만 검증에 실패해 다시 결정하는 경우의 사유 */
+  failing: string[]
 }
 
 /** 결정 화면(contract.md 8.3절). 문자열은 모두 JSX가 이스케이프한다 */
@@ -355,8 +364,28 @@ export function renderGatePage(f: GateForm): string {
         <h1>{t(f.question)}</h1>
         <p class="signal">
           {f.task} {t(f.title)}
+          {f.handoffRev !== null ? ` (HANDOFF rev ${f.handoffRev}, ${f.handoffSha ?? ''})` : ''}
         </p>
         {f.summary ? <p>{t(f.summary)}</p> : null}
+        {f.failing.length > 0 ? (
+          <section class="must">
+            <h2>이미 결정했지만 검증에 실패해서 다시 결정해요</h2>
+            <ul>
+              {f.failing.map((r) => (
+                <li>{t(r)}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        <p class="must">
+          확인 코드 <strong>{f.code}</strong>. 제출하면 Mac에 "gotechy {f.id} {f.task}: 선택 (확인{' '}
+          {f.code})" 창이 떠요. 이 코드가 보이는 창만 승인하세요.
+        </p>
+        <p class="signal">
+          {f.autonomy && f.autonomy !== 'L0'
+            ? `autonomy ${f.autonomy}: 결정 뒤 작업이 준비되면 바로 다시 실행해요 (예산 $${(f.budgetUsd ?? 1).toFixed(2)})`
+            : '결정만 기록해요. 다음 실행은 리드가 해요 (autonomy L0)'}
+        </p>
       </header>
       <main>
         <form method="post" action={`/${f.id}`}>
@@ -378,21 +407,19 @@ export function renderGatePage(f: GateForm): string {
               {f.questions.map((q, i) => (
                 <label>
                   {t(q)}
-                  <textarea name={`answer_${i}`} />
+                  <textarea name={`answer_${i}`} autocomplete="off" />
                 </label>
               ))}
             </fieldset>
           ) : null}
           <label>
             다음 지시 (선택)
-            <textarea name="instruction" />
+            <textarea name="instruction" autocomplete="off" />
           </label>
           <button type="submit">결정하고 Touch ID로 서명</button>
         </form>
       </main>
-      <footer>
-        제출하면 Mac에 "gotechy {f.id}: 선택" 확인 창이 떠요. 지금 제출한 결정의 창만 승인하세요.
-      </footer>
+      <footer>빈 답도 받지만 핵심어 적중 0으로 남아요.</footer>
     </Layout>,
   )
 }

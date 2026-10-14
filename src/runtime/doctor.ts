@@ -4,7 +4,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseVersion, scriptProblems, skillProblems } from '../core/doctor'
 import { parseTrain } from '../core/train'
-import { checkPacks } from './packs'
+import { checkPacks, type PackSource } from './packs'
 import { runProc } from './proc'
 import { planSetup } from './setup'
 
@@ -28,6 +28,8 @@ export type DoctorOptions = {
   history?: { root: string; gitleaks: string }
   /** 프로젝트 안에서 실행했으면 그 프로젝트의 팩을 apm 락과 대조한다(contract.md 10.2절) */
   project?: string
+  /** 팩 대조 기준. 기본은 train의 packs와 라이브러리 저장소 */
+  packs?: PackSource
 }
 
 const MAX_SKILLS = 15
@@ -168,7 +170,7 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
   }
 
   if (o.project) {
-    const packs = await checkPacks(o.project, env)
+    const packs = await checkPacks(o.project, env, o.packs ?? { ...train.packs, lib: o.libRoot })
     if (packs) checks.push(packs)
   }
 

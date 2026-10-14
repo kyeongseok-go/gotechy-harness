@@ -55,7 +55,10 @@ export async function ensureWorktree(root: string, path: string, branch: string,
 
 /** base 이후 바뀐 모든 파일: 커밋된 변경 + 작업 트리 변경 + 추적되지 않은 파일. */
 export async function changedFiles(wt: string, base: string): Promise<string[]> {
-  const committed = (await git(['diff', '--name-only', `${base}..HEAD`], wt)).split('\n')
+  // 이름 바꾸기 감지를 끈다. 켜 두면 보호 파일을 허용 범위 안으로 옮긴 커밋에서 옛 이름이 빠진다(보안 감사 7차 중간 3)
+  const committed = (await git(['diff', '--name-only', '--no-renames', `${base}..HEAD`], wt)).split(
+    '\n',
+  )
   const status = (await git(['status', '--porcelain=v1', '-uall', '-z'], wt)).split('\0')
   const working: string[] = []
   for (let i = 0; i < status.length; i++) {

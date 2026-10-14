@@ -6,6 +6,7 @@ import {
   linkSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -72,6 +73,14 @@ export const fakeAdapter: WorkerAdapter = {
       const target = join(req.cwd, handoffPathFor(req.taskId))
       mkdirSync(dirname(target), { recursive: true })
       writeFileSync(target, readFileSync(handoffSrc, 'utf8').replaceAll('{{TASK}}', req.taskId))
+    }
+    // 공격 재현용: renames.json의 [{from, to}]대로 파일을 옮긴다. 커밋하면 git은 이름 바꾸기로 본다
+    const renames = join(dir, 'renames.json')
+    if (existsSync(renames)) {
+      for (const r of JSON.parse(readFileSync(renames, 'utf8')) as { from: string; to: string }[]) {
+        mkdirSync(dirname(join(req.cwd, r.to)), { recursive: true })
+        renameSync(join(req.cwd, r.from), join(req.cwd, r.to))
+      }
     }
     // 공격 재현용: commit 파일이 있으면 워커가 직접 커밋한다(셸이 있는 Codex 흉내)
     if (existsSync(join(dir, 'commit'))) {

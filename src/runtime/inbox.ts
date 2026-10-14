@@ -5,7 +5,7 @@ import { parseFrontmatter } from '../core/frontmatter'
 import { attachGates, buildCard, type Card, startGateCard } from '../core/inbox'
 import { renderHandoffPage, renderInboxPage } from '../core/view/pages'
 import { listGates } from './gates'
-import { appendEvent, type Project, paths } from './project'
+import { appendEvent, linkedPaths, type Project, paths } from './project'
 import { loadKnownTerms, loadTermBank } from './terms'
 
 export type LoadOptions = {
@@ -86,6 +86,10 @@ function taskInfo(p: Project, id: string): { title?: string; status?: string } {
 export type RenderResult = { dir: string; index: string; pages: Map<string, string> }
 
 export function renderViews(p: Project, cwd = process.cwd(), opts: LoadOptions = {}): RenderResult {
+  // 링크를 따라가면 저장소 밖의 .html을 지우고 쓴다(보안 감사 7차 중간 4)
+  const linked = linkedPaths(p.root, ['.gotechy', '.gotechy/view'])
+  if (linked.length > 0)
+    throw new Error(`심볼릭 링크라서 화면을 만들지 않았어요: ${linked.join(', ')}`)
   const cards = loadCards(p, cwd, opts)
   const dir = join(p.root, '.gotechy', 'view')
   mkdirSync(dir, { recursive: true })

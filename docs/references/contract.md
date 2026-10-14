@@ -194,10 +194,12 @@ frontmatter:
 - 워커 코드 실행(verify): 워커가 쓴 테스트를 실행하므로 macOS에서는 `sandbox-exec`로 감싼다. 쓰기는 기본 거부이고 작업 폴더와 verify 전용 임시 폴더만 허용한다(작업 폴더의 `.git` 파일은 제외). 키 폴더, `orchestration/private/`, 홈의 비밀 폴더와 파일(.ssh, .aws, .gnupg, .netrc, .config/gh, .claude, .codex, .git-credentials, .npmrc, .pypirc, .config/gcloud, .kube, .docker)은 읽기도 막는다. 네트워크는 막는다. 샌드박스 밖 프로세스에 일을 시키는 경로(`osascript`, `launchctl`, `open`, `automator`, `shortcuts` 실행과 Apple Events, LaunchServices 서비스 접근)도 막는다. Secure Enclave와 인증 서비스(`com.apple.ctkd.token-client`, `com.apple.CoreAuthentication.daemon`, `com.apple.coreauthd`) 접근도 막아, 워커 코드가 오너 키로 인증 창을 띄우지 못하게 한다(1b N0 실험). 환경 변수는 허용 목록(PATH, 언어, 터미널, 사용자 이름)만 넘기고 HOME과 TMPDIR은 임시 폴더로 바꾼다. `accept`의 verify도 같다. 다른 OS에서는 막지 못하고 HANDOFF `lead_note`에 그렇게 적는다.
 - git 연결과 설정 검사: 워커 실행 전에 worktree의 `.git` 파일, worktree 메타 파일(gitdir, commondir, config.worktree), 저장소 설정(`.git/config`)과 포함 파일까지 합친 설정 목록을 찍어 둔다. 워커가 끝나면 git을 한 번이라도 부르기 전에 비교해, 바뀌었으면 되돌리고 그 실행에서는 git을 더 부르지 않고 실패로 처리한다(verify도 돌리지 않음, `verified.exit_code` -1).
 - 실행 순서: 워커가 끝나면 변경 범위를 검사하고, 워커 HANDOFF를 읽고, 워커 변경을 커밋한 뒤 verify를 돌린다. verify가 끝나면 커밋하지 않은 모든 것(무시 파일과 중첩 저장소 포함)을 지우고, 확정한 HANDOFF 하나만 커밋한다. verify가 만든 파일은 작업 브랜치에 들어가지 않는다.
+- 변경 범위 검사는 git의 이름 바꾸기 감지를 끄고(`--no-renames`) 옛 이름과 새 이름을 모두 본다. 켜 두면 보호 파일을 허용 범위 안으로 옮긴 커밋에서 옛 이름이 빠진다(보안 감사 7차 중간 3).
 - 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크, 워커에 넘긴 로그인 값(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`의 16자 이상 값)이 들어 있는 파일은 되돌리고 실행을 실패로 처리한다. 워커가 직접 커밋한 새 파일도 지운다. (1a의 "서명 키 값이 든 파일" 검사는 비밀 키 파일이 없어져 로그인 값 검사로 바꿨다. 보안 감사 6차 낮음 6) `accept`는 병합 전에 작업 브랜치 전체 변경(링크, 하위 저장소 포함)을 다시 검사한다.
 - 리드의 git: 전역, 시스템 설정을 읽지 않고(`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`) 훅과 fsmonitor를 끈 채로 실행한다. 오너 셸의 다른 `GIT_*` 변수(`GIT_DIR`, `GIT_CONFIG_COUNT` 등)는 넘기지 않는다.
 - 워커 환경 변수: 워커(claude, codex)에는 허용 목록만 넘긴다. PATH, HOME, 사용자 이름, 셸, 언어, 터미널, TMPDIR, 프록시와 인증서 변수, 그리고 어댑터별 로그인 변수(claude는 `ANTHROPIC_API_KEY`, `CLAUDE_CONFIG_DIR`, codex는 `OPENAI_API_KEY`, `CODEX_HOME`)다. 오너 셸의 다른 토큰은 넘기지 않는다. 셸이 있는 codex 워커가 받은 값을 파일에 써서 메인에 들여오지 못하게 하려는 것이다(보안 감사 5차 중간 1). claude와 codex의 로그인은 HOME 아래 설정과 키체인을 쓰므로 이것으로 충분하다(2026-10-14 `claude auth status`, `codex login status`로 확인).
 - 리드는 HANDOFF를 읽고 쓸 때 링크를 따라가지 않는다(경로의 모든 요소 검사, `O_NOFOLLOW`).
+- 프로젝트 명령은 `orchestration/`과 그 아래 폴더, `.gotechy/`, `.gotechy/view/`, `.gotechy/worktrees/` 중 하나라도 심볼릭 링크면 exit 2로 멈추고, `init`은 그 폴더들과 AGENTS.md, CLAUDE.md가 링크면 아무것도 쓰지 않는다. 남의 저장소가 커밋한 링크를 따라 저장소 밖에 쓰거나 지우지 않게 한다(보안 감사 7차 중간 4).
 - 알려진 한계:
   - Touch ID는 "이 키를 쓴다"를 승인할 뿐 무엇에 서명하는지 보여 주지 않는다. 인증 창의 문구도 서명을 요청한 프로그램이 정한다. 같은 OS 사용자로 도는 악성 프로세스가 도구를 직접 불러 그럴듯한 문구로 인증 창을 띄울 수 있다. 오너는 자기가 decide를 실행한 직후에 뜬 창만 승인한다.
   - 같은 OS 사용자 프로세스가 `$GOTECHY_HOME/owner`의 공개 키와 blob을 사람 확인 없는 자기 키로 바꾸면 그 뒤의 결정을 위조할 수 있다. 프로젝트에 공개 키 지문을 고정하는 일은 다음 단계로 남긴다(TD-013).
@@ -209,6 +211,7 @@ frontmatter:
   - verify가 띄운 백그라운드 프로세스는 verify가 끝난 뒤에도 남을 수 있다. 샌드박스 안이라 작업 폴더 밖을 쓰거나 네트워크를 쓰지는 못한다.
   - Codex 워커가 저장소의 `.git` 폴더(설정 말고 훅, 정보 파일)를 쓸 수 있는지는 확인하지 않았다. 리드의 git은 훅을 끄고 돌며, 설정 변경은 검사한다.
   - Secure Enclave가 없는 컴퓨터(리눅스, 일부 인텔 맥)에서는 결정할 수 없다. 검증은 어디서나 된다.
+  - Codex 워커에는 비용 상한(`budget_usd`)을 넘기지 못한다. codex CLI에 그런 옵션이 없고, 시간 상한(`timeout_min`)만 걸린다(보안 감사 7차 낮음 7, TD-015).
 
 ### 6.4 `gotechy decide G-### <선택> ["다음 지시"]`
 
@@ -351,7 +354,7 @@ frontmatter:
 
 `packs`는 프로젝트에 설치할 팩의 출처다. `source`는 라이브러리의 GitHub 저장소(`owner/repo`), `ref`는 그 저장소의 커밋 SHA(40자리)다. 태그 대신 커밋으로 고정하는 이유는 커밋은 바뀌지 않고, 태그를 따로 푸시하지 않아도 되기 때문이다. `ref`는 라이브러리 HEAD의 조상이어야 하고, 그 커밋의 `skills/`는 작업 폴더의 `skills/`와 같아야 한다(`tests/core/train-lock.test.ts`). 스킬을 바꾸면 그 변경을 커밋한 뒤 `ref`를 그 커밋으로 올린다.
 
-`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008), `Bash(gotechy serve:*)`(8.3절, 2026-10-15 추가). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
+`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008), `Bash(gotechy serve:*)`(8.3절), `Bash(gotechy keys:*)`(리드가 오너 키를 바꿔 모든 결정을 무효로 만들지 않게, 보안 감사 7차 낮음 8). 마지막 둘은 2026-10-15에 더했다. Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
 
 ### 10.2 `gotechy doctor [--history]`
 
@@ -359,7 +362,7 @@ frontmatter:
 - 실패마다 고치는 명령을 출력한다. 하나라도 실패하면 exit 1, 모두 통과하면 exit 0.
 - `GOTECHY_TRAIN`으로 다른 train 파일을 줄 수 있다(테스트에서 불일치를 주입할 때). train의 `check` 명령을 셸로 실행하므로 라이브러리 안의 파일만 받는다. 부트스트랩이 둔 `$GOTECHY_HOME/bin/mise`가 있으면 train 체크섬과 대조한다.
 - `--history`: 라이브러리의 gitleaks 설정으로 저장소 전체 이력을 검사한다(저장소의 `.gitleaks.toml`은 쓰지 않는다). 찾으면 exit 1.
-- 프로젝트 안에서 실행하면(`orchestration/tasks/`가 있는 폴더) 팩 검사를 더한다. `apm.lock.yaml`이 있으면 그 폴더에서 `apm audit --ci`를 돌려 exit 0이어야 통과다. 실패하면 고치는 법은 `apm install --frozen`(락대로 다시 깔기)이다. `apm.yml`은 있는데 `apm.lock.yaml`이 없으면 실패다. 둘 다 없으면 검사하지 않는다(팩 없이 쓰는 프로젝트).
+- 프로젝트 안에서 실행하면(`orchestration/tasks/`가 있는 폴더) 팩 검사를 더한다. `apm.lock.yaml`이 있으면 그 폴더에서 `apm audit --ci`를 돌려 exit 0이어야 하고, 10.7절의 라이브러리 커밋 대조와 `apm.yml` 규칙도 통과해야 한다. 실패하면 고치는 법은 `apm install --frozen`(락대로 다시 깔기)이다. `apm.yml`은 있는데 `apm.lock.yaml`이 없으면 실패다. 둘 다 없으면 검사하지 않는다(팩 없이 쓰는 프로젝트).
 
 ### 10.3 `gotechy setup [--dry-run] [--restore <시각>]`
 
@@ -398,9 +401,13 @@ frontmatter:
 
 - `init`은 골격(1절)을 만든 뒤 팩을 apm으로 설치한다. 복사로 깔지 않는다. 설치 결과의 변조와 드리프트를 `apm audit --ci`로 잡기 위해서다.
 - 팩 하나는 스킬 여러 개다(`owner` = `owner-protocol`). 스킬마다 `apm.yml`의 `dependencies.apm`에 `<packs.source>/skills/<스킬>#<packs.ref>` 한 줄을 넣고, `targets: [claude, agent-skills]`로 `.claude/skills/`와 `.agents/skills/` 두 곳에 깐다. `apm.yml`이 없으면 만들고(이름은 폴더 이름), 있으면 빠진 줄만 더한다. 같은 스킬이 다른 ref로 이미 있으면 바꾸지 않고 exit 1이다(어느 판본을 쓸지는 오너가 정한다).
+- `apm.yml`에는 init이 다루는 키(`name`, `version`, `description`, `targets`, `dependencies.apm`)와 train의 출처와 커밋으로 만든 팩 줄만 있어야 한다. 다른 의존성, `dependencies`의 다른 종류(`mcp` 등), 다른 키(`scripts`, `registries`, `devDependencies` 등)가 있으면 apm을 부르지 않고 exit 1이다. 남이 만든 저장소의 `apm.yml`을 init이 통째로 설치해 리드가 읽을 지시문이나 MCP 설정이 들어오는 것을 막는다(보안 감사 7차 중간 1).
+- `apm.yml`, `apm.lock.yaml`, `apm_modules`, `.claude`, `.claude/skills`, `.agents`, `.agents/skills`, 스킬 폴더 중 하나라도 심볼릭 링크면 apm을 부르지 않고 exit 1이다(보안 감사 7차 중간 4).
+- apm에는 환경 변수 허용 목록(PATH, HOME, TMPDIR, 사용자 이름, 셸, 언어, 터미널, 프록시, 인증서, XDG 폴더)만 넘긴다. 팩 출처는 공개 저장소라 토큰이 필요 없다(보안 감사 7차 낮음 5).
 - 설치 전: `.claude/skills/<스킬>`이나 `.agents/skills/<스킬>`이 있는데 `apm.lock.yaml`이 그 파일을 관리하지 않으면(예전 `init`이 복사한 폴더) 덮어쓰지 않고 exit 1과 지울 폴더를 알려 준다. apm은 이런 폴더를 건너뛰고도 exit 0으로 끝나기 때문이다(2026-10-15 실험).
 - 설치: 프로젝트 폴더에서 `apm install`. apm이 PATH에 없으면 팩을 깔지 않고 exit 1이다(`bin/gotechy`로 실행하면 train의 mise가 apm을 PATH에 둔다). 처음 설치에는 GitHub에 닿아야 한다.
-- 설치 뒤: `apm.lock.yaml`에서 스킬마다 `resolved_commit`이 `packs.ref`와 같고, 두 곳의 `SKILL.md`가 `deployed_files`에 있어야 한다. 아니면 exit 1.
+- 설치 뒤: `apm.lock.yaml`에서 스킬마다 `resolved_commit`이 `packs.ref`와 같고, 두 곳의 `SKILL.md`가 `deployed_files`에 있어야 한다. 그리고 깔린 파일을 **라이브러리 저장소의 `packs.ref` 커밋과 대조**한다. 두 곳의 파일 목록이 그 커밋의 `skills/<스킬>/`과 같고, 파일마다 git blob id가 같고, 락의 `deployed_file_hashes`가 파일의 sha256과 같아야 한다. 락에 train 출처가 아닌 의존성이 있어도 실패다. 락은 스스로를 보증하지 못하기 때문이다(락과 파일을 함께 바꾼 저장소, 보안 감사 7차 중간 2). 실패하면 이번 실행이 바꾼 `apm.yml`을 되돌리고 exit 1이다.
+- 설치 전: 락이 관리한다고 적은 같은 이름 폴더가 이미 있으면 위 대조를 먼저 하고, 다르면 설치하지 않는다.
 - 락 파일에는 로컬 경로가 들어가지 않는다(git 의존성의 `repo_url`, `resolved_commit`, 파일별 sha256만). 그래서 `apm.yml`, `apm.lock.yaml`, 깔린 스킬 파일을 커밋해도 된다. apm이 `.gitignore`에 `apm_modules/`를 더한다.
 - 다시 실행해도 `apm.yml`과 `apm.lock.yaml`은 바뀌지 않는다.
 - apm은 사용자 홈에 설정(`~/.apm/`)과 캐시를 쓰고, 시작할 때 새 버전이 있는지 확인한다(스스로 업데이트하지는 않는다).

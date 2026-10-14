@@ -24,11 +24,19 @@ function depBase(dep: string): string {
   return i === -1 ? dep : dep.slice(0, i)
 }
 
-/** 있는 apm.yml에 빠진 의존성만 더한다. 바꾸면 안 되는 상태(다른 커밋, 다른 대상, 읽기 실패)는 충돌로 돌려준다 */
+/** init이 다루는 apm.yml 키. 나머지(scripts, registries, devDependencies, mcp 등)는 apm이 무엇을 할지 init이 보장하지 못한다 */
+const MANIFEST_KEYS = new Set(['name', 'version', 'description', 'targets', 'dependencies'])
+
+/**
+ * 있는 apm.yml에 빠진 의존성만 더한다. 바꾸면 안 되는 상태는 충돌로 돌려준다: 다른 커밋, 다른 대상, 읽기 실패,
+ * 그리고 allowed(train의 출처와 커밋으로 만든 팩 줄) 밖의 의존성이나 키. 남이 만든 저장소의 apm.yml을
+ * init이 통째로 설치하지 않게 한다(보안 감사 7차 중간 1)
+ */
 export function planManifest(
   existing: string | undefined,
   name: string,
   deps: string[],
+  allowed: readonly string[],
 ): ManifestPlan {
   if (existing === undefined) {
     const text = stringify({
@@ -51,6 +59,13 @@ export function planManifest(
     ])
 
   const conflicts: string[] = []
+  for (const k of doc.contents.items.map((i) =>
+    String((i.key as { value?: unknown })?.value ?? i.key),
+  ))
+    if (!MANIFEST_KEYS.has(k) && k !== 'target')
+      conflicts.push(
+        `apm.yml에 init이 다루지 않는 키(${k})가 있어요. 이 하네스의 팩만 apm으로 깔아요. 그 키를 지우거나 다른 폴더에서 설치하세요`,
+      )
   if (doc.has('target'))
     conflicts.push('apm.yml에 `target`이 있어요. `targets: [claude, agent-skills]`로 바꿔 주세요')
   const targets = doc.get('targets')
@@ -68,10 +83,32 @@ export function planManifest(
   const depsNode = doc.get('dependencies')
   if (depsNode !== undefined && !isMap(depsNode))
     return keep([...conflicts, 'apm.yml의 dependencies가 키와 값의 목록이 아니에요'])
+  if (isMap(depsNode))
+    for (const i of depsNode.items) {
+      const k = String((i.key as { value?: unknown })?.value ?? i.key)
+      if (k !== 'apm')
+        conflicts.push(
+          `apm.yml의 dependencies에 ${k}가 있어요. init은 이 하네스의 팩(dependencies.apm)만 다뤄요`,
+        )
+    }
   const apmNode = doc.getIn(['dependencies', 'apm'])
   if (apmNode !== undefined && !isSeq(apmNode))
     return keep([...conflicts, 'apm.yml의 dependencies.apm이 목록이 아니에요'])
   const current: unknown[] = isSeq(apmNode) ? apmNode.toJSON() : []
+  for (const c of current) {
+    if (typeof c !== 'string') {
+      conflicts.push(
+        'apm.yml의 dependencies.apm에 문자열이 아닌 항목이 있어요. 팩 줄은 문자열로만 써요',
+      )
+      continue
+    }
+    if (allowed.includes(c)) continue
+    // 같은 스킬의 다른 커밋은 아래에서 따로 알린다
+    if (deps.some((d) => depBase(d) === depBase(c))) continue
+    conflicts.push(
+      `apm.yml에 init이 관리하지 않는 의존성(${c})이 있어요. 이 하네스의 팩만 apm으로 깔아요. 그 줄을 지우거나 다른 폴더에서 설치하세요`,
+    )
+  }
 
   const add: string[] = []
   for (const dep of deps) {

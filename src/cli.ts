@@ -23,7 +23,7 @@ import { initProject } from './runtime/init'
 import { gotechyHome, initOwnerKey, rotateOwnerKey } from './runtime/keys'
 import { libraryRoot } from './runtime/library'
 import { installPacks } from './runtime/packs'
-import { findProject } from './runtime/project'
+import { findProject, linkedPaths, PROJECT_DIRS } from './runtime/project'
 import { runTask } from './runtime/run'
 import { startServe } from './runtime/serve'
 import { applySetup, formatPlan, planSetup, restoreSetup } from './runtime/setup'
@@ -47,6 +47,14 @@ function requireProject() {
   if (!p) {
     console.error(
       'gotechy 프로젝트가 아닙니다 (orchestration/tasks/ 없음). 먼저 `gotechy init`을 실행하세요.',
+    )
+    process.exit(2)
+  }
+  // 남의 저장소가 커밋한 링크를 따라 저장소 밖에 쓰지 않는다(보안 감사 7차 중간 4)
+  const linked = linkedPaths(p.root, PROJECT_DIRS)
+  if (linked.length > 0) {
+    console.error(
+      `심볼릭 링크라서 멈췄어요: ${linked.join(', ')}. 링크를 지우거나 실제 폴더로 바꾼 뒤 다시 실행하세요.`,
     )
     process.exit(2)
   }
@@ -92,7 +100,13 @@ program
   .option('--packs <list>', '설치할 팩 (쉼표 구분)', 'owner')
   .action(async (o: { packs: string }) => {
     const root = process.cwd()
-    const r = initProject(root)
+    let r: ReturnType<typeof initProject>
+    try {
+      r = initProject(root)
+    } catch (e) {
+      console.error((e as Error).message)
+      process.exit(2)
+    }
     for (const c of r.created) console.log(`created: ${c}`)
     for (const s of r.skipped) console.log(`kept:    ${s}`)
     for (const w of r.warnings) console.warn(`warning: ${w}`)
@@ -103,7 +117,7 @@ program
     if (packs.length === 0) return
     // 팩의 출처는 라이브러리의 train만 따른다(setup과 같음)
     const train = parseTrain(readFileSync(join(libraryRoot(), 'train.yaml'), 'utf8'))
-    const p = await installPacks(root, packs, train.packs, process.env)
+    const p = await installPacks(root, packs, { ...train.packs, lib: libraryRoot() }, process.env)
     for (const c of p.created) console.log(`created: ${c}`)
     for (const s of p.skipped) console.log(`kept:    ${s}`)
     for (const e of p.errors) console.error(`error:   ${e}`)

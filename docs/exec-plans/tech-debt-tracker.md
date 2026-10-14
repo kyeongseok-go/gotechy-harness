@@ -20,6 +20,7 @@
 | TD-012 | 2026-10-14 | `gotechy accept`가 병합하는 워커 변경에는 gitleaks 검사가 없다. 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 워커에 넘긴 로그인 값 검사(2026-10-14 감사 6차) 말고는 막히지 않는다 | src/runtime/accept.ts | 🟡 | 워커가 만든 토큰 같은 값이 메인에 들어갈 수 있다 | accept에서 병합 diff에 gitleaks를 돌리기 |
 | TD-013 | 2026-10-14 | 오너 공개 키의 지문을 프로젝트에 고정하지 않는다. 같은 OS 사용자 프로세스가 `$GOTECHY_HOME/owner`의 공개 키와 blob을 사람 확인 없는 자기 키로 바꾸면 그 뒤의 결정을 위조할 수 있다 | src/runtime/keys.ts, src/runtime/gates.ts | 🟡 | 키를 바꾼 사실이 검증에서 드러나지 않는다 | 1b: 프로젝트 `orchestration/owner.pub` 지문 고정과 키 교체 절차 |
 | TD-014 | 2026-10-14 | 결정 장부의 마지막 줄을 지우면 알아채지 못한다. 다시 결정한 뒤 끝줄을 지우고 옛 결정 파일과 명세를 되돌리면 옛 결정이 다시 ok가 된다(같은 OS 사용자 쓰기 권한 필요, 보안 감사 6차 낮음 2) | src/runtime/gates.ts, src/core/gate.ts | 🟡 | 철회한 결정이 되살아날 수 있다 | 1b: 장부 줄에 seq와 앞 줄 해시를 넣어 서명하고, 마지막 줄을 `$GOTECHY_HOME/owner/heads/`에 따로 두고 대조 |
+| TD-015 | 2026-10-15 | Codex 워커에는 비용 상한(`budget_usd`)이 걸리지 않는다. codex CLI에 옵션이 없고 시간 상한만 있다(보안 감사 7차 낮음 7) | src/runtime/adapters/codex.ts | 🟡 | 오염된 입력이 Codex를 시간 상한까지 돌게 하면 비용이 쌓인다 | 1b N3 무인 루프 전: `--json` 이벤트의 사용량을 실시간으로 더해 상한에서 중단 |
 
 심각도: 🔴 구조적(레이어 위반·보안) / 🟡 기능적(엣지케이스·성능) / 🟢 표면적(네이밍·중복)
 

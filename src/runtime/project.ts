@@ -2,6 +2,7 @@
 import {
   appendFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -103,3 +104,34 @@ export function projectId(p: Project, create = false): string | undefined {
   })
   return id
 }
+
+/**
+ * 프로젝트 안 경로 중 심볼릭 링크인 것(경로의 중간 요소 포함). 남의 저장소가 이런 링크를 커밋해 두면
+ * gotechy가 링크를 따라 저장소 밖에 쓰거나 지울 수 있다(보안 감사 7차 중간 4)
+ */
+export function linkedPaths(root: string, rels: readonly string[]): string[] {
+  const out: string[] = []
+  for (const rel of rels) {
+    const parts = rel.split('/')
+    for (let i = 1; i <= parts.length; i++) {
+      const sub = parts.slice(0, i).join('/')
+      if (lstatSync(join(root, sub), { throwIfNoEntry: false })?.isSymbolicLink()) {
+        if (!out.includes(sub)) out.push(sub)
+        break
+      }
+    }
+  }
+  return out
+}
+
+/** gotechy가 쓰는 프로젝트 폴더. 하나라도 링크면 프로젝트 명령은 멈춘다 */
+export const PROJECT_DIRS = [
+  'orchestration',
+  'orchestration/tasks',
+  'orchestration/handoffs',
+  'orchestration/gates',
+  'orchestration/private',
+  '.gotechy',
+  '.gotechy/view',
+  '.gotechy/worktrees',
+] as const

@@ -168,7 +168,8 @@ async function branchScopeProblems(
   root: string,
 ): Promise<string[]> {
   const mb = (await git(['merge-base', head, branch], root)).stdout.trim()
-  const files = (await git(['diff', '--name-only', mb, branch], root)).stdout
+  // 이름 바꾸기 감지를 끈다(보안 감사 7차 중간 3). 켜 두면 옮겨 간 보호 파일의 옛 이름이 목록에서 빠진다
+  const files = (await git(['diff', '--name-only', '--no-renames', mb, branch], root)).stdout
     .trim()
     .split('\n')
     .filter(Boolean)

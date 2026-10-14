@@ -14,7 +14,7 @@ import {
 import { join } from 'node:path'
 import { gotechyHome } from './keys'
 import { libraryRoot } from './library'
-import { projectId } from './project'
+import { linkedPaths, PROJECT_DIRS, projectId } from './project'
 
 export type InitReport = { created: string[]; skipped: string[]; warnings: string[] }
 
@@ -26,6 +26,11 @@ export type InitOptions = {
 }
 
 export function initProject(root: string, opts: InitOptions = {}): InitReport {
+  const linked = linkedPaths(root, [...PROJECT_DIRS, 'AGENTS.md', 'CLAUDE.md'])
+  if (linked.length > 0)
+    throw new Error(
+      `심볼릭 링크라서 아무것도 쓰지 않고 멈췄어요: ${linked.join(', ')}. 링크를 지우거나 실제 폴더와 파일로 바꾼 뒤 다시 실행하세요`,
+    )
   const lib = libraryRoot()
   const report: InitReport = { created: [], skipped: [], warnings: [] }
   const note = (path: string, made: boolean) => (made ? report.created : report.skipped).push(path)

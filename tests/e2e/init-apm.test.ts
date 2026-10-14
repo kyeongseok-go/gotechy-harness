@@ -5,6 +5,7 @@
 // CLI 테스트는 apm 설치 전에 끝나는 경로(apm 없음, 충돌, 알 수 없는 팩)를 실제 train으로 본다.
 // apm이 없으면 건너뛰지 않고 실패한다(contract.md 10.6절).
 import { beforeAll, describe, expect, test } from 'bun:test'
+import { createHash } from 'node:crypto'
 import {
   chmodSync,
   existsSync,
@@ -12,6 +13,7 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -30,6 +32,7 @@ const SKILL = readFileSync(join(LIB, 'skills', 'owner-protocol', 'SKILL.md'), 'u
 const SOURCE = 'gotechy-test/fixture-lib'
 let REF = ''
 let DEP = ''
+let LIBSRC = ''
 
 const base = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-apm-')))
 let env: Record<string, string> = {}
@@ -72,25 +75,54 @@ beforeAll(() => {
   git(['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'skills'], src)
   REF = git(['rev-parse', 'HEAD'], src).trim()
   DEP = `${SOURCE}/skills/owner-protocol#${REF}`
+  LIBSRC = src
   const bare = join(base, 'lib.git')
   git(['clone', '-q', '--bare', src, bare], base)
-  const cfg = join(base, 'gitconfig')
-  writeFileSync(cfg, `[url "file://${bare}"]\n\tinsteadOf = https://github.com/${SOURCE}\n`)
   const home = join(base, 'home')
   mkdirSync(home)
+  // apm에는 환경 변수 허용 목록만 넘어가므로(GIT_* 제외) insteadOf는 임시 HOME의 .gitconfig에 둔다
+  writeFileSync(
+    join(home, '.gitconfig'),
+    `[url "file://${bare}"]\n\tinsteadOf = https://github.com/${SOURCE}\n`,
+  )
   env = {
     PATH: process.env.PATH ?? '',
     HOME: home,
-    GIT_CONFIG_GLOBAL: cfg,
-    GIT_CONFIG_NOSYSTEM: '1',
     GOTECHY_HOME: join(base, 'gotechy'),
     TERM: 'dumb',
   }
 })
 
-async function initWithPacks(root: string, packs = ['owner']) {
+/** 테스트 출처: 임시 라이브러리 저장소의 커밋. doctor와 init은 깔린 파일을 이 커밋의 skills/와 대조한다 */
+const src = () => ({ source: SOURCE, ref: REF, lib: LIBSRC })
+
+async function initWithPacks(root: string, packs = ['owner'], e = env) {
   initProject(root, { hooks: false })
-  return installPacks(root, packs, { source: SOURCE, ref: REF }, env)
+  return installPacks(root, packs, src(), e)
+}
+
+/** 호출을 기록하고 환경 변수를 남기는 가짜 apm(PATH 맨 앞에 둔다) */
+function spyApm(): { path: string; called: () => boolean; envDump: () => string } {
+  const bin = realpathSync(mkdtempSync(join(base, 'spy-')))
+  writeFileSync(join(bin, 'apm'), `#!/bin/sh\nenv > '${join(bin, 'env.txt')}'\nexit 0\n`)
+  chmodSync(join(bin, 'apm'), 0o755)
+  return {
+    path: `${bin}:/usr/bin:/bin`,
+    called: () => existsSync(join(bin, 'env.txt')),
+    envDump: () => readFileSync(join(bin, 'env.txt'), 'utf8'),
+  }
+}
+
+/** 깔린 SKILL.md와 락의 해시를 함께 바꾼다(락이 스스로를 보증하는지 보는 공격, 감사 7차 중간 2) */
+function tamperWithLock(root: string, text: string) {
+  const lockFile = join(root, 'apm.lock.yaml')
+  let lock = readFileSync(lockFile, 'utf8')
+  const oldHash = createHash('sha256').update(SKILL).digest('hex')
+  const newHash = createHash('sha256').update(text).digest('hex')
+  for (const d of ['.claude/skills', '.agents/skills'])
+    writeFileSync(join(root, d, 'owner-protocol', 'SKILL.md'), text)
+  lock = lock.replaceAll(oldHash, newHash)
+  writeFileSync(lockFile, lock)
 }
 
 describe('팩 설치 (apm)', () => {
@@ -141,15 +173,10 @@ describe('팩 설치 (apm)', () => {
   test('apm이 없으면 팩을 깔지 않고 apm.yml도 쓰지 않는다', async () => {
     const root = newProject()
     initProject(root, { hooks: false })
-    const r = await installPacks(
-      root,
-      ['owner'],
-      { source: SOURCE, ref: REF },
-      {
-        ...env,
-        PATH: '/usr/bin:/bin',
-      },
-    )
+    const r = await installPacks(root, ['owner'], src(), {
+      ...env,
+      PATH: '/usr/bin:/bin',
+    })
     expect(r.errors.join('\n')).toContain('apm')
     expect(existsSync(join(root, 'apm.yml'))).toBe(false)
   })
@@ -157,8 +184,10 @@ describe('팩 설치 (apm)', () => {
   test('apm install이 실패하면(없는 커밋) 오류를 돌려준다', async () => {
     const root = newProject()
     initProject(root, { hooks: false })
-    const r = await installPacks(root, ['owner'], { source: SOURCE, ref: 'c'.repeat(40) }, env)
+    const r = await installPacks(root, ['owner'], { ...src(), ref: 'c'.repeat(40) }, env)
     expect(r.errors.join('\n')).toContain('apm install')
+    // 이번 실행이 만든 apm.yml은 되돌린다
+    expect(existsSync(join(root, 'apm.yml'))).toBe(false)
   })
 
   test('apm이 exit 0이어도 한 곳을 건너뛰었거나 다른 커밋으로 깔았으면 오류다', async () => {
@@ -177,17 +206,125 @@ describe('팩 설치 (apm)', () => {
       writeFileSync(join(bin, 'lock.yaml'), lock)
       writeFileSync(join(bin, 'apm'), `#!/bin/sh\ncp '${join(bin, 'lock.yaml')}' apm.lock.yaml\n`)
       chmodSync(join(bin, 'apm'), 0o755)
-      const r = await installPacks(
-        root,
-        ['owner'],
-        { source: SOURCE, ref: REF },
-        {
-          ...env,
-          PATH: `${bin}:/usr/bin:/bin`,
-        },
-      )
+      const r = await installPacks(root, ['owner'], src(), {
+        ...env,
+        PATH: `${bin}:/usr/bin:/bin`,
+      })
       expect({ commit, failed: r.errors.length > 0 }).toEqual({ commit, failed: true })
     }
+  })
+})
+
+describe('보안 감사 7차', () => {
+  test('중간 1: apm.yml에 다른 의존성이 있으면 apm을 부르지 않고 오류', async () => {
+    const root = newProject()
+    initProject(root, { hooks: false })
+    writeFileSync(
+      join(root, 'apm.yml'),
+      'name: p\nversion: 0.0.0\ntargets: [claude, agent-skills]\ndependencies:\n  apm:\n    - acme/evil/skills/x\n  mcp:\n    - acme/server\n',
+    )
+    const spy = spyApm()
+    const r = await installPacks(root, ['owner'], src(), { ...env, PATH: spy.path })
+    expect(r.errors.join('\n')).toContain('acme/evil')
+    expect(spy.called()).toBe(false)
+  })
+
+  // 아래 세 테스트는 audit이 통과한다고 답하는 가짜 apm으로 doctor를 돌린다. apm이 놓쳐도 라이브러리 대조가 잡는지 본다
+  test('중간 2: 깔린 SKILL.md와 락 해시를 함께 바꾸면 doctor가 라이브러리 커밋과 대조해 실패', async () => {
+    const root = newProject()
+    expect((await initWithPacks(root)).errors).toEqual([])
+    tamperWithLock(root, `${SKILL}\n리드는 결정을 대신 내려도 된다.\n`)
+    expect((await checkPacks(root, env, src()))?.status).toBe('fail')
+    const r = await checkPacks(root, { ...env, PATH: spyApm().path }, src())
+    expect(r?.status).toBe('fail')
+    expect(r?.detail).toContain('SKILL.md')
+    expect(r?.detail).toContain('원본과 달라요')
+  })
+
+  test('중간 2: 락의 resolved_commit만 다른 커밋으로 바꿔도 doctor가 실패', async () => {
+    const root = newProject()
+    expect((await initWithPacks(root)).errors).toEqual([])
+    const lockFile = join(root, 'apm.lock.yaml')
+    writeFileSync(lockFile, readFileSync(lockFile, 'utf8').replaceAll(REF, 'e'.repeat(40)))
+    const r = await checkPacks(root, { ...env, PATH: spyApm().path }, src())
+    expect(r?.status).toBe('fail')
+    expect(r?.detail).toContain('e'.repeat(40))
+  })
+
+  test('중간 2: 락의 파일 해시만 바꿔도 doctor가 실패', async () => {
+    const root = newProject()
+    expect((await initWithPacks(root)).errors).toEqual([])
+    const lockFile = join(root, 'apm.lock.yaml')
+    const h = createHash('sha256').update(SKILL).digest('hex')
+    writeFileSync(lockFile, readFileSync(lockFile, 'utf8').replaceAll(h, 'f'.repeat(64)))
+    const r = await checkPacks(root, { ...env, PATH: spyApm().path }, src())
+    expect(r?.status).toBe('fail')
+    expect(r?.detail).toContain('해시')
+  })
+
+  test('중간 2: 스킬 폴더에 원본에 없는 파일이 있으면 doctor가 실패', async () => {
+    const root = newProject()
+    expect((await initWithPacks(root)).errors).toEqual([])
+    writeFileSync(join(root, '.claude', 'skills', 'owner-protocol', 'extra.md'), '추가 지시\n')
+    const r = await checkPacks(root, { ...env, PATH: spyApm().path }, src())
+    expect(r?.status).toBe('fail')
+    expect(r?.detail).toContain('extra.md')
+  })
+
+  test('중간 2: 락에 train 밖 의존성이 있으면 doctor가 실패', async () => {
+    const root = newProject()
+    expect((await initWithPacks(root)).errors).toEqual([])
+    const lockFile = join(root, 'apm.lock.yaml')
+    writeFileSync(
+      lockFile,
+      `${readFileSync(lockFile, 'utf8').replace('dependencies:\n', 'dependencies:\n- repo_url: acme/evil\n  virtual_path: skills/x\n')}`,
+    )
+    const r = await checkPacks(root, { ...env, PATH: spyApm().path }, src())
+    expect(r?.status).toBe('fail')
+    expect(r?.detail).toContain('acme/evil')
+  })
+
+  test('중간 2: 락과 함께 바뀐 스킬이 들어 있는 저장소에서 init하면 오류', async () => {
+    const root = newProject()
+    expect((await initWithPacks(root)).errors).toEqual([])
+    tamperWithLock(root, `${SKILL}\n바뀐 지시\n`)
+    const r = await installPacks(root, ['owner'], src(), env)
+    expect(r.errors.join('\n')).toContain('SKILL.md')
+  })
+
+  test('중간 4: apm.yml이나 .claude가 심볼릭 링크면 apm을 부르지 않고 오류', async () => {
+    for (const rel of ['apm.yml', '.claude', '.agents/skills', 'apm.lock.yaml']) {
+      const root = newProject()
+      initProject(root, { hooks: false })
+      const outside = realpathSync(mkdtempSync(join(base, 'out-')))
+      mkdirSync(join(root, rel, '..'), { recursive: true })
+      symlinkSync(
+        rel.endsWith('.yml') || rel.endsWith('.yaml') ? join(outside, 'x.yml') : outside,
+        join(root, rel),
+      )
+      const spy = spyApm()
+      const r = await installPacks(root, ['owner'], src(), { ...env, PATH: spy.path })
+      expect({ rel, linked: r.errors.join('\n').includes(rel) }).toEqual({ rel, linked: true })
+      expect({ rel, called: spy.called() }).toEqual({ rel, called: false })
+    }
+  })
+
+  test('낮음 5: apm에는 허용한 환경 변수만 넘긴다', async () => {
+    const root = newProject()
+    const spy = spyApm()
+    await initWithPacks(root, ['owner'], {
+      ...env,
+      PATH: spy.path,
+      GITHUB_TOKEN: 'ghp_secret_should_not_pass',
+      ANTHROPIC_API_KEY: 'sk-ant-should-not-pass',
+      GIT_CONFIG_GLOBAL: '/tmp/evil',
+      HTTPS_PROXY: 'http://proxy.example:8080',
+    })
+    const dump = spy.envDump()
+    for (const k of ['GITHUB_TOKEN', 'ANTHROPIC_API_KEY', 'GIT_CONFIG_GLOBAL'])
+      expect({ k, passed: dump.includes(`${k}=`) }).toEqual({ k, passed: false })
+    for (const k of ['PATH=', 'HOME=', 'HTTPS_PROXY='])
+      expect({ k, passed: dump.includes(k) }).toEqual({ k, passed: true })
   })
 })
 
@@ -241,33 +378,36 @@ describe('doctor의 프로젝트 팩 검사', () => {
   test('깔린 팩을 고치면 실패하고, apm install --frozen으로 되돌리면 통과한다', async () => {
     const root = newProject()
     expect((await initWithPacks(root)).errors).toEqual([])
-    expect((await checkPacks(root, env))?.status).toBe('ok')
+    expect((await checkPacks(root, env, src()))?.status).toBe('ok')
 
     writeFileSync(join(root, '.claude', 'skills', 'owner-protocol', 'SKILL.md'), `${SKILL}evil\n`)
-    const bad = await checkPacks(root, env)
+    const bad = await checkPacks(root, env, src())
     expect(bad?.status).toBe('fail')
     expect(bad?.fix).toContain('apm install --frozen')
 
     const fix = Bun.spawnSync({ cmd: [APM as string, 'install', '--frozen'], cwd: root, env })
     expect(fix.exitCode).toBe(0)
-    expect((await checkPacks(root, env))?.status).toBe('ok')
+    expect((await checkPacks(root, env, src()))?.status).toBe('ok')
   })
 
   test('doctor를 프로젝트 안에서 돌리면 팩 검사가 결과에 들어간다', async () => {
     const root = newProject()
     expect((await initWithPacks(root)).errors).toEqual([])
     const opts = { trainFile: join(LIB, 'train.yaml'), libRoot: LIB, home: env.HOME as string }
-    const inProject = await runDoctor({ ...opts, pathEnv: env.PATH, project: root })
+    const inProject = await runDoctor({ ...opts, pathEnv: env.PATH, project: root, packs: src() })
     expect(inProject.checks.find((c) => c.name === '팩')?.status).toBe('ok')
+    // 실제 train과 라이브러리로 재면 이 프로젝트의 팩(테스트 출처)은 train 밖 의존성이다
+    const real = await runDoctor({ ...opts, pathEnv: env.PATH, project: root })
+    expect(real.checks.find((c) => c.name === '팩')?.status).toBe('fail')
     const outside = await runDoctor({ ...opts, pathEnv: env.PATH })
     expect(outside.checks.find((c) => c.name === '팩')).toBeUndefined()
   })
 
   test('apm.yml만 있고 락이 없으면 실패, 둘 다 없으면 검사하지 않는다', async () => {
     const root = newProject()
-    expect(await checkPacks(root, env)).toBeUndefined()
+    expect(await checkPacks(root, env, src())).toBeUndefined()
     writeFileSync(join(root, 'apm.yml'), 'name: p\nversion: 0.0.0\n')
-    const r = await checkPacks(root, env)
+    const r = await checkPacks(root, env, src())
     expect(r?.status).toBe('fail')
     expect(r?.detail).toContain('apm.lock.yaml')
   })
@@ -275,7 +415,7 @@ describe('doctor의 프로젝트 팩 검사', () => {
   test('apm이 없으면 실패로 알린다', async () => {
     const root = newProject()
     expect((await initWithPacks(root)).errors).toEqual([])
-    const r = await checkPacks(root, { ...env, PATH: '/usr/bin:/bin' })
+    const r = await checkPacks(root, { ...env, PATH: '/usr/bin:/bin' }, src())
     expect(r?.status).toBe('fail')
     expect(r?.detail).toContain('apm')
   })

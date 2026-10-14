@@ -1,31 +1,38 @@
 # 하네스 v2 CI — 라이브러리 자체의 검사 (lint·타입·테스트). 템플릿 무결성 검사(init.sh)는 2단계에서 templates/로 이관.
 name: ci
 on: [push, pull_request]
+# 토큰은 읽기만(보안 감사 7차 낮음 6). action은 커밋 SHA로 고정한다
+permissions:
+  contents: read
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           # train의 packs.ref가 HEAD의 조상인지, 그 커밋의 skills/가 지금과 같은지 테스트가 본다(전체 이력 필요)
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       # 팩 설치 테스트에 train의 apm이 필요하다(contract.md 10.6절). 부트스트랩으로 mise를 체크섬 검증해 받고,
       # 다른 도구는 설치하지 않은 채 mise 락 그대로 apm 하나만 설치한다
-      - name: train의 apm 설치
+      - name: 부트스트랩(mise를 train 체크섬으로 받기, 토큰 없음)
         env:
           GOTECHY_HOME: ${{ runner.temp }}/gotechy
           MISE_AUTO_INSTALL: "0"
           MISE_EXEC_AUTO_INSTALL: "0"
+        run: sh bin/gotechy --version
+      - name: train의 apm 설치(mise 락 그대로)
+        env:
+          MISE_LOCKED: "1"
           MISE_GITHUB_TOKEN: ${{ github.token }}
         run: |
-          sh bin/gotechy --version
-          M="$GOTECHY_HOME/bin/mise"
-          MISE_LOCKED=1 "$M" install github:microsoft/apm
-          dirname "$(MISE_LOCKED=1 "$M" which apm)" >> "$GITHUB_PATH"
+          M="${{ runner.temp }}/gotechy/bin/mise"
+          "$M" install github:microsoft/apm
+          dirname "$("$M" which apm)" >> "$GITHUB_PATH"
       - run: apm --version
       - run: bun run lint
       - run: bun run typecheck

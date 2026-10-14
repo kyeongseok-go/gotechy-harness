@@ -137,6 +137,7 @@ describe('문서 대조(doc-gardener, 2026-10-15) 지적', () => {
     const id = newTask(root, { verify: 'grep -q 설치 README.md' })
     const out = await runTask({ root }, id, { adapter: 'fake', fixtureDir: dir, home })
     expect(out.status).toBe('done')
-    expect(fm(handoffFile(root, id)).lead_note).toBeUndefined()
+    // 리드 메모는 리드만 쓴다. 샌드박스가 없는 OS(리눅스 CI)에서는 리드가 그 사실을 적으므로 비어 있지 않을 수 있다
+    expect(String(fm(handoffFile(root, id)).lead_note ?? '')).not.toContain('리드가 이미 확인')
   })
 })

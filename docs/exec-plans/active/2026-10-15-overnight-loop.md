@@ -86,3 +86,9 @@ Validation 대조:
 - N2를 브라우저 실험 없이 먼저 커밋했어요(TD-017).
 - 새 부채 TD-015~TD-021, 갚은 부채 TD-008, TD-011, TD-013, TD-014예요.
 
+"하지 않는 것" 확인 결과 (05:14):
+- `~/.claude/settings.json`과 `~/.codex/config.toml`의 sha256 앞 8자리가 시작 때(01:10)와 같아요(212617a4, fd8583b2).
+- 실제 `~/.gotechy`에는 시작 때처럼 `backup/`만 있어요. `gotechy setup` 실제 적용, 실제 오너 키, Touch ID 창은 없었어요.
+- force push, 외부 발행, 위키 적재, 배포, 유료 워커 실행은 없었어요. push는 harness-v2에 일반 push만 했어요.
+- `gitleaks git`으로 오늘 밤 커밋 16개(0911a92부터)를 검사했고 누출은 0건이에요.
+- 어긴 것은 위 "실수와 남은 것"에 적었어요(npm 디버그 로그가 실제 `~/.npm/_logs`에 생김, 공개 커밋에 bun 캐시).

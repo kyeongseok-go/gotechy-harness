@@ -23,4 +23,5 @@
 | [0002](0002-distribution-files-agents-apm.md) | 배포: 파일이 정본, AGENTS.md가 라우터, apm이 설치기 (D5) | 승인됨 | 2026-10-14 |
 | [0003](0003-orchestration-file-contract-adapters.md) | 오케스트레이션: 파일 계약이 원천, 어댑터는 Orca와 native 둘 (D7) | 승인됨 | 2026-10-14 |
 | [0004](0004-train-v1.md) | 첫 세팅 train v1: macOS 우선, 검증된 버전 묶음 (D13) | 승인됨 | 2026-10-14 |
-| [0005](0005-decision-signing.md) | 오너 결정 서명: HMAC과 원천에서 계산한 필수 게이트 | 승인됨 (1a 범위) | 2026-10-14 |
+| [0005](0005-decision-signing.md) | 오너 결정 서명: HMAC과 원천에서 계산한 필수 게이트 | 서명 방식은 0006으로 대체 | 2026-10-14 |
+| [0006](0006-owner-auth-secure-enclave.md) | 오너 인증: Secure Enclave 키와 Touch ID로 결정에 서명 | 제안 (오너 확인 대기) | 2026-10-14 |

@@ -182,32 +182,37 @@ frontmatter:
 
 ### 6.3 서명
 
-- 대상: 아래 키를 정렬한 JSON(공백 없음)의 HMAC-SHA256. `project_id, task_id, gate_id, class, question, options, handoff_rev, irreversible, task_spec_sha256, handoff_sha256, choice, instruction, key_id, nonce, decided_at`. 질문, 선택지, 판본, 되돌리기 어려움도 넣어서, 결정 뒤에 고치면 서명이 깨진다. `recommended`는 서명하지 않는다(결정의 뜻을 바꾸지 않는 표시값).
+- 대상: 아래 키를 정렬한 JSON(공백 없음)에 대한 ECDSA P-256(SHA-256) 서명, DER을 base64로 `sig`에 둔다. `project_id, task_id, gate_id, class, question, options, handoff_rev, irreversible, task_spec_sha256, handoff_sha256, choice, instruction, key_id, nonce, decided_at`. 질문, 선택지, 판본, 되돌리기 어려움도 넣어서, 결정 뒤에 고치면 서명이 깨진다. `recommended`는 서명하지 않는다(결정의 뜻을 바꾸지 않는 표시값). (1a의 HMAC-SHA256은 1b N1에서 바꿨다.)
 - `project_id`: `orchestration/project.yaml`의 `id`(UUID). `init`이 만들고, 없으면 처음 게이트를 열 때 만든다. 보호 경로다.
-- 키: `$GOTECHY_HOME/keys/<key_id>.key`(기본 `~/.gotechy`), 32바이트 난수를 hex로. 폴더 0700, 파일 0600이고, 권한이 더 넓거나 키 파일이 심볼릭 링크면 서명과 검증을 거부한다. 현재 키는 `keys/active`에 적고, 그 값이 `k-YYYYMMDD-8자리hex` 형식이 아니면 쓰지 않는다.
-- `gotechy keys init`: 키가 없을 때만 만든다. `gotechy keys rotate`: 새 키를 만들어 현재 키로 바꾸고 이전 키 파일을 지운다. 이전 키로 서명한 결정은 모두 다시 결정해야 한다.
-- nonce: 결정마다 16바이트 난수. `orchestration/private/decisions.jsonl`에 `{gate, nonce, key_id, decided_at}`을 남긴다(소비 기록).
-- 위협 모델(1a): 실수, 낡은 판본, 손으로 고친 결정 파일, 다른 프로젝트의 결정 재사용, 격리된 워커를 막는다. 오너와 같은 OS 사용자로 도는 악의적 프로세스의 자가 승인은 막지 못한다(1b에서 다룬다).
+- 오너 키(1b N1): Secure Enclave에서 만든 P-256 키. 만들 때 사람 확인(`userPresence`)을 걸어 서명마다 Touch ID나 Mac 암호가 필요하다. 개인 키는 Secure Enclave 밖으로 나오지 않는다. 디스크에는 Secure Enclave가 감싼 blob(`$GOTECHY_HOME/owner/<key_id>.blob`)과 공개 키(`<key_id>.pub`, SPKI DER의 base64)만 있다. blob을 다른 곳에 복사해도 이 맥의 Secure Enclave와 오너의 손가락 없이는 서명할 수 없다.
+- `key_id`: `o-`와 공개 키(SPKI DER)의 sha256 앞 16자리 hex. 현재 키는 `owner/active`에 적는다. 형식이 다르거나, 공개 키 파일의 지문이 `key_id`와 다르거나, 폴더 권한이 0700보다 넓거나, 파일이 심볼릭 링크면 서명과 검증을 거부한다.
+- 검증은 공개 키만으로 한다. 비밀 값이 필요 없으므로 검증 경로 어디에도 비밀 키 파일이 없다.
+- 서명 도구 `$GOTECHY_HOME/bin/gotechy-ownerkey`: 원본은 라이브러리의 `native/ownerkey.swift`이고, `gotechy keys init`이 도구가 없을 때 `swiftc`(Xcode Command Line Tools)로 빌드한다. 명령은 `create <blob>`(새 키를 만들고 공개 키를 출력), `pub <blob>`, `sign <blob> --reason <글>`(표준 입력의 JSON 문자열 배열을 한 번의 사람 확인으로 모두 서명하고 서명 배열을 JSON으로 출력)이다. 오너가 인증을 취소하면 exit 4.
+- `gotechy keys init`: 오너 키가 없을 때만 만든다(만들 때는 Touch ID가 필요 없다). Secure Enclave가 없거나 `swiftc`가 없으면 exit 2와 설치 방법. `gotechy keys rotate`: 새 키를 만들어 현재 키로 바꾸고 이전 blob을 지운다. 이전 키로 서명한 결정은 모두 다시 결정해야 한다. 1a의 HMAC 결정(`key_id`가 `k-`로 시작)도 같다. 실제로 쓰인 HMAC 결정이 없어 따로 옮기는 명령은 두지 않는다.
+- nonce와 결정 장부: 결정마다 16바이트 난수. `orchestration/private/decisions.jsonl`에 줄마다 `{gate, nonce, key_id, decided_at, payload_sha256, sig}`를 남긴다(소비 기록). `payload_sha256`은 게이트 서명 대상의 sha256이고, 줄의 `sig`는 앞의 다섯 키를 정렬한 JSON에 대한 오너 서명이다. decide는 게이트 서명과 장부 줄 서명을 한 번의 Touch ID로 만든다. 서명이 맞지 않거나 읽을 수 없는 줄이 하나라도 있으면 장부 전체를 믿지 않고 모든 결정을 `fail`로 본다.
+- 위협 모델(1b N1): 실수, 낡은 판본, 손으로 고친 결정 파일과 장부, 다른 프로젝트의 결정 재사용, 격리된 워커에 더해, 오너와 같은 OS 사용자로 도는 프로세스(워커, 스크립트)가 오너의 Touch ID 없이 결정을 만드는 것을 막는다.
 - 워커 코드 실행(verify): 워커가 쓴 테스트를 실행하므로 macOS에서는 `sandbox-exec`로 감싼다. 쓰기는 기본 거부이고 작업 폴더와 verify 전용 임시 폴더만 허용한다(작업 폴더의 `.git` 파일은 제외). 키 폴더, `orchestration/private/`, 홈의 비밀 폴더와 파일(.ssh, .aws, .gnupg, .netrc, .config/gh, .claude, .codex, .git-credentials, .npmrc, .pypirc, .config/gcloud, .kube, .docker)은 읽기도 막는다. 네트워크는 막는다. 샌드박스 밖 프로세스에 일을 시키는 경로(`osascript`, `launchctl`, `open`, `automator`, `shortcuts` 실행과 Apple Events, LaunchServices 서비스 접근)도 막는다. Secure Enclave와 인증 서비스(`com.apple.ctkd.token-client`, `com.apple.CoreAuthentication.daemon`, `com.apple.coreauthd`) 접근도 막아, 워커 코드가 오너 키로 인증 창을 띄우지 못하게 한다(1b N0 실험). 환경 변수는 허용 목록(PATH, 언어, 터미널, 사용자 이름)만 넘기고 HOME과 TMPDIR은 임시 폴더로 바꾼다. `accept`의 verify도 같다. 다른 OS에서는 막지 못하고 HANDOFF `lead_note`에 그렇게 적는다.
 - git 연결과 설정 검사: 워커 실행 전에 worktree의 `.git` 파일, worktree 메타 파일(gitdir, commondir, config.worktree), 저장소 설정(`.git/config`)과 포함 파일까지 합친 설정 목록을 찍어 둔다. 워커가 끝나면 git을 한 번이라도 부르기 전에 비교해, 바뀌었으면 되돌리고 그 실행에서는 git을 더 부르지 않고 실패로 처리한다(verify도 돌리지 않음, `verified.exit_code` -1).
 - 실행 순서: 워커가 끝나면 변경 범위를 검사하고, 워커 HANDOFF를 읽고, 워커 변경을 커밋한 뒤 verify를 돌린다. verify가 끝나면 커밋하지 않은 모든 것(무시 파일과 중첩 저장소 포함)을 지우고, 확정한 HANDOFF 하나만 커밋한다. verify가 만든 파일은 작업 브랜치에 들어가지 않는다.
-- 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크, 현재 서명 키 값이 들어 있는 파일은 되돌리고 실행을 실패로 처리한다. 워커가 직접 커밋한 새 파일도 지운다. `accept`는 병합 전에 작업 브랜치 전체 변경(링크, 하위 저장소 포함)을 다시 검사한다.
+- 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크는 되돌리고 실행을 실패로 처리한다. 워커가 직접 커밋한 새 파일도 지운다. (1a의 "서명 키 값이 든 파일" 검사는 비밀 키 파일이 없어져 뺐다.) `accept`는 병합 전에 작업 브랜치 전체 변경(링크, 하위 저장소 포함)을 다시 검사한다.
 - 리드의 git: 전역, 시스템 설정을 읽지 않고(`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`) 훅과 fsmonitor를 끈 채로 실행한다. 오너 셸의 다른 `GIT_*` 변수(`GIT_DIR`, `GIT_CONFIG_COUNT` 등)는 넘기지 않는다.
 - 워커 환경 변수: 워커(claude, codex)에는 허용 목록만 넘긴다. PATH, HOME, 사용자 이름, 셸, 언어, 터미널, TMPDIR, 프록시와 인증서 변수, 그리고 어댑터별 로그인 변수(claude는 `ANTHROPIC_API_KEY`, `CLAUDE_CONFIG_DIR`, codex는 `OPENAI_API_KEY`, `CODEX_HOME`)다. 오너 셸의 다른 토큰은 넘기지 않는다. 셸이 있는 codex 워커가 받은 값을 파일에 써서 메인에 들여오지 못하게 하려는 것이다(보안 감사 5차 중간 1). claude와 codex의 로그인은 HOME 아래 설정과 키체인을 쓰므로 이것으로 충분하다(2026-10-14 `claude auth status`, `codex login status`로 확인).
 - 리드는 HANDOFF를 읽고 쓸 때 링크를 따라가지 않는다(경로의 모든 요소 검사, `O_NOFOLLOW`).
-- 알려진 한계(1b에서 다룬다):
-  - Codex 워커의 샌드박스는 읽기를 막지 않아 키 파일을 읽을 수 있다. 키가 HANDOFF에 실려 공개 저장소로 새어 나갈 수 있으므로 gitleaks 검사(M3)가 필요하다.
-  - `decide`의 TTY 검사는 실수를 막는 장치다. `script` 같은 명령으로 의도적으로 우회할 수 있다.
-  - 결정 장부에는 서명이 없다. 같은 OS 사용자가 줄을 더하면 옛 결정 되살리기를 막지 못한다.
+- 알려진 한계:
+  - Touch ID는 "이 키를 쓴다"를 승인할 뿐 무엇에 서명하는지 보여 주지 않는다. 인증 창의 문구도 서명을 요청한 프로그램이 정한다. 같은 OS 사용자로 도는 악성 프로세스가 도구를 직접 불러 그럴듯한 문구로 인증 창을 띄울 수 있다. 오너는 자기가 decide를 실행한 직후에 뜬 창만 승인한다.
+  - 같은 OS 사용자 프로세스가 `$GOTECHY_HOME/owner`의 공개 키와 blob을 사람 확인 없는 자기 키로 바꾸면 그 뒤의 결정을 위조할 수 있다. 프로젝트에 공개 키 지문을 고정하는 일은 다음 단계로 남긴다.
+  - `decide`의 TTY 검사는 실수를 막는 장치다. `script` 같은 명령으로 우회해도 Touch ID 없이는 서명이 나오지 않는다.
   - `project.yaml`이 커밋되므로 저장소를 통째로 복사해 만든 프로젝트는 id가 같다.
   - 무시 파일(.gitignore 대상)의 변경은 허용 범위 검사에 잡히지 않는다. verify를 샌드박스에 넣고 verify 뒤 무시 파일까지 지워 피해를 줄였다.
   - verify가 띄운 백그라운드 프로세스는 verify가 끝난 뒤에도 남을 수 있다. 샌드박스 안이라 작업 폴더 밖을 쓰거나 네트워크를 쓰지는 못한다.
   - Codex 워커가 저장소의 `.git` 폴더(설정 말고 훅, 정보 파일)를 쓸 수 있는지는 확인하지 않았다. 리드의 git은 훅을 끄고 돌며, 설정 변경은 검사한다.
+  - Secure Enclave가 없는 컴퓨터(리눅스, 일부 인텔 맥)에서는 결정할 수 없다. 검증은 어디서나 된다.
 
 ### 6.4 `gotechy decide G-### <선택> ["다음 지시"]`
 
 - 대화형 터미널(표준 입력과 출력이 모두 TTY)에서만 실행한다. 아니면 exit 2.
 - 질문, 선택지, 추천, 작업 제목, 한 줄 요약을 보여 주고 `확정할까요? [y/N]`에 `y`를 받아야 기록한다.
+- `y` 다음에 Touch ID(또는 Mac 암호) 창이 뜬다. 창의 문구는 `gotechy <게이트 번호>: <선택>`이다. 인증을 취소하거나 실패하면 아무것도 기록하지 않고 exit 1.
 - 선택은 선택지 중 하나와 정확히 같아야 한다. 아니면 exit 1과 선택지 목록.
 - 게이트마다 잠금(`G-###.lock` 폴더)을 잡는다. 이미 잠겨 있으면 exit 1. 기록은 임시 파일에 쓴 뒤 이름을 바꿔 원자적으로 한다.
 - 이미 `resolved`이고 검증을 통과하는 게이트는 다시 결정할 수 없다. 검증에 실패하는 게이트(이전 키, 결정 뒤 바뀐 작업 명세나 HANDOFF)는 다시 결정할 수 있다. 지난 판본(`superseded`)의 게이트는 기록으로만 남고 다시 결정할 수 없다.
@@ -220,7 +225,7 @@ frontmatter:
 
 | 판정 | 조건 |
 |---|---|
-| `ok` | `resolved`, 선택이 선택지 안, 현재 키로 서명이 맞음, nonce가 그 게이트의 마지막 소비 기록이고 다른 게이트에 쓰이지 않음, 장부에 깨진 줄이 없음, 프로젝트 id 일치, 작업 명세 요약값 일치, (현재 판본이면) HANDOFF 해시 일치 |
+| `ok` | `resolved`, 선택이 선택지 안, 현재 오너 키로 서명이 맞음, nonce가 그 게이트의 마지막 소비 기록이고 다른 게이트에 쓰이지 않음, 장부에 깨지거나 서명이 맞지 않는 줄이 없음, 장부 줄의 `payload_sha256`이 게이트 서명 대상과 같음, 프로젝트 id 일치, 작업 명세 요약값 일치, (현재 판본이면) HANDOFF 해시 일치 |
 | `pending` | 아직 결정 전 |
 | `superseded` | `handoff_rev`가 현재 HANDOFF 판본보다 작다. 지난 판본의 기록이라 검증 대상이 아니다 |
 | `fail` | 위 `ok` 조건 중 하나라도 어긋남, 또는 게이트 파일을 읽을 수 없음. 사유를 함께 출력한다 |

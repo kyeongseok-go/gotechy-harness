@@ -26,18 +26,20 @@ import {
   isSuperseded,
   judgeGate,
   type LedgerEntry,
+  ledgerLinePayload,
+  ledgerSigned,
   sha256,
   signingPayload,
-  signPayload,
   taskSpecDigest,
   type Verdict,
   type VerifyContext,
+  verifySignature,
 } from '../core/gate'
 import { displayText } from '../core/inbox'
 import { impliesIrreversible } from '../core/paths'
 import { HandoffFrontmatter, TaskFrontmatter } from '../core/schema'
 import { extractSections, isNone, topItems } from '../core/sections'
-import { loadActiveKey } from './keys'
+import { loadOwnerKey, ownerPub, signWithOwnerKey } from './keys'
 import {
   allocateGateId,
   appendEvent,
@@ -252,14 +254,21 @@ function readLedger(p: Project): Ledger {
   return { entries, broken }
 }
 
+/** 장부를 읽고, 줄마다 그 줄의 키로 서명이 맞는지 본다. 하나라도 어긋나면 장부 전체를 믿지 않는다(contract.md 6.3절). */
+function readSignedLedger(p: Project, home: string): Ledger {
+  const ledger = readLedger(p)
+  const signed = ledgerSigned(ledger.entries, (id) => ownerPub(home, id))
+  return { entries: ledger.entries, broken: ledger.broken || !signed }
+}
+
 function contextFor(p: Project, gate: Gate, home: string, ledger: Ledger): VerifyContext {
-  const key = loadActiveKey(home)
+  const key = loadOwnerKey(home)
   const state = handoffState(p, gate.task)
   return {
     projectId: projectId(p),
     taskText: readText(paths.task(p, gate.task)),
     handoff: state ? { text: state.text, rev: state.rev } : undefined,
-    activeKey: key.ok ? { id: key.id, key: key.key } : undefined,
+    ownerKey: key.ok ? { id: key.id, pub: key.pub } : undefined,
     ...(key.ok ? {} : { keyProblem: key.problem }),
     ledger: ledger.entries,
     ledgerBroken: ledger.broken,
@@ -270,7 +279,7 @@ type Snapshot = { gates: Gate[]; broken: GateFile[]; verdicts: Map<string, Verdi
 
 /** 게이트 파일을 한 번만 읽고, 판정과 지시문에 같은 값을 쓴다(검증과 사용 사이에 파일이 바뀌는 문제를 줄인다). */
 function snapshot(p: Project, home: string): Snapshot {
-  const ledger = readLedger(p)
+  const ledger = readSignedLedger(p, home)
   const files = gateFiles(p)
   const gates: Gate[] = []
   const broken: GateFile[] = []
@@ -395,7 +404,7 @@ async function decideLocked(
   const gf = readGateFile(file)
   const gate = gf.gate
   if (!gate) throw new Error(`${id}를 읽을 수 없어요: ${gf.problem}`)
-  const ledger = readLedger(p)
+  const ledger = readSignedLedger(p, home)
   const handoff = handoffState(p, gate.task)
   if (isSuperseded(gate, handoff?.rev))
     throw new Error(
@@ -410,7 +419,7 @@ async function decideLocked(
     )
   if (!gate.options.includes(opts.choice))
     throw new Error(`선택은 다음 중 하나여야 해요: ${gate.options.join(', ')}`)
-  const key = loadActiveKey(home)
+  const key = loadOwnerKey(home)
   if (!key.ok) throw new Error(key.problem)
   const pid = projectId(p, true) as string
   const taskText = readText(paths.task(p, gate.task))
@@ -469,34 +478,49 @@ async function decideLocked(
     active_seconds: Math.max(0, Math.round((answeredAt.getTime() - shownAt.getTime()) / 1000)),
     sig: null,
   }
-  decided.sig = signPayload(
-    key.key,
-    signingPayload({
-      project_id: pid,
-      task_id: decided.task,
-      gate_id: decided.id,
-      class: decided.class,
-      question: decided.question,
-      options: decided.options,
-      handoff_rev: decided.handoff_rev,
-      irreversible,
-      task_spec_sha256: decided.task_spec_sha256 as string,
-      handoff_sha256: decided.handoff_sha256,
-      choice: opts.choice,
-      instruction: decided.instruction,
-      key_id: key.id,
-      nonce: decided.nonce as string,
-      decided_at: decided.decided_at as string,
-    }),
-  )
-  // 소비 기록을 먼저 남긴다. 게이트를 쓰기 전에 멈추면 게이트는 pending으로 남아 다시 결정하면 된다.
-  mkdirSync(dirname(paths.ledger(p)), { recursive: true })
+  const payload = signingPayload({
+    project_id: pid,
+    task_id: decided.task,
+    gate_id: decided.id,
+    class: decided.class,
+    question: decided.question,
+    options: decided.options,
+    handoff_rev: decided.handoff_rev,
+    irreversible,
+    task_spec_sha256: decided.task_spec_sha256 as string,
+    handoff_sha256: decided.handoff_sha256,
+    choice: opts.choice,
+    instruction: decided.instruction,
+    key_id: key.id,
+    nonce: decided.nonce as string,
+    decided_at: decided.decided_at as string,
+  })
   const entry: LedgerEntry = {
     gate: id,
     nonce: decided.nonce as string,
     key_id: key.id,
     decided_at: decided.decided_at as string,
+    payload_sha256: sha256(payload),
   }
+  // 게이트 서명과 장부 줄 서명을 한 번의 오너 확인(Touch ID)으로 받는다. 창에는 게이트 번호와 선택이 보인다
+  const [gateSig, lineSig] = await signWithOwnerKey(
+    home,
+    [payload, ledgerLinePayload(entry)],
+    displayText(`gotechy ${id}: ${opts.choice}`).slice(0, 120),
+  )
+  if (
+    !gateSig ||
+    !lineSig ||
+    !verifySignature(key.pub, payload, gateSig) ||
+    !verifySignature(key.pub, ledgerLinePayload(entry), lineSig)
+  )
+    throw new Error(
+      '서명 도구가 돌려준 서명이 오너 공개 키로 검증되지 않아요. 아무것도 기록하지 않았어요',
+    )
+  decided.sig = gateSig
+  entry.sig = lineSig
+  // 소비 기록을 먼저 남긴다. 게이트를 쓰기 전에 멈추면 게이트는 pending으로 남아 다시 결정하면 된다.
+  mkdirSync(dirname(paths.ledger(p)), { recursive: true })
   appendFileSync(paths.ledger(p), `${JSON.stringify(entry)}\n`)
   // 이해 문항의 답과 핵심어는 private에만 남긴다(contract.md 9.1절)
   for (const r of rows) appendFileSync(paths.comprehension(p), `${JSON.stringify(r)}\n`)

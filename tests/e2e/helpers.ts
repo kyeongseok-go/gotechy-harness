@@ -1,10 +1,17 @@
 // e2e 공용: 임시 git 저장소 프로젝트, 임시 GOTECHY_HOME, fake 워커 실행.
-import { mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseFrontmatter } from '../../src/core/frontmatter'
 import { initProject } from '../../src/runtime/init'
-import { initKey } from '../../src/runtime/keys'
+import { initOwnerKey, ownerToolPath } from '../../src/runtime/keys'
 import { runTask } from '../../src/runtime/run'
 import { createTask, type NewTaskInput } from '../../src/runtime/task-new'
 
@@ -34,11 +41,29 @@ export function makeProject(): string {
   return root
 }
 
+export const LIB = realpathSync(join(import.meta.dir, '..', '..'))
+const FAKE_OWNERKEY = join(import.meta.dir, '..', 'fixtures', 'ownerkey', 'fake-ownerkey.ts')
+
+/** 임시 GOTECHY_HOME에 테스트용 서명 도구(소프트웨어 키, 사람 확인 없음)를 깐다. 실제 도구와 명령, 종료 코드가 같다 */
+export function installFakeOwnerTool(home: string): void {
+  mkdirSync(join(home, 'bin'), { recursive: true, mode: 0o700 })
+  writeFileSync(
+    ownerToolPath(home),
+    `#!/bin/sh\nexec '${process.execPath}' '${FAKE_OWNERKEY}' "$@"\n`,
+  )
+  chmodSync(ownerToolPath(home), 0o755)
+}
+
 export function makeHome(): string {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-h-')))
-  initKey(home)
+  installFakeOwnerTool(home)
+  initOwnerKey(home, LIB)
   return home
 }
+
+/** 현재 오너 키의 blob 경로(가짜 도구의 취소 표시, 받은 문구 기록이 그 옆에 생긴다) */
+export const ownerBlob = (home: string) =>
+  join(home, 'owner', `${readFileSync(join(home, 'owner', 'active'), 'utf8').trim()}.blob`)
 
 export function newTask(root: string, over: Partial<NewTaskInput> = {}): string {
   return createTask({ root }, { title: '작업', verify: 'true', ownership: ['README.md'], ...over })

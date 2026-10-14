@@ -19,7 +19,7 @@ import { decideGate, verifyGates } from './runtime/gates'
 import { repoRoot } from './runtime/git'
 import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
-import { gotechyHome, initKey, rotateKey } from './runtime/keys'
+import { gotechyHome, initOwnerKey, rotateOwnerKey } from './runtime/keys'
 import { libraryRoot } from './runtime/library'
 import { findProject } from './runtime/project'
 import { runTask } from './runtime/run'
@@ -209,23 +209,35 @@ program
     )
   })
 
-const keys = program.command('keys').description('결정 서명 키 (contract.md 6.3절)')
+const keys = program
+  .command('keys')
+  .description('오너 키: Secure Enclave 키와 Touch ID로 결정에 서명한다 (contract.md 6.3절)')
 keys
   .command('init')
-  .description('서명 키가 없으면 만든다')
+  .description('오너 키가 없으면 만든다. 서명 도구가 없으면 swiftc로 빌드한다')
   .action(() => {
-    const r = initKey(gotechyHome())
-    console.log(r.created ? `키를 만들었어요: ${r.id}` : `이미 키가 있어요: ${r.id}`)
+    try {
+      const r = initOwnerKey(gotechyHome(), libraryRoot())
+      console.log(r.created ? `오너 키를 만들었어요: ${r.id}` : `이미 오너 키가 있어요: ${r.id}`)
+    } catch (e) {
+      console.error((e as Error).message)
+      process.exit(2)
+    }
   })
 keys
   .command('rotate')
-  .description('새 키로 바꾸고 이전 키를 지운다. 이전 키로 한 결정은 다시 결정해야 한다')
+  .description('새 오너 키로 바꾸고 이전 키를 지운다. 이전 키로 한 결정은 다시 결정해야 한다')
   .action(() => {
-    const r = rotateKey(gotechyHome())
-    console.log(`새 키: ${r.id}${r.previous ? ` (지운 키: ${r.previous})` : ''}`)
-    console.log(
-      '이전 키로 서명한 결정은 gotechy gate verify에서 실패해요. 해당 게이트를 다시 결정하세요.',
-    )
+    try {
+      const r = rotateOwnerKey(gotechyHome(), libraryRoot())
+      console.log(`새 키: ${r.id}${r.previous ? ` (지운 키: ${r.previous})` : ''}`)
+      console.log(
+        '이전 키로 서명한 결정은 gotechy gate verify에서 실패해요. 해당 게이트를 다시 결정하세요.',
+      )
+    } catch (e) {
+      console.error((e as Error).message)
+      process.exit(2)
+    }
   })
 
 program
@@ -265,7 +277,7 @@ program
           return answer.trim().toLowerCase() === 'y'
         },
       })
-      console.log(`${g.id}: ${g.resolution}로 결정했어요 (서명 키 ${g.key_id}).`)
+      console.log(`${g.id}: ${g.resolution}로 결정했어요 (오너 키 ${g.key_id}).`)
     } catch (e) {
       rl.close()
       console.error((e as Error).message)
@@ -306,7 +318,8 @@ program
     const lib = libraryRoot()
     let history: { root: string; gitleaks: string } | undefined
     if (o.history) {
-      const gitleaks = process.env.GOTECHY_GITLEAKS ?? Bun.which('gitleaks')
+      const gitleaks =
+        process.env.GOTECHY_GITLEAKS ?? Bun.which('gitleaks', { PATH: process.env.PATH ?? '' })
       const root = await repoRoot(process.cwd())
       if (!gitleaks || !root) {
         console.error(

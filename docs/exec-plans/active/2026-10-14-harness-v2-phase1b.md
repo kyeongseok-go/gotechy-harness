@@ -23,7 +23,8 @@
 - [x] (2026-10-14) 초안 작성 (밤샘 루프, 오너 부재)
 - [x] (2026-10-14 13:05) 오너 검토와 범위 승인 (밤샘 보고 T-007)
 - [x] (2026-10-14 18:40) N0 전제 확인 (실험). Touch ID를 실제로 통과시키는 확인과 Claude Code 확장 경로 일부는 오너 확인으로 남김
-- [ ] N1 오너 인증 관통: Secure Enclave 서명과 Touch ID
+- [x] (2026-10-14 19:30) N1 오너 인증 관통 중 Touch ID 없이 할 수 있는 부분: 계약 6.3, 6.4절, `native/ownerkey.swift`, 오너 키 관리(`keys init`, `keys rotate`), ECDSA 검증, 서명된 결정 장부, 테스트용 가짜 서명 도구, 실제 Swift 도구 테스트, ADR 0006(제안)
+- [ ] N1 마무리: 오너가 실제 Touch ID로 확인(설명 문서의 "확인 필수"), ADR 0006 승인, 프로젝트 공개 키 고정(TD-013)
 - [ ] N2 화면에서 결정: `gotechy serve`
 - [ ] N3 무인 루프: `gotechy loop`와 아침 보고서
 - [ ] N4 부작용 가드, Claude Code mod, Codex hook
@@ -33,6 +34,13 @@
 - [ ] 보안 리뷰, 완료 게이트
 
 ## Surprises & Discoveries
+
+**N1 오너 인증 (2026-10-14 18:55~19:30, 오너 외출)**
+- 18:50쯤 맥 화면이 잠기자 Secure Enclave 키 만들기가 `-25308`(errSecInteractionNotAllowed)로 실패했다. `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` 키는 화면이 잠긴 동안 만들 수도 쓸 수도 없다. 오너가 앞에 있어야 결정하는 설계와 맞으므로 그대로 둔다. 실제 키 생성 테스트는 잠겨 있으면 건너뛴다. [확인]
+- 샌드박스 안에서는 `SecureEnclave.isAvailable`부터 false가 되어 도구가 exit 3으로 끝난다. 밖에서는 0(성공)이나 1(잠김)이라 화면 잠금과 상관없이 테스트로 구별된다. [확인]
+- 순서를 지키지 못한 부분: 계약을 먼저 쓴 뒤 구현하고 수용 테스트를 나중에 썼다(오너 부재 중 큰 리팩터링이라 기존 테스트 289개를 먼저 옮겨 회귀를 막는 쪽을 택함). 대신 mutation 9종으로 테스트의 힘을 확인했고, 그중 하나(payload 묶기)는 처음 테스트가 약해 시나리오를 바꿨다. [확인]
+- `Bun.which`도 `Bun.spawn`처럼 PATH를 생략하면 시작 시점의 PATH를 쓴다(`process.env.PATH`를 바꿔도 `/bin/ls`를 찾음). swiftc가 없을 때의 테스트가 실제 빌드를 돌려 드러났다. `Bun.which`에 PATH를 명시하고 위생 테스트로 고정했다. [확인]
+- 서명 도구는 테스트에서 소프트웨어 키를 쓰는 가짜 도구(`tests/fixtures/ownerkey/fake-ownerkey.ts`)로 바꿔 끼운다. 같은 명령과 종료 코드를 쓰므로 decide의 실제 실행 경로(프로세스 실행, 종료 코드 4, 출력 검증)가 테스트된다. [확인]
 
 **N0 전제 확인 (2026-10-14 18:28~18:40, 오너 외출, macOS arm64, Swift 6.1.2)** 증거 `docs/references/evidence/2026-10-14-n0/`
 - 1. Secure Enclave 도구: CryptoKit으로 쓴 Swift 도구(70줄)가 `swiftc -O`로 5초에 빌드됐다. 서명을 위한 entitlement나 코드 서명 없이 동작한다. 키 파일(blob)은 개인 키 원문이 아니라 Secure Enclave가 감싼 ASN.1 구조(사람 확인 없는 키 324바이트, 있는 키 427바이트)다. [확인]
@@ -51,6 +59,10 @@
 |---|---|---|---|
 | 1b의 첫 마일스톤은 오너 인증이다 | 1a 보안 감사의 남은 한계(같은 사용자 자가 승인, Codex 키 읽기, 장부 무서명, TTY 우회)가 모두 "키가 파일이다"에서 나온다 | 2026-10-14 | ADR 0005 대체 예정 |
 | 범위(N0~N6)와 순서 승인, 오너 인증은 Secure Enclave | 오너가 밤샘 보고 T-007에 답함. 기본값(Secure Enclave)에 이의 없음 | 2026-10-14 | - |
+| 게이트 서명과 장부 줄 서명을 한 번의 Touch ID로 받는다(도구가 먼저 `evaluatePolicy`, 같은 context로 여러 서명) | 결정마다 두 번 묻지 않게. 실제로 한 번만 묻는지는 오너 확인 | 2026-10-14 | ADR 0006 |
+| 1a HMAC 결정은 옮기지 않고 다시 결정하게 한다(`keys migrate` 없음) | 실제로 쓰인 HMAC 결정이 없다. 명령을 늘리지 않는다 | 2026-10-14 | ADR 0006 |
+| 서명 도구는 `keys init`이 소스에서 `swiftc`로 빌드한다. 테스트 빌드만 `-D GOTECHY_TEST_NO_PRESENCE` | 바이너리를 저장소에 넣지 않는다. 사람 확인 없는 키는 테스트 빌드에서만 만들 수 있다 | 2026-10-14 | ADR 0006 |
+| 프로젝트 공개 키 고정은 다음 단계(TD-013) | N1 범위를 Touch ID 없이 끝낼 수 있는 데까지로 자른다 | 2026-10-14 | - |
 
 ## Outcomes & Retrospective
 
@@ -83,7 +95,7 @@
 ### N1 오너 인증 관통
 
 - goal: `gotechy decide`가 Touch ID 없이는 결정을 기록하지 못한다.
-- work: 서명을 HMAC에서 Secure Enclave ECDSA로 바꾼다. 공개키는 `$GOTECHY_HOME/owner.pub`와 프로젝트 `orchestration/owner.pub`(지문 고정). 결정 장부 줄마다 서명한다. `keys rotate`는 새 키 쌍. 1a의 HMAC 결정은 마이그레이션 명령으로 한 번에 다시 서명하거나 superseded 처리.
+- work: 서명을 HMAC에서 Secure Enclave ECDSA로 바꾼다. 공개 키는 `$GOTECHY_HOME/owner/<key_id>.pub`(2026-10-14 구현). 프로젝트 `orchestration/owner.pub` 지문 고정은 TD-013. 결정 장부 줄마다 서명한다. `keys rotate`는 새 키 쌍. 1a의 HMAC 결정은 마이그레이션 명령으로 한 번에 다시 서명하거나 superseded 처리.
 - result: 키가 파일로 존재하지 않으므로 워커가 읽을 키가 없다. TTY 검사 우회(`script`)로도 Touch ID 없이는 결정이 나오지 않는다.
 - proof: Validation 1~3.
 

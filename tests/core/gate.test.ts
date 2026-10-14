@@ -1,6 +1,15 @@
-// contract.md 6.2, 6.3절의 순수 로직: 정렬 JSON, 작업 명세 요약값, 서명.
+// contract.md 6.2, 6.3절의 순수 로직: 정렬 JSON, 작업 명세 요약값, 오너 서명 검증, 장부 서명.
 import { describe, expect, test } from 'bun:test'
-import { canonicalJson, signPayload, taskSpecDigest, verifyPayload } from '../../src/core/gate'
+import { generateKeyPairSync, sign } from 'node:crypto'
+import {
+  canonicalJson,
+  type LedgerEntry,
+  ledgerLinePayload,
+  ledgerSigned,
+  ownerKeyId,
+  taskSpecDigest,
+  verifySignature,
+} from '../../src/core/gate'
 import { buildWorkerPrompt } from '../../src/core/prompt'
 import type { TaskFrontmatter } from '../../src/core/schema'
 
@@ -28,18 +37,60 @@ describe('작업 명세 요약값', () => {
   })
 })
 
-describe('서명', () => {
-  const key = Buffer.alloc(32, 7)
+const keyPair = () => {
+  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+  const pub = publicKey.export({ format: 'der', type: 'spki' }).toString('base64')
+  const signText = (text: string) =>
+    sign('sha256', Buffer.from(text), { key: privateKey, dsaEncoding: 'der' }).toString('base64')
+  return { pub, signText }
+}
+
+describe('오너 서명 검증 (ECDSA P-256)', () => {
+  const k = keyPair()
   test('같은 키와 내용이면 검증을 통과한다', () => {
-    const sig = signPayload(key, '{"a":1}')
-    expect(verifyPayload(key, '{"a":1}', sig)).toBe(true)
+    expect(verifySignature(k.pub, '{"a":1}', k.signText('{"a":1}'))).toBe(true)
   })
 
-  test('내용이나 키가 다르면 실패한다', () => {
-    const sig = signPayload(key, '{"a":1}')
-    expect(verifyPayload(key, '{"a":2}', sig)).toBe(false)
-    expect(verifyPayload(Buffer.alloc(32, 8), '{"a":1}', sig)).toBe(false)
-    expect(verifyPayload(key, '{"a":1}', 'zz')).toBe(false)
+  test('내용이나 키가 다르거나 서명 형식이 아니면 실패한다', () => {
+    const sig = k.signText('{"a":1}')
+    expect(verifySignature(k.pub, '{"a":2}', sig)).toBe(false)
+    expect(verifySignature(keyPair().pub, '{"a":1}', sig)).toBe(false)
+    expect(verifySignature(k.pub, '{"a":1}', 'zz')).toBe(false)
+    expect(verifySignature('공개 키가 아님', '{"a":1}', sig)).toBe(false)
+  })
+
+  test('키 id는 공개 키의 지문이라 공개 키가 바뀌면 달라진다', () => {
+    expect(ownerKeyId(k.pub)).toMatch(/^o-[0-9a-f]{16}$/)
+    expect(ownerKeyId(k.pub)).toBe(ownerKeyId(k.pub))
+    expect(ownerKeyId(keyPair().pub)).not.toBe(ownerKeyId(k.pub))
+  })
+})
+
+describe('결정 장부 서명', () => {
+  const k = keyPair()
+  const id = ownerKeyId(k.pub)
+  const line = (gate: string): LedgerEntry => {
+    const e: LedgerEntry = {
+      gate,
+      nonce: `n-${gate}`,
+      key_id: id,
+      decided_at: '2026-10-14T00:00:00Z',
+      payload_sha256: 'ab',
+    }
+    return { ...e, sig: k.signText(ledgerLinePayload(e)) }
+  }
+  const pubFor = (kid: string) => (kid === id ? k.pub : undefined)
+
+  test('모든 줄이 그 줄의 키로 서명돼 있으면 통과한다', () => {
+    expect(ledgerSigned([line('G-001'), line('G-002')], pubFor)).toBe(true)
+  })
+
+  test('줄의 값을 바꾸거나, 서명 없는 줄을 더하거나, 모르는 키의 줄이 있으면 실패한다', () => {
+    const changed = { ...line('G-001'), decided_at: '2026-10-15T00:00:00Z' }
+    expect(ledgerSigned([changed], pubFor)).toBe(false)
+    const { sig: _sig, ...unsigned } = line('G-002')
+    expect(ledgerSigned([line('G-001'), unsigned], pubFor)).toBe(false)
+    expect(ledgerSigned([{ ...line('G-003'), key_id: 'o-0000000000000000' }], pubFor)).toBe(false)
   })
 })
 

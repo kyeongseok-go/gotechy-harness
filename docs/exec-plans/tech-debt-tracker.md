@@ -19,6 +19,7 @@
 | TD-010 | 2026-10-14 | `src/runtime/run.ts` 줄 커버리지 90.7%, 2026-10-14 18:40에 92.1%(핵심 모듈 목록 밖. 타임아웃, 게이트 열기 실패, 샌드박스 없음 분기). 같은 밤에 `usage.ts`(100%)와 `pages.tsx`(95.0%)는 기준을 넘겼다 | src/runtime/run.ts | 🟢 | 드문 실패 경로가 깨져도 모른다 | 1a 완료 게이트 전 |
 | TD-011 | 2026-10-14 | `gotechy init`이 아직 팩을 복사로 설치한다(apm 전환 전). (mise 락은 2026-10-14 13:23에 A등급 도구 6개로 넓힘) | src/runtime/init.ts, mise.toml | 🟡 | 설치 결과의 변조와 드리프트를 `apm audit`로 잡지 못한다 | M3 나머지(오너와 함께): apm 설치 |
 | TD-012 | 2026-10-14 | `gotechy accept`가 병합하는 워커 변경에는 gitleaks 검사가 없다. 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 키 값 검사 말고는 막히지 않는다 | src/runtime/accept.ts | 🟡 | 워커가 만든 토큰 같은 값이 메인에 들어갈 수 있다 | accept에서 병합 diff에 gitleaks를 돌리기 |
+| TD-013 | 2026-10-14 | 오너 공개 키의 지문을 프로젝트에 고정하지 않는다. 같은 OS 사용자 프로세스가 `$GOTECHY_HOME/owner`의 공개 키와 blob을 사람 확인 없는 자기 키로 바꾸면 그 뒤의 결정을 위조할 수 있다 | src/runtime/keys.ts, src/runtime/gates.ts | 🟡 | 키를 바꾼 사실이 검증에서 드러나지 않는다 | 1b: 프로젝트 `orchestration/owner.pub` 지문 고정과 키 교체 절차 |
 
 심각도: 🔴 구조적(레이어 위반·보안) / 🟡 기능적(엣지케이스·성능) / 🟢 표면적(네이밍·중복)
 

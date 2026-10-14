@@ -68,3 +68,15 @@ test('src의 Bun.spawn과 Bun.spawnSync는 env를 명시한다', () => {
   }
   expect(missing).toEqual([])
 })
+
+test('src의 Bun.which는 PATH를 명시한다', () => {
+  // Bun.which도 PATH를 생략하면 시작 시점의 PATH를 쓴다(2026-10-14 실험). process.env.PATH를 바꾼 뒤 찾으면 엉뚱한 결과가 나온다
+  const missing: string[] = []
+  for (const f of walk(join(ROOT, 'src'))) {
+    const text = readFileSync(f, 'utf8')
+    for (const m of text.matchAll(/Bun\.which\(([^)]*)\)/g))
+      if (!/PATH/.test(m[1] ?? ''))
+        missing.push(`${relative(ROOT, f)}:${text.slice(0, m.index).split('\n').length}`)
+  }
+  expect(missing).toEqual([])
+})

@@ -44,10 +44,6 @@ const branchFiles = (id: string) =>
   sh(['git', 'diff', '--name-only', 'main', `gotechy/${id}`], root)
     .trim()
     .split('\n')
-const activeKey = () => {
-  const id = readFileSync(join(home, 'keys', 'active'), 'utf8').trim()
-  return readFileSync(join(home, 'keys', `${id}.key`), 'utf8').trim()
-}
 
 describe.skipIf(process.platform !== 'darwin')(
   '높음 A: verify 샌드박스는 프로젝트 밖 쓰기, 네트워크, 환경 변수를 막는다',
@@ -149,17 +145,6 @@ describe('중간 D: 하드 링크와 키 유출', () => {
     expect(out.status).toBe('failed')
     expect(String(fm(handoffFile(root, id)).lead_note)).toContain('하드 링크')
     expect(branchFiles(id)).not.toContain('p.txt')
-  })
-
-  test('워커가 서명 키 내용을 파일에 넣으면 되돌리고 실패로 처리한다', async () => {
-    const id = newTask(root, { ownership: ['k.txt'], verify: 'true' })
-    const out = await run(
-      id,
-      fixture({ 'k.txt': `leaked ${activeKey()}\n` }, { handoff: okHandoff }),
-    )
-    expect(out.status).toBe('failed')
-    expect(String(fm(handoffFile(root, id)).lead_note)).toContain('서명 키')
-    expect(branchFiles(id)).not.toContain('k.txt')
   })
 })
 

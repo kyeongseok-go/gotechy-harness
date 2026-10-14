@@ -66,11 +66,11 @@ describe('높음 1: verify는 샌드박스 안에서 워커 코드를 실행한�
   test.skipIf(process.platform !== 'darwin')(
     'verify가 실행한 워커 스크립트는 키를 읽거나 메인의 게이트를 쓰지 못한다',
     async () => {
-      const keyDir = join(home, 'keys')
-      // 키를 읽으면 9로, 끝까지 막히면 3으로 끝난다. verify의 부산물은 리드가 지우므로 종료 코드로 판정한다
+      const keyDir = join(home, 'owner')
+      // 오너 키 blob을 읽으면 9로, 끝까지 막히면 3으로 끝난다. verify의 부산물은 리드가 지우므로 종료 코드로 판정한다
       const evil = [
         '#!/bin/sh',
-        `cat ${keyDir}/*.key >/dev/null 2>&1 && exit 9`,
+        `cat ${keyDir}/*.blob >/dev/null 2>&1 && exit 9`,
         `echo forged > ${join(root, 'orchestration', 'gates', 'G-999.md')} 2>/dev/null`,
         `echo poisoned >> ${join(root, 'orchestration', 'private', 'decisions.jsonl')} 2>/dev/null`,
         'exit 3',
@@ -218,9 +218,9 @@ describe('낮음', () => {
     expect(v?.reasons.join(' ')).toContain('장부')
   })
 
-  test('keys/active에 형식 밖의 값이 있으면 키를 쓰지 않는다', async () => {
-    writeFileSync(join(home, 'keys', 'active'), '../../etc/passwd\n')
-    chmodSync(join(home, 'keys', 'active'), 0o600)
+  test('owner/active에 형식 밖의 값이 있으면 키를 쓰지 않는다', async () => {
+    writeFileSync(join(home, 'owner', 'active'), '../../etc/passwd\n')
+    chmodSync(join(home, 'owner', 'active'), 0o600)
     const id = newTask(root, { verify: 'grep -q 설치 README.md' })
     await runFake(root, home, id, 'needs-decision')
     await expect(

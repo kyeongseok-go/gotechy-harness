@@ -15,9 +15,10 @@ import { parseFrontmatter } from '../../src/core/frontmatter'
 import { acceptTask } from '../../src/runtime/accept'
 import { decideGate, listGates, verifyGates } from '../../src/runtime/gates'
 import { initProject } from '../../src/runtime/init'
-import { initKey, rotateKey } from '../../src/runtime/keys'
+import { initOwnerKey, rotateOwnerKey } from '../../src/runtime/keys'
 import { runTask } from '../../src/runtime/run'
 import { createTask, type NewTaskInput } from '../../src/runtime/task-new'
+import { installFakeOwnerTool, LIB } from './helpers'
 
 const FIX = join(import.meta.dir, '..', 'fixtures', 'fake')
 const CLI = join(import.meta.dir, '..', '..', 'src', 'cli.ts')
@@ -48,7 +49,8 @@ let home: string
 beforeEach(() => {
   root = makeProject()
   home = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-home-')))
-  initKey(home)
+  installFakeOwnerTool(home)
+  initOwnerKey(home, LIB)
 })
 
 const task = (over: Partial<NewTaskInput> = {}, r = root) =>
@@ -174,10 +176,9 @@ describe('decide', () => {
     ).rejects.toThrow('이미')
   })
 
-  test('키 파일 권한이 넓으면 서명을 거부한다', async () => {
+  test('오너 키 폴더 권한이 넓으면 서명을 거부한다', async () => {
     await run(task(), 'needs-decision')
-    const active = readFileSync(join(home, 'keys', 'active'), 'utf8').trim()
-    chmodSync(join(home, 'keys', `${active}.key`), 0o644)
+    chmodSync(join(home, 'owner'), 0o755)
     await expect(
       decideGate({ root }, home, 'G-001', { choice: '5분', confirm: yes }),
     ).rejects.toThrow('권한')
@@ -258,7 +259,7 @@ describe('gate verify가 거부하는 것 (Validation 8, 11)', () => {
   test('keys rotate 뒤 이전 키로 서명한 결정은 실패하고, 다시 결정하면 통과한다', async () => {
     await decidedTask()
     const old = readFileSync(gateFile('G-001'), 'utf8')
-    rotateKey(home)
+    rotateOwnerKey(home, LIB)
     const v = verdict('G-001')
     expect(v.status).toBe('fail')
     expect(v.reasons.join(' ')).toContain('키')

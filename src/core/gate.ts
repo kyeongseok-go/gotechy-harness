@@ -1,5 +1,5 @@
-// 게이트와 결정 서명(contract.md 6절). 키와 파일 입출력은 runtime이 맡고, 여기서는 계산과 판정만 한다.
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
+// 게이트와 결정 서명(contract.md 6절). 서명(Secure Enclave)과 파일 입출력은 runtime이 맡고, 여기서는 계산과 검증만 한다.
+import { createHash, createPublicKey, verify } from 'node:crypto'
 import { z } from 'zod'
 import { parseFrontmatter } from './frontmatter'
 import { TaskId } from './schema'
@@ -92,16 +92,66 @@ export function signingPayload(f: SignedFields): string {
   return canonicalJson(f)
 }
 
-export function signPayload(key: Buffer, payload: string): string {
-  return createHmac('sha256', key).update(payload).digest('hex')
+/** 오너 키 id: 공개 키(SPKI DER)의 sha256 앞 16자리. 공개 키 파일이 바뀌면 id와 맞지 않아 드러난다. */
+export const OWNER_KEY_ID = /^o-[0-9a-f]{16}$/
+export function ownerKeyId(pubBase64: string): string {
+  return `o-${createHash('sha256').update(Buffer.from(pubBase64, 'base64')).digest('hex').slice(0, 16)}`
 }
 
-export function verifyPayload(key: Buffer, payload: string, sig: string): boolean {
-  if (!/^[0-9a-f]{64}$/.test(sig)) return false
-  return timingSafeEqual(Buffer.from(signPayload(key, payload), 'hex'), Buffer.from(sig, 'hex'))
+/** ECDSA P-256(SHA-256) 서명 검증. 공개 키만 쓰므로 검증 경로에는 비밀 값이 없다. */
+export function verifySignature(pubBase64: string, payload: string, sigBase64: string): boolean {
+  try {
+    const key = createPublicKey({
+      key: Buffer.from(pubBase64, 'base64'),
+      format: 'der',
+      type: 'spki',
+    })
+    return verify(
+      'sha256',
+      Buffer.from(payload),
+      { key, dsaEncoding: 'der' },
+      Buffer.from(sigBase64, 'base64'),
+    )
+  } catch {
+    return false
+  }
 }
 
-export type LedgerEntry = { gate: string; nonce: string; key_id: string; decided_at: string }
+export type LedgerEntry = {
+  gate: string
+  nonce: string
+  key_id: string
+  decided_at: string
+  /** 게이트 서명 대상의 sha256. 장부 줄이 어느 결정의 기록인지 묶는다 */
+  payload_sha256?: string
+  /** 앞의 다섯 키를 정렬한 JSON에 대한 오너 서명 */
+  sig?: string
+}
+
+export function ledgerLinePayload(e: LedgerEntry): string {
+  return canonicalJson({
+    gate: e.gate,
+    nonce: e.nonce,
+    key_id: e.key_id,
+    decided_at: e.decided_at,
+    payload_sha256: e.payload_sha256 ?? null,
+  })
+}
+
+/** 장부의 모든 줄이 그 줄의 키로 서명돼 있는가. 공개 키를 모르는 줄도 실패다(fail-closed). */
+export function ledgerSigned(
+  entries: LedgerEntry[],
+  pubFor: (keyId: string) => string | undefined,
+): boolean {
+  return entries.every((e) => {
+    const pub = pubFor(e.key_id)
+    return (
+      pub !== undefined &&
+      typeof e.sig === 'string' &&
+      verifySignature(pub, ledgerLinePayload(e), e.sig)
+    )
+  })
+}
 export type VerdictStatus = 'ok' | 'pending' | 'superseded' | 'fail'
 export type Verdict = { id: string; status: VerdictStatus; reasons: string[] }
 
@@ -110,11 +160,12 @@ export type VerifyContext = {
   taskText: string | undefined
   /** 현재 HANDOFF 파일 내용과 판본 */
   handoff: { text: string; rev: number | undefined } | undefined
-  activeKey: { id: string; key: Buffer } | undefined
+  /** 현재 오너 키의 id와 공개 키(SPKI DER base64) */
+  ownerKey: { id: string; pub: string } | undefined
   /** 키를 못 읽은 사유 (권한, 없음) */
   keyProblem?: string
   ledger: LedgerEntry[]
-  /** 장부에 읽을 수 없는 줄이 있다 */
+  /** 장부에 읽을 수 없거나 서명이 맞지 않는 줄이 있다 */
   ledgerBroken?: boolean
 }
 
@@ -135,12 +186,17 @@ export function judgeGate(g: Gate, ctx: VerifyContext): Verdict {
   if (!g.resolution || !g.options.includes(g.resolution)) reasons.push('선택이 선택지에 없어요')
   if (!ctx.projectId || g.project_id !== ctx.projectId)
     reasons.push(`다른 프로젝트(${g.project_id ?? '없음'})의 결정이에요`)
-  if (!ctx.activeKey) {
-    reasons.push(ctx.keyProblem ?? '서명 키가 없어요. gotechy keys init을 실행하세요')
-  } else if (g.key_id !== ctx.activeKey.id) {
-    reasons.push(`이전 키(${g.key_id ?? '없음'})로 서명한 결정이에요. 다시 결정하세요`)
+  let payload: string | undefined
+  if (!ctx.ownerKey) {
+    reasons.push(ctx.keyProblem ?? '오너 키가 없어요. gotechy keys init을 실행하세요')
+  } else if (g.key_id !== ctx.ownerKey.id) {
+    reasons.push(
+      g.key_id?.startsWith('k-')
+        ? `1a의 HMAC 키(${g.key_id})로 서명한 결정이에요. 오너 키로 다시 결정하세요`
+        : `이전 키(${g.key_id ?? '없음'})로 서명한 결정이에요. 다시 결정하세요`,
+    )
   } else if (ctx.projectId && g.resolution && g.task_spec_sha256 && g.nonce && g.decided_at) {
-    const payload = signingPayload({
+    payload = signingPayload({
       project_id: ctx.projectId,
       task_id: g.task,
       gate_id: g.id,
@@ -157,18 +213,23 @@ export function judgeGate(g: Gate, ctx: VerifyContext): Verdict {
       nonce: g.nonce,
       decided_at: g.decided_at,
     })
-    if (!g.sig || !verifyPayload(ctx.activeKey.key, payload, g.sig))
+    if (!g.sig || !verifySignature(ctx.ownerKey.pub, payload, g.sig))
       reasons.push('서명이 맞지 않아요. 결정 파일이 결정 뒤에 바뀌었어요')
   } else {
     reasons.push('서명 정보가 비어 있어요')
   }
   if (ctx.ledgerBroken)
-    reasons.push('결정 장부(orchestration/private/decisions.jsonl)에 읽을 수 없는 줄이 있어요')
+    reasons.push(
+      '결정 장부(orchestration/private/decisions.jsonl)에 읽을 수 없거나 서명이 맞지 않는 줄이 있어요',
+    )
   const mine = ctx.ledger.filter((e) => e.gate === g.id)
-  if (mine.at(-1)?.nonce !== g.nonce)
+  const last = mine.at(-1)
+  if (last?.nonce !== g.nonce)
     reasons.push(
       'nonce가 이 게이트의 마지막 결정 기록과 달라요. 되살린 옛 결정이거나 기록이 없어요',
     )
+  else if (payload && last.payload_sha256 !== sha256(payload))
+    reasons.push('결정 장부의 기록이 이 결정과 맞지 않아요')
   const other = ctx.ledger.find((e) => e.nonce === g.nonce && e.gate !== g.id)
   if (other) reasons.push(`nonce가 다른 게이트(${other.gate})에 이미 쓰였어요`)
   if (!ctx.taskText) reasons.push(`작업 명세(${g.task})가 없어요`)

@@ -37,7 +37,7 @@ import {
   restoreFiles,
   restoreGitSnapshot,
 } from './git'
-import { gotechyHome, loadActiveKey } from './keys'
+import { gotechyHome } from './keys'
 import { appendEvent, type Project, paths, updateFrontmatter } from './project'
 import { runSandboxedShell } from './sandbox'
 import { loadKnownTerms } from './terms'
@@ -139,20 +139,15 @@ export async function runTask(
   // 게이트나 키 같은 다른 파일을 건드리거나, 바깥 파일 내용을 커밋하게 된다(보안 감사 1차 높음 2, 2차 중간 D).
   const links = changed.filter((f) => isSymlink(join(wt, f)))
   const hard = changed.filter((f) => !links.includes(f) && isHardLinked(join(wt, f)))
-  const key = loadActiveKey(home)
-  const secrets = key.ok ? [key.key.toString('hex')] : []
-  const leaks = changed.filter(
-    (f) => !links.includes(f) && !hard.includes(f) && containsAny(join(wt, f), secrets),
-  )
+  // 1a의 "서명 키 값이 든 파일" 검사는 뺐다. 오너 키는 Secure Enclave 안에 있어 파일에 들어갈 비밀 값이 없다(contract.md 6.3절)
   const outside = disallowedChanges(changed, task.ownership, task.id)
-  const bad = [...new Set([...outside, ...links, ...hard, ...leaks])]
+  const bad = [...new Set([...outside, ...links, ...hard])]
   if (bad.length > 0) {
     await restoreFiles(wt, base, bad)
     const only = outside.filter((f) => !links.includes(f) && !hard.includes(f))
     if (only.length > 0) notes.push(`허용 밖 파일을 바꿔 되돌렸습니다: ${only.join(', ')}`)
     if (links.length > 0) notes.push(`심볼릭 링크를 만들어 되돌렸습니다: ${links.join(', ')}`)
     if (hard.length > 0) notes.push(`하드 링크를 만들어 되돌렸습니다: ${hard.join(', ')}`)
-    if (leaks.length > 0) notes.push(`서명 키 내용이 들어 있어 되돌렸습니다: ${leaks.join(', ')}`)
   }
   const allowed = changed.filter((f) => !bad.includes(f))
 
@@ -342,19 +337,6 @@ function isHardLinked(path: string): boolean {
   try {
     const st = lstatSync(path)
     return st.isFile() && st.nlink > 1
-  } catch {
-    return false
-  }
-}
-
-/** 10MB 이하 일반 파일에 비밀 값이 들어 있는가. */
-function containsAny(path: string, needles: string[]): boolean {
-  if (needles.length === 0) return false
-  try {
-    const st = lstatSync(path)
-    if (!st.isFile() || st.size > 10 * 1024 * 1024) return false
-    const text = readFileSync(path, 'latin1').toLowerCase()
-    return needles.some((n) => text.includes(n.toLowerCase()))
   } catch {
     return false
   }

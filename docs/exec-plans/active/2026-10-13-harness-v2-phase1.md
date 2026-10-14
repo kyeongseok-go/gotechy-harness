@@ -28,11 +28,12 @@
 - [x] (2026-10-14 00:53) M2b 인박스와 읽기 전용 HTML: 계약 8절, `gotechy inbox`(3초 카드, golden test), `gotechy render`(hono/jsx, markdown-it `html: false`, CSP, 허용 요소 목록), HANDOFF 예외 표지 금지, 터미널과 HTML의 제어 문자 제거, 저장소 위생 테스트. 테스트 115개 통과
 - [x] (2026-10-14 01:53) M2c 결정과 반영 (밤샘 루프, `docs/exec-plans/active/2026-10-14-overnight-loop.md`): 계약 6절(게이트, 서명, decide, verify, run의 강제)과 9절(이해 게이트, 측정, 인박스 게이트 표시, accept, 용어 누적). `keys init`, `keys rotate`, `decide`, `gate verify`, `accept`. 보안 감사 1차 지적(높음 3, 중간 3, 낮음 4) 수정. 보안 감사 2차 지적(높음 3, 중간 1, 낮음 2) 수정. 테스트 196개 통과
 - [x] (2026-10-14 02:09) M3 설치 계층 중 격리 환경에서 검증할 수 있는 부분 (밤샘 루프): 계약 10절, `train.yaml`(train 2026.10.0), `gotechy doctor [--history]`, `gotechy setup [--dry-run] [--restore]`, gitleaks hook과 `.gitleaks.toml`(주민등록번호 규칙), `bin/gotechy` 부트스트랩. M3 보안 리뷰 수정 뒤 테스트 258개 통과
-- [ ] M3 나머지: 이 맥에 실제 setup 적용과 복원(Validation 14 실측), 격리 셸 fresh install(Validation 12), `init`의 apm 전환(작업 5), train 전체 도구의 mise 락 (오너와 함께)
+- [x] (2026-10-14 13:06) 이 맥에 실제 `setup` 적용과 복원 (Validation 14 실측, 오너 결정 T-006). 두 설정 파일의 바이트와 권한이 원본과 같아짐. 증거 `docs/references/evidence/2026-10-14-setup-real/`
+- [ ] M3 나머지: 격리 셸 fresh install(Validation 12), `init`의 apm 전환(작업 5), train 전체 도구의 mise 락 (오너와 함께)
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음
 - [ ] 1a 완료 게이트 (/gotechy-ship 기능 등급) → 공문서 프로젝트 착수
-- [ ] **(필수, 사용자 지시 2026-10-13) 1b ExecPlan 작성·착수** (2026-10-14 밤 초안 작성: `2026-10-14-harness-v2-phase1b.md`, 오너 승인 뒤 착수) — 1a 완료 게이트는 1b ExecPlan 파일이 `active/`에 생겨야 통과한다
+- [ ] **(필수, 사용자 지시 2026-10-13) 1b ExecPlan 작성·착수** (2026-10-14 밤 초안 작성: `2026-10-14-harness-v2-phase1b.md`, 2026-10-14 13:05 오너가 범위와 순서 승인, 착수 전) — 1a 완료 게이트는 1b ExecPlan 파일이 `active/`에 생겨야 통과한다
 
 ## Surprises & Discoveries
 
@@ -145,6 +146,7 @@
 | HANDOFF에서는 문체 예외 표지를 금지하고(오류), 표지가 있어도 문체 검사를 한다 | 워커가 HANDOFF 전체를 감싸면 검사를 피할 수 있다(미탐) | 2026-10-14 | - |
 | 인박스와 화면의 모든 문자열에서 제어 문자와 양방향 제어 문자를 지운다 | 악성 HANDOFF가 터미널 화면을 덮어쓰거나 글자 순서를 속일 수 있다 | 2026-10-14 | - |
 | 새 영어 용어는 용어 은행(라이브러리 `knowledge/terms.jsonl`, 프로젝트 `orchestration/terms.jsonl`)에 없을 때만 "새 용어" 풀이를 요구한다 | 사용자가 용어를 익히려는 목적, 같은 풀이 반복은 소음 | 2026-10-14 | - |
+| 밤샘 루프 결정 4건: 밤사이 푸시 유지(T-002), 선행 조건 accepted 유지(T-003), setup 실측은 바로(T-006), 1b 범위와 순서 승인(T-007) | 오너가 채팅으로 답함(13:05). 기본값 5건에는 이의 없음. 이 맥에 키가 아직 없어 `decide` 서명 기록은 아님 | 2026-10-14 | - |
 
 ## Outcomes & Retrospective
 
@@ -297,7 +299,7 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [x] 11b. (2026-10-14: `tests/e2e/accept.test.ts`) 서로 다른 파일을 바꾼 두 작업은 `accept`로 차례로 병합되고, 같은 줄을 바꾼 두 번째 작업은 충돌로 병합이 취소되며 `needs-decision`이 된다. 메인 verify가 실패하면 병합하지 않는다.
 - [ ] 12. 격리 셸에서 `setup` → `doctor` exit 0 (fresh-install 로그를 Artifacts에, 현재 맥 아키텍처 기준. 다른 아키텍처는 2단계 CI).
 - [x] 13. (2026-10-14: 임시 HOME, `tests/e2e/doctor-setup.test.ts`) `setup --dry-run` 전후로 `~/.claude/settings.json`·`~/.codex/config.toml`의 sha256과 `~/.gotechy` 존재 여부가 같다.
-- [ ] 14. (2026-10-14: 백업, 복원, 사용자 변경 시 중단은 임시 HOME 테스트로 통과. 이 맥에 실제 적용과 복원은 오너와 함께) 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.
+- [x] 14. (2026-10-14: 백업, 복원, 사용자 변경 시 중단은 임시 HOME 테스트로 통과. 13:06 이 맥에 실제 적용과 복원, sha256, 권한, `cmp` 결과가 모두 원본과 같음. 증거 `docs/references/evidence/2026-10-14-setup-real/`. 사용자 변경 시 중단 경로는 실제 설정을 건드리지 않으려고 임시 HOME 테스트로만 확인) 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.
 - [x] 15. (2026-10-14: 가짜 도구와 `tests/fixtures/train/train-mismatch.yaml`) doctor에 `GOTECHY_TRAIN=tests/fixtures/train-mismatch.yaml`로 불일치를 주입하면 exit 1과 교정 명령, 교정 후 재실행은 exit 0.
 - [x] 16. (2026-10-14: gitleaks 8.30.1, `tests/e2e/gitleaks.test.ts`. gitleaks가 없는 CI에서는 fail-closed 테스트만 돈다) 격리된 임시 Git 저장소에서 합성 토큰·합성 주민번호가 든 파일의 커밋을 hook이 막고, `doctor --history`가 이력 속 합성 토큰을 찾는다.
 - [ ] 17. `bin/gotechy test` 전체 통과, 커버리지 전체 ≥80%·핵심 모듈 ≥95%.
@@ -312,7 +314,8 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 
 - M1: 실제 워커 HANDOFF 2건과 작업 명세 — `docs/references/evidence/2026-10-14-m1/` (Claude: verify exit 0, $0.091 / Codex: verify exit 0).
 - M2b: 인박스, 결정 필요 화면, 악성 HANDOFF 화면 스크린샷은 `docs/references/evidence/2026-10-14-m2b/`에 있다. 악성 화면에서 스크립트 실행 없음, 모든 태그가 글자로 표시.
-(구현하며 채운다: fresh-install 로그, 설정 백업·복원 증거. 2차 사용자용 데모: 작업 맡기기부터 결정까지 3분 녹화 1건)
+- M3: 이 맥의 실제 전역 설정에 `setup` 적용과 `--restore` 1회, 증거는 `docs/references/evidence/2026-10-14-setup-real/` (적용 1초 뒤 복원, 바이트와 권한이 원본과 같음).
+(구현하며 채운다: fresh-install 로그. 2차 사용자용 데모: 작업 맡기기부터 결정까지 3분 녹화 1건)
 
 ## Interfaces and Dependencies
 

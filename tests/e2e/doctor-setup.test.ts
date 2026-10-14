@@ -147,10 +147,27 @@ describe('doctor (Validation 15)', () => {
     const bad = await doctor(MISMATCH)
     const fails = bad.checks.filter((c) => c.status === 'fail')
     expect(fails.map((c) => c.name)).toEqual(['gh'])
-    expect(fails[0]?.fix).toBeTruthy()
+    expect(fails[0]?.fix).toContain('mise install --locked')
     expect(fails[0]?.detail).toContain('2.101.0')
     fakeTool('gh', 'gh version 2.101.0 (2026-09-01)')
     expect((await doctor(MISMATCH)).checks.filter((c) => c.status === 'fail')).toEqual([])
+  })
+
+  test('B등급 도구가 어긋나면 mise 설치가 아니라 다시 설치하거나 train을 올리라고 알려 준다', async () => {
+    applySetup(planSetup(opts()), opts())
+    const pinB = join(home, 'train-pin-b.yaml')
+    writeFileSync(
+      pinB,
+      readFileSync(TRAIN, 'utf8').replace(
+        /^ {2}claude: \{[^}]*\}$/m,
+        '  claude: { version: 2.1.296, pin: B, check: claude --version }',
+      ),
+    )
+    fakeTool('claude', '2.1.299 (Claude Code)')
+    const c = (await doctor(pinB)).checks.find((x) => x.name === 'claude')
+    expect(c?.status).toBe('fail')
+    expect(c?.fix).not.toContain('mise install')
+    expect(c?.fix).toContain('train')
   })
 
   test('정책이 없으면 실패하고 gotechy setup을 고치는 명령으로 준다', async () => {

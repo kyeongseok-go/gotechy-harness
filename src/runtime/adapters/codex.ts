@@ -18,6 +18,8 @@ export function codexArgs(req: WorkerRequest): string[] {
   ]
   if (req.model) args.push('-m', req.model)
   if (req.effort) args.push('-c', `model_reasoning_effort="${req.effort}"`)
+  // 워커는 train 버전 그대로 돈다(contract.md 10.1절)
+  args.push('-c', 'check_for_update_on_startup=false')
   args.push(req.prompt)
   return args
 }

@@ -1,4 +1,5 @@
-# train.yaml의 A등급 도구를 정확한 버전으로 고정한다(contract.md 10.1절). 버전을 바꿀 때는 train.yaml과 함께 바꾸고 mise lock을 다시 만든다.
+# train.yaml의 A등급 도구를 정확한 버전으로 고정한다(contract.md 10.1절). 키는 train.yaml의 mise 이름과 같다.
+# 버전을 바꿀 때는 train.yaml과 함께 바꾸고 mise lock을 다시 만든다(tests/core/train-lock.test.ts가 둘을 대조한다).
 # mise 자신은 부트스트랩(bin/gotechy)이 train의 체크섬으로 설치한다.
 [tools]
 bun = "1.4.3"
@@ -7,6 +8,8 @@ uv = "0.13.0"
 "aqua:cli/cli" = "2.102.0"
 "github:microsoft/apm" = "0.33.0"
 "aqua:gitleaks/gitleaks" = "8.30.1"
+"aqua:anthropics/claude-code" = "2.1.296"
+"aqua:openai/codex" = "0.162.1"
 
 [settings]
 lockfile = true

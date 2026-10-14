@@ -55,16 +55,17 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
     })
     const got = r.exitCode === 0 ? parseVersion(`${r.stdout}\n${r.stderr}`) : undefined
     const soft = tool.pin === 'C'
+    // A등급은 mise가 락대로 설치한다. B등급은 mise 밖에서 설치하므로 다시 설치하거나 검증 뒤 train을 올려야 한다
+    const reinstall =
+      tool.pin === 'A'
+        ? '라이브러리 폴더에서 `mise install --locked`를 실행하고 PATH에 mise 도구가 잡히는지 확인하세요'
+        : `${name}를 train 버전(${tool.version})으로 다시 설치하거나, 새 버전을 검증한 뒤 train을 올리세요. 자동 업데이트는 \`gotechy setup\`의 정책이 막아요`
     if (!got) {
       checks.push({
         name,
         status: soft ? 'info' : 'fail',
         detail: `설치되지 않았거나 버전을 읽지 못했어요 (\`${tool.check}\`)`,
-        ...(soft
-          ? {}
-          : {
-              fix: '라이브러리 폴더에서 `mise install --locked`를 실행하고 PATH에 mise 도구가 잡히는지 확인하세요',
-            }),
+        ...(soft ? {} : { fix: reinstall }),
       })
     } else if (got !== tool.version) {
       checks.push({
@@ -74,7 +75,10 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
         ...(soft
           ? {}
           : {
-              fix: `train 버전으로 맞추세요: 라이브러리 폴더에서 \`mise install --locked\`. 다른 설치본이 PATH 앞에 있으면 지우거나 순서를 바꾸세요 (\`which ${name}\`)`,
+              fix:
+                tool.pin === 'A'
+                  ? `train 버전으로 맞추세요: 라이브러리 폴더에서 \`mise install --locked\`. 다른 설치본이 PATH 앞에 있으면 지우거나 순서를 바꾸세요 (\`which ${name}\`)`
+                  : reinstall,
             }),
       })
     } else {

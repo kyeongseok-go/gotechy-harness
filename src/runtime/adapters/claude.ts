@@ -43,7 +43,12 @@ export function claudeArgs(req: WorkerRequest): string[] {
 export const claudeAdapter: WorkerAdapter = {
   name: 'claude',
   async run(req): Promise<WorkerResult> {
-    const r = await runProc(claudeArgs(req), { cwd: req.cwd, timeoutMs: req.timeoutMs })
+    const r = await runProc(claudeArgs(req), {
+      cwd: req.cwd,
+      timeoutMs: req.timeoutMs,
+      // 워커는 train 버전 그대로 돈다(contract.md 10.1절). 오너 환경의 값보다 우선한다
+      env: { DISABLE_AUTOUPDATER: '1' },
+    })
     const usage = parseClaudeUsage(r.stdout)
     let model: string | undefined
     try {

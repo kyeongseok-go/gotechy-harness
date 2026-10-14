@@ -315,13 +315,15 @@ frontmatter:
 
 ### 10.1 `train.yaml`
 
-저장소 루트의 `train.yaml`이 함께 검증된 도구 버전 묶음(train)이다. 도구마다 `version`, 버전을 읽는 명령 `check`, 고정 등급 `pin`을 적는다.
+저장소 루트의 `train.yaml`이 함께 검증된 도구 버전 묶음(train)이다. 도구마다 `version`, 버전을 읽는 명령 `check`, 고정 등급 `pin`을 적고, A등급(mise 자신 제외)은 mise 도구 이름 `mise`도 적는다. 라이브러리의 `mise.toml`에는 A등급 도구가 그 이름과 같은 버전으로 있고, `mise.lock`에는 4개 플랫폼(macos-arm64, macos-x64, linux-x64, linux-arm64)의 체크섬이 있다. 테스트(`tests/core/train-lock.test.ts`)가 셋을 대조한다.
 
 | pin | 뜻 | doctor |
 |---|---|---|
 | `A` | 라이브러리의 `mise.toml`과 `mise.lock`(4개 플랫폼 체크섬)으로 완전 고정 | 버전이 다르면 실패 |
-| `B` | 설치 시점 고정, 자동 업데이트는 정책으로 막음 | 버전이 다르면 실패 |
+| `B` | 설치 시점 고정, 자동 업데이트는 정책으로 막음. train 2026.10.0에는 B등급 도구가 없다(2026-10-14에 claude, codex를 A로 올림) | 버전이 다르면 실패. 고치는 법은 다시 설치하거나 검증 뒤 train 올리기 |
 | `C` | 고정할 수 없음(예: GUI 앱) | 기록만 하고 실패하지 않음 |
+
+워커는 train 버전 그대로 돈다. claude 워커에는 `DISABLE_AUTOUPDATER=1` 환경 변수를, codex 워커에는 `-c check_for_update_on_startup=false`를 넘긴다. `bin/gotechy`로 실행하면 워커는 PATH 맨 앞의 mise 설치본을 쓴다.
 
 `policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
 

@@ -30,7 +30,8 @@
 - [x] (2026-10-14 02:09) M3 설치 계층 중 격리 환경에서 검증할 수 있는 부분 (밤샘 루프): 계약 10절, `train.yaml`(train 2026.10.0), `gotechy doctor [--history]`, `gotechy setup [--dry-run] [--restore]`, gitleaks hook과 `.gitleaks.toml`(주민등록번호 규칙), `bin/gotechy` 부트스트랩. M3 보안 리뷰 수정 뒤 테스트 258개 통과
 - [x] (2026-10-14 13:06) 이 맥에 실제 `setup` 적용과 복원 (Validation 14 실측, 오너 결정 T-006). 두 설정 파일의 바이트와 권한이 원본과 같아짐. 증거 `docs/references/evidence/2026-10-14-setup-real/`
 - [x] (2026-10-14 13:23) train A등급 도구 6개의 mise 락(4개 플랫폼 29항목, 모두 체크섬). 부트스트랩이 mise를 PATH에 두고 락 그대로만 설치(`MISE_LOCKED=1`, `bun install --frozen-lockfile`)
-- [ ] M3 나머지: 격리 셸 fresh install(Validation 12, claude 버전 고정 방식 결정 대기), `init`의 apm 전환(작업 5) (오너와 함께)
+- [x] (2026-10-14 18:14) claude, codex를 mise로 고정(A등급, 오너 외출 중 기본값으로 진행, 확인 필요). 새 클론과 빈 HOME에서 doctor 13개 모두 통과(Validation 12)
+- [ ] M3 나머지: `init`의 apm 전환(작업 5) (오너와 함께)
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음
 - [ ] 1a 완료 게이트 (/gotechy-ship 기능 등급) → 공문서 프로젝트 착수
@@ -44,6 +45,12 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**claude, codex를 mise로 고정 (2026-10-14 18:06~18:16, 오너 외출)**
+- 오너에게 물은 결정(claude와 codex 고정 방식)에 답이 없어, 낮 루프 규칙대로 추천안을 기본값으로 진행했다. 커밋을 따로 나눠 되돌리기 쉽게 했다. [확인]
+- aqua의 claude-code 2.1.296과 codex 0.162.1을 `mise.lock`에 4개 플랫폼 체크섬과 함께 고정했다(락 37항목). [확인]
+- mise로 설치한 claude 2.1.296의 `claude auth status`가 기존 로그인(claude.ai)을 그대로 읽었다. 키체인 허용 창은 뜨지 않았고 `~/.claude/settings.json` 해시와 `~/.claude.json` 수정 시각은 그대로였다. [확인]
+- claude와 codex가 들어가자 새 설치 시간이 52초에서 2분 31초로 늘었다(claude 바이너리가 가장 크다). [확인]
 
 **M3 fresh install 실험 (2026-10-14 13:16~13:23, 오너와 함께)**
 - 빈 HOME, 새 클론, claude와 codex와 orca만 보이는 PATH에서 `bin/gotechy`를 처음 돌렸다. 부트스트랩이 mise를 받고 `mise exec`가 도구 6개를 자동 설치했지만, `mise.lock`에 linux musl, baseline 같은 플랫폼 항목을 새로 써 넣었다. 실행만으로 라이브러리 저장소가 바뀐 것이다. `MISE_LOCKED=1`로 넘기면 락 그대로 설치하고 파일을 고치지 않는다. [확인]
@@ -153,6 +160,7 @@
 | HANDOFF에서는 문체 예외 표지를 금지하고(오류), 표지가 있어도 문체 검사를 한다 | 워커가 HANDOFF 전체를 감싸면 검사를 피할 수 있다(미탐) | 2026-10-14 | - |
 | 인박스와 화면의 모든 문자열에서 제어 문자와 양방향 제어 문자를 지운다 | 악성 HANDOFF가 터미널 화면을 덮어쓰거나 글자 순서를 속일 수 있다 | 2026-10-14 | - |
 | 새 영어 용어는 용어 은행(라이브러리 `knowledge/terms.jsonl`, 프로젝트 `orchestration/terms.jsonl`)에 없을 때만 "새 용어" 풀이를 요구한다 | 사용자가 용어를 익히려는 목적, 같은 풀이 반복은 소음 | 2026-10-14 | - |
+| claude, codex를 B등급에서 A등급(mise 고정)으로 올린다. 워커에는 자동 업데이트 끄기를 넘긴다. 전역 정책의 자동 업데이트 끄기를 뺄지는 오너 결정으로 남긴다 | B등급은 새 설치에서 train 버전을 만들 수 없다(13:12에 전역 claude가 저절로 2.1.299가 됨). 오너 외출 중 추천안을 기본값으로 진행, 확인 필요 | 2026-10-14 | ADR 0004 갱신 |
 | 밤샘 루프 결정 4건: 밤사이 푸시 유지(T-002), 선행 조건 accepted 유지(T-003), setup 실측은 바로(T-006), 1b 범위와 순서 승인(T-007) | 오너가 채팅으로 답함(13:05). 기본값 5건에는 이의 없음. 이 맥에 키가 아직 없어 `decide` 서명 기록은 아님 | 2026-10-14 | - |
 
 ## Outcomes & Retrospective
@@ -304,7 +312,7 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [x] 10. (2026-10-14: `tests/e2e/comprehension.test.ts`) 경로 규칙에 걸린 작업은 명세에 `irreversible: false`라도 이해 문항 답 없이 결정이 기록되지 않는다. 빈 답·오답은 핵심어 적중 0으로 기록되고, 답은 `orchestration/private/` 밖(HTML·inbox·로그)에 나타나지 않는다.
 - [x] 11. `keys rotate` 후 이전 키 서명 결정은 거부되고 재결정이 요구된다.
 - [x] 11b. (2026-10-14: `tests/e2e/accept.test.ts`) 서로 다른 파일을 바꾼 두 작업은 `accept`로 차례로 병합되고, 같은 줄을 바꾼 두 번째 작업은 충돌로 병합이 취소되며 `needs-decision`이 된다. 메인 verify가 실패하면 병합하지 않는다.
-- [ ] 12. (2026-10-14 13:23: 새 클론과 빈 HOME에서 부트스트랩, setup, doctor까지 52초. claude 버전 1건만 실패, 증거 `docs/references/evidence/2026-10-14-fresh-install/`) 격리 셸에서 `setup` → `doctor` exit 0 (fresh-install 로그를 Artifacts에, 현재 맥 아키텍처 기준. 다른 아키텍처는 2단계 CI).
+- [x] 12. (2026-10-14 13:23: claude 버전 1건만 실패. 18:14: claude, codex를 mise로 고정한 뒤 새 클론과 빈 HOME에서 부트스트랩부터 doctor까지 2분 31초, 13개 검사 모두 ok, exit 0. 증거 `docs/references/evidence/2026-10-14-fresh-install/`) 격리 셸에서 `setup` → `doctor` exit 0 (fresh-install 로그를 Artifacts에, 현재 맥 아키텍처 기준. 다른 아키텍처는 2단계 CI).
 - [x] 13. (2026-10-14: 임시 HOME, `tests/e2e/doctor-setup.test.ts`) `setup --dry-run` 전후로 `~/.claude/settings.json`·`~/.codex/config.toml`의 sha256과 `~/.gotechy` 존재 여부가 같다.
 - [x] 14. (2026-10-14: 백업, 복원, 사용자 변경 시 중단은 임시 HOME 테스트로 통과. 13:06 이 맥에 실제 적용과 복원, sha256, 권한, `cmp` 결과가 모두 원본과 같음. 증거 `docs/references/evidence/2026-10-14-setup-real/`. 사용자 변경 시 중단 경로는 실제 설정을 건드리지 않으려고 임시 HOME 테스트로만 확인) 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.
 - [x] 15. (2026-10-14: 가짜 도구와 `tests/fixtures/train/train-mismatch.yaml`) doctor에 `GOTECHY_TRAIN=tests/fixtures/train-mismatch.yaml`로 불일치를 주입하면 exit 1과 교정 명령, 교정 후 재실행은 exit 0.

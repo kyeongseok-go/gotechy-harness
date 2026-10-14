@@ -65,6 +65,14 @@ describe('codexArgs', () => {
     expect(a.at(-1)).toBe('P')
   })
 
+  test('업데이트 확인을 끄고 돈다 (워커는 train 버전 그대로)', () => {
+    const a = codexArgs(req)
+    const i = a.indexOf('check_for_update_on_startup=false')
+    expect(i).toBeGreaterThan(0)
+    expect(a[i - 1]).toBe('-c')
+    expect(a.at(-1)).toBe('P')
+  })
+
   test('effort는 TOML 문자열로 넘긴다', () => {
     const a = codexArgs({ ...req, model: 'gpt-6.1-sol', effort: 'medium' })
     expect(a[a.indexOf('-m') + 1]).toBe('gpt-6.1-sol')

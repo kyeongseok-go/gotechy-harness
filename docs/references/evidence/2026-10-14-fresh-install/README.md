@@ -1,12 +1,14 @@
 ---
-title: 새 클론과 빈 HOME에서 처음 설치 (Validation 12 실측, 진행 중)
+title: 새 클론과 빈 HOME에서 처음 설치 (Validation 12 실측)
 date: 2026-10-14
 type: evidence
 audience: 고텍이
 tags: [gotechy-harness, bootstrap, mise, fresh-install, validation]
 ---
 
-# 새 클론과 빈 HOME에서 처음 설치 (Validation 12 실측, 진행 중)
+# 새 클론과 빈 HOME에서 처음 설치 (Validation 12 실측)
+
+결과: 4회차(18:11~18:14)에 doctor 13개 검사가 모두 통과하고 exit 0이었어요. 로그는 맨 아래에 있어요.
 
 ## 환경
 
@@ -20,7 +22,8 @@ tags: [gotechy-harness, bootstrap, mise, fresh-install, validation]
 |---|---|---|
 | 1 | 13:16 | 도구 6개가 자동 설치됐지만 doctor 실패 4건: mise가 PATH에 없음, claude 버전, 정책 2건. 실행만으로 `mise.lock`이 바뀜. `node_modules`가 없는데 bun 자동 설치로 CLI가 돎 |
 | 2 | 13:19 | 부트스트랩을 고친 사본(PATH, `MISE_LOCKED=1`, `bun install --frozen-lockfile`). 락 두 개 모두 그대로, mise 검사 통과 |
-| 3 | 13:22 | 고친 부트스트랩으로 처음부터. 아래 로그 |
+| 3 | 13:22 | 고친 부트스트랩으로 처음부터. claude 버전 1건만 실패 (아래 로그) |
+| 4 | 18:11 | claude, codex를 mise로 고정한 뒤 처음부터. 2분 31초, doctor 13개 모두 ok, exit 0 (맨 아래 로그) |
 
 ## 3회 결과
 
@@ -101,4 +104,72 @@ exit=1
  M mise.toml
  M tests/e2e/bootstrap.test.ts
 ### 끝 2026-10-14T13:23:11+0900
+```
+
+## 4회 결과
+
+- claude 2.1.296과 codex 0.162.1을 mise가 락의 체크섬대로 설치했어요. doctor는 PATH 맨 앞의 mise 설치본을 봐요.
+- mise로 설치한 claude로 `claude auth status`를 실제 HOME에서 실행했어요. 기존 로그인(claude.ai)을 그대로 읽었고, 키체인 허용 창은 뜨지 않았어요. `~/.claude/settings.json` 해시와 `~/.claude.json` 수정 시각은 그대로였어요. 계정 정보는 싣지 않았어요.
+
+## 로그 (4회)
+
+```text
+### 시작 2026-10-14T18:11:27+0900 Darwin arm64
+### 격리 셸 환경
+HOME=$S/v12/r4/home
+PATH=$S/v12/r4/shims:/usr/bin:/bin:/usr/sbin:/sbin
+TERM=xterm-256color
+LANG=ko_KR.UTF-8
+### 1. 부트스트랩 + setup --dry-run
+bun install v1.4.3 (c6da4a4d3)
+
++ @biomejs/biome@2.5.15
++ @types/bun@1.4.3
++ typescript@7.0.2
++ commander@15.0.0
++ hono@4.13.13
++ markdown-it@15.0.2
++ yaml@2.9.1
++ zod@4.6.7
+
+20 packages installed [7.91s]
+$S/v12/r4/home/.claude/settings.json (새로 만듦)
+  env.DISABLE_AUTOUPDATER = "1"
+  permissions.deny += Bash(gotechy decide:*)
+  permissions.deny += Bash(script:*)
+  permissions.deny += Bash(expect:*)
+$S/v12/r4/home/.codex/config.toml (새로 만듦)
+  check_for_update_on_startup = false
+exit=0
+### 18:13:58 2. setup
+$S/v12/r4/home/.claude/settings.json (새로 만듦)
+  env.DISABLE_AUTOUPDATER = "1"
+  permissions.deny += Bash(gotechy decide:*)
+  permissions.deny += Bash(script:*)
+  permissions.deny += Bash(expect:*)
+$S/v12/r4/home/.codex/config.toml (새로 만듦)
+  check_for_update_on_startup = false
+적용했어요. 되돌리려면: gotechy setup --restore 20261014T091358Z
+exit=0
+### 18:13:58 3. doctor
+train 2026.10.0
+ok   mise: 2026.10.8
+ok   bun: 1.4.3
+ok   node: 24.21.0
+ok   uv: 0.13.0
+ok   gh: 2.102.0
+ok   apm: 0.33.0
+ok   gitleaks: 8.30.1
+ok   claude: 2.1.296
+ok   codex: 0.162.1
+ok   orca: 1.4.209
+ok   mise 바이너리: $S/v12/r4/home/.gotechy/bin/mise 체크섬이 train과 같아요
+ok   정책: 전역 설정에 정책이 들어가 있어요
+ok   스킬 수: 1개
+모두 통과했어요
+doctor_exit=0
+### 라이브러리 락 파일
+mise.lock 그대로
+bun.lock 그대로
+### 끝 2026-10-14T18:14:14+0900
 ```

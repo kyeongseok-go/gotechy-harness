@@ -24,4 +24,4 @@ A. train v1 = `Claude Code`, `Codex`, `Orca`, `mise`, `apm`, `node`, `uv`, `gh`(
 
 - 쉬워지는 것: 새 컴퓨터에서 같은 결과. doctor가 어긋난 버전과 교정 명령을 알려 준다.
 - 어려워지는 것: 다른 OS의 보안 장치가 따로 필요하다. 예: verify 샌드박스는 지금 macOS `sandbox-exec`에만 있다(TD-009).
-- 현재 상태(2026-10-14): mise와 bun은 저장소에 고정했다(`mise.toml`, `mise.lock`). train.yaml, setup, doctor는 M3 작업이다.
+- 현재 상태(2026-10-14 13:23): A등급 도구 6개(`bun`, `node`, `uv`, `gh`, `apm`, `gitleaks`)를 `mise.toml`과 `mise.lock`에 고정했고, train.yaml, setup, doctor, 부트스트랩이 있다. 새 클론과 빈 HOME에서 52초에 설치된다. B등급(claude, codex)은 새 설치에서 train 버전을 보장하지 못한다(1a ExecPlan Surprises).

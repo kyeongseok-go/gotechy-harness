@@ -58,6 +58,17 @@ if [ ! -x "$MISE" ]; then
   mv "$tmp" "$MISE"
 fi
 
+# doctor가 mise 자신도 찾게 PATH 맨 앞에 둔다. MISE_LOCKED=1은 락 파일에 있는 URL과 체크섬으로만 설치하고
+# 락 파일을 고치지 않게 한다(없으면 mise exec가 설치하면서 mise.lock에 플랫폼 항목을 더 써 넣는다)
+PATH="$GHOME/bin:$PATH"
+MISE_LOCKED=1
+export PATH MISE_LOCKED
+
+# 새 클론에는 node_modules가 없다. 그대로 두면 bun이 bun.lock 없이 의존성을 받으므로 락 그대로 먼저 설치한다
+if [ ! -d "$LIB/node_modules" ]; then
+  "$MISE" exec -C "$LIB" -- bun install --frozen-lockfile >&2
+fi
+
 # mise exec -C는 작업 폴더를 라이브러리로 바꾸므로, 원래 작업 폴더를 넘겨 CLI가 되돌아가게 한다
 GOTECHY_CWD=$(pwd -P)
 export GOTECHY_CWD

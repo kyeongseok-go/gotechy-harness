@@ -319,7 +319,7 @@ frontmatter:
 
 | pin | 뜻 | doctor |
 |---|---|---|
-| `A` | mise 락으로 완전 고정 | 버전이 다르면 실패 |
+| `A` | 라이브러리의 `mise.toml`과 `mise.lock`(4개 플랫폼 체크섬)으로 완전 고정 | 버전이 다르면 실패 |
 | `B` | 설치 시점 고정, 자동 업데이트는 정책으로 막음 | 버전이 다르면 실패 |
 | `C` | 고정할 수 없음(예: GUI 앱) | 기록만 하고 실패하지 않음 |
 
@@ -352,4 +352,6 @@ frontmatter:
 - POSIX sh. 스크립트 위치로 라이브러리 폴더를 찾는다. `$GOTECHY_HOME/bin/mise`가 없으면 train의 mise 버전과 아키텍처별 sha256으로 내려받아 검증한다(`shasum -a 256`).
 - 다운로드는 https만 쓴다(`curl --proto '=https'`).
 - `--bootstrap-dry-run`이면 무엇을 내려받고 어디에 둘지만 출력하고, 어떤 다운로드나 폴더 생성도 하지 않는다.
+- `$GOTECHY_HOME/bin`을 PATH 맨 앞에 두고 `MISE_LOCKED=1`로 넘긴다. mise는 `mise.lock`에 있는 URL과 체크섬으로만 도구를 설치하고 락 파일을 고치지 않는다.
+- 라이브러리에 `node_modules`가 없으면(새 클론) `bun install --frozen-lockfile`을 먼저 돌린다. 설치 출력은 stderr로 보낸다.
 - 그다음 `mise exec -C <라이브러리> -- bun <라이브러리>/src/cli.ts "$@"`. `mise exec -C`는 작업 폴더를 라이브러리로 바꾸므로, 원래 작업 폴더를 `GOTECHY_CWD`로 넘기고 CLI가 시작할 때 그 폴더로 돌아간다.

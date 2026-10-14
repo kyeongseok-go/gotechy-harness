@@ -29,7 +29,8 @@
 - [x] (2026-10-14 01:53) M2c 결정과 반영 (밤샘 루프, `docs/exec-plans/active/2026-10-14-overnight-loop.md`): 계약 6절(게이트, 서명, decide, verify, run의 강제)과 9절(이해 게이트, 측정, 인박스 게이트 표시, accept, 용어 누적). `keys init`, `keys rotate`, `decide`, `gate verify`, `accept`. 보안 감사 1차 지적(높음 3, 중간 3, 낮음 4) 수정. 보안 감사 2차 지적(높음 3, 중간 1, 낮음 2) 수정. 테스트 196개 통과
 - [x] (2026-10-14 02:09) M3 설치 계층 중 격리 환경에서 검증할 수 있는 부분 (밤샘 루프): 계약 10절, `train.yaml`(train 2026.10.0), `gotechy doctor [--history]`, `gotechy setup [--dry-run] [--restore]`, gitleaks hook과 `.gitleaks.toml`(주민등록번호 규칙), `bin/gotechy` 부트스트랩. M3 보안 리뷰 수정 뒤 테스트 258개 통과
 - [x] (2026-10-14 13:06) 이 맥에 실제 `setup` 적용과 복원 (Validation 14 실측, 오너 결정 T-006). 두 설정 파일의 바이트와 권한이 원본과 같아짐. 증거 `docs/references/evidence/2026-10-14-setup-real/`
-- [ ] M3 나머지: 격리 셸 fresh install(Validation 12), `init`의 apm 전환(작업 5), train 전체 도구의 mise 락 (오너와 함께)
+- [x] (2026-10-14 13:23) train A등급 도구 6개의 mise 락(4개 플랫폼 29항목, 모두 체크섬). 부트스트랩이 mise를 PATH에 두고 락 그대로만 설치(`MISE_LOCKED=1`, `bun install --frozen-lockfile`)
+- [ ] M3 나머지: 격리 셸 fresh install(Validation 12, claude 버전 고정 방식 결정 대기), `init`의 apm 전환(작업 5) (오너와 함께)
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음
 - [ ] 1a 완료 게이트 (/gotechy-ship 기능 등급) → 공문서 프로젝트 착수
@@ -43,6 +44,12 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**M3 fresh install 실험 (2026-10-14 13:16~13:23, 오너와 함께)**
+- 빈 HOME, 새 클론, claude와 codex와 orca만 보이는 PATH에서 `bin/gotechy`를 처음 돌렸다. 부트스트랩이 mise를 받고 `mise exec`가 도구 6개를 자동 설치했지만, `mise.lock`에 linux musl, baseline 같은 플랫폼 항목을 새로 써 넣었다. 실행만으로 라이브러리 저장소가 바뀐 것이다. `MISE_LOCKED=1`로 넘기면 락 그대로 설치하고 파일을 고치지 않는다. [확인]
+- 새 클론에는 `node_modules`가 없는데 CLI가 돌았다. bun의 자동 설치가 `bun.lock` 없이 의존성을 받은 것이다. 부트스트랩이 `bun install --frozen-lockfile`을 먼저 돌리게 했다. [확인]
+- 부트스트랩이 `$GOTECHY_HOME/bin`을 PATH에 넣지 않아 doctor가 `mise --version`을 찾지 못했다. [확인]
+- 고친 뒤 새 환경에서 부트스트랩부터 doctor까지 52초(mise와 도구 6개, npm 패키지 20개). 실패는 claude 하나였다. 전역 claude가 13:12에 2.1.296에서 2.1.299로 자동 업데이트됐다(이 맥의 setup 실측 복원 6분 뒤). B등급 도구는 새 설치에서 train 버전을 만들 수 없고, doctor의 고치는 법(`mise install --locked`)도 B등급에는 맞지 않는다. [확인]
 
 **M3 보안 리뷰와 M2c 3차 확인 (2026-10-14 밤, 오너 부재)**
 - M3 보안 리뷰: 높음 1, 중간 4, 낮음 6. 가장 큰 것은 `init`이 `core.hooksPath`를 저장소 안 `.githooks/`로 잡아, 남이 만든 저장소에서 `init`하면 그 저장소의 다른 hook이 pull이나 checkout 때 실행되는 문제였다. hook과 gitleaks 설정을 `$GOTECHY_HOME/githooks/`로 옮기고 절대 경로로 연결했다. 재현 테스트 19개(`tests/e2e/m3-hardening.test.ts`)를 먼저 쓰고(18개 실패) 고쳤다. [확인]
@@ -297,7 +304,7 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [x] 10. (2026-10-14: `tests/e2e/comprehension.test.ts`) 경로 규칙에 걸린 작업은 명세에 `irreversible: false`라도 이해 문항 답 없이 결정이 기록되지 않는다. 빈 답·오답은 핵심어 적중 0으로 기록되고, 답은 `orchestration/private/` 밖(HTML·inbox·로그)에 나타나지 않는다.
 - [x] 11. `keys rotate` 후 이전 키 서명 결정은 거부되고 재결정이 요구된다.
 - [x] 11b. (2026-10-14: `tests/e2e/accept.test.ts`) 서로 다른 파일을 바꾼 두 작업은 `accept`로 차례로 병합되고, 같은 줄을 바꾼 두 번째 작업은 충돌로 병합이 취소되며 `needs-decision`이 된다. 메인 verify가 실패하면 병합하지 않는다.
-- [ ] 12. 격리 셸에서 `setup` → `doctor` exit 0 (fresh-install 로그를 Artifacts에, 현재 맥 아키텍처 기준. 다른 아키텍처는 2단계 CI).
+- [ ] 12. (2026-10-14 13:23: 새 클론과 빈 HOME에서 부트스트랩, setup, doctor까지 52초. claude 버전 1건만 실패, 증거 `docs/references/evidence/2026-10-14-fresh-install/`) 격리 셸에서 `setup` → `doctor` exit 0 (fresh-install 로그를 Artifacts에, 현재 맥 아키텍처 기준. 다른 아키텍처는 2단계 CI).
 - [x] 13. (2026-10-14: 임시 HOME, `tests/e2e/doctor-setup.test.ts`) `setup --dry-run` 전후로 `~/.claude/settings.json`·`~/.codex/config.toml`의 sha256과 `~/.gotechy` 존재 여부가 같다.
 - [x] 14. (2026-10-14: 백업, 복원, 사용자 변경 시 중단은 임시 HOME 테스트로 통과. 13:06 이 맥에 실제 적용과 복원, sha256, 권한, `cmp` 결과가 모두 원본과 같음. 증거 `docs/references/evidence/2026-10-14-setup-real/`. 사용자 변경 시 중단 경로는 실제 설정을 건드리지 않으려고 임시 HOME 테스트로만 확인) 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.
 - [x] 15. (2026-10-14: 가짜 도구와 `tests/fixtures/train/train-mismatch.yaml`) doctor에 `GOTECHY_TRAIN=tests/fixtures/train-mismatch.yaml`로 불일치를 주입하면 exit 1과 교정 명령, 교정 후 재실행은 exit 0.

@@ -246,7 +246,16 @@ function readLedger(p: Project): Ledger {
   for (const line of text.split('\n')) {
     if (!line.trim()) continue
     try {
-      entries.push(JSON.parse(line) as LedgerEntry)
+      // 객체가 아니거나 필드가 문자열이 아니면 깨진 줄이다(보안 감사 6차 낮음 4: null 줄에서 예외로 멈췄다)
+      const r = JSON.parse(line) as Record<string, unknown> | null
+      if (
+        r === null ||
+        typeof r !== 'object' ||
+        Array.isArray(r) ||
+        !['gate', 'nonce', 'key_id', 'decided_at'].every((k) => typeof r[k] === 'string')
+      )
+        broken = true
+      else entries.push(r as unknown as LedgerEntry)
     } catch {
       broken = true
     }
@@ -502,12 +511,8 @@ async function decideLocked(
     decided_at: decided.decided_at as string,
     payload_sha256: sha256(payload),
   }
-  // 게이트 서명과 장부 줄 서명을 한 번의 오너 확인(Touch ID)으로 받는다. 창에는 게이트 번호와 선택이 보인다
-  const [gateSig, lineSig] = await signWithOwnerKey(
-    home,
-    [payload, ledgerLinePayload(entry)],
-    displayText(`gotechy ${id}: ${opts.choice}`).slice(0, 120),
-  )
+  // 게이트 서명과 장부 줄 서명을 한 번의 오너 확인(Touch ID)으로 받는다. 창 문구는 서명 도구가 서명 대상에서 만든다
+  const [gateSig, lineSig] = await signWithOwnerKey(home, payload, ledgerLinePayload(entry))
   if (
     !gateSig ||
     !lineSig ||

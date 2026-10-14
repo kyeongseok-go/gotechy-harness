@@ -29,6 +29,7 @@ export const ownerToolPath = (home: string) => join(home, 'bin', 'gotechy-ownerk
 /** 서명 도구 종료 코드(native/ownerkey.swift) */
 const EXIT_NO_ENCLAVE = 3
 const EXIT_CANCELLED = 4
+const EXIT_NO_PRESENCE = 5
 
 export class OwnerCancelled extends Error {}
 
@@ -83,10 +84,13 @@ export function loadOwnerKey(home: string): OwnerKey {
   return { ok: true, id, pub }
 }
 
-/** native/ownerkey.swift를 swiftc로 빌드한다. 테스트처럼 도구가 이미 있으면 그대로 쓴다. */
-export function ensureOwnerTool(home: string, libRoot: string): string {
+/**
+ * native/ownerkey.swift를 swiftc로 빌드한다. rebuild면 이미 있어도 다시 빌드한다(keys init과 rotate.
+ * 남아 있던 테스트 빌드나 낡은 도구로 키를 만들지 않게, 보안 감사 6차 낮음 3). 테스트는 rebuild 없이 가짜 도구를 쓴다.
+ */
+export function ensureOwnerTool(home: string, libRoot: string, rebuild = false): string {
   const tool = ownerToolPath(home)
-  if (existsSync(tool)) return tool
+  if (existsSync(tool) && !rebuild) return tool
   if (process.platform !== 'darwin')
     throw new Error('오너 키는 macOS(Secure Enclave)에서만 만들 수 있어요')
   const swiftc = Bun.which('swiftc', { PATH: process.env.PATH ?? '' })
@@ -108,8 +112,10 @@ export function ensureOwnerTool(home: string, libRoot: string): string {
   return tool
 }
 
-function createKey(home: string, libRoot: string): string {
-  const tool = ensureOwnerTool(home, libRoot)
+export type KeyOptions = { rebuildTool?: boolean }
+
+function createKey(home: string, libRoot: string, opts: KeyOptions = {}): string {
+  const tool = ensureOwnerTool(home, libRoot, opts.rebuildTool)
   const dir = ownerDir(home)
   mkdirSync(dir, { recursive: true, mode: 0o700 })
   chmodSync(dir, 0o700)
@@ -129,6 +135,21 @@ function createKey(home: string, libRoot: string): string {
         : `오너 키를 만들지 못했어요(화면이 잠겨 있으면 풀고 다시 하세요): ${why}`,
     )
   }
+  // 만든 키가 서명마다 사람 확인을 요구하는지 본다. 확인 없이 서명되면 쓰지 않는다
+  const probe = Bun.spawnSync({
+    cmd: [tool, 'probe', tmpBlob],
+    stdout: 'pipe',
+    stderr: 'pipe',
+    env: process.env,
+  })
+  if (probe.exitCode !== 0) {
+    rmSync(tmpBlob, { force: true })
+    throw new Error(
+      probe.exitCode === EXIT_NO_PRESENCE
+        ? '만든 키가 사람 확인 없이 서명돼요. 서명 도구를 다시 빌드하세요(gotechy keys init). 키는 쓰지 않았어요'
+        : `만든 키를 확인하지 못했어요: ${probe.stderr.toString().trim()}`,
+    )
+  }
   const pub = r.stdout.toString().trim()
   const id = ownerKeyId(pub)
   renameSync(tmpBlob, blobFile(home, id))
@@ -140,33 +161,39 @@ function createKey(home: string, libRoot: string): string {
 }
 
 /** 오너 키가 없을 때만 만든다. 만들 때는 Touch ID가 필요 없다. */
-export function initOwnerKey(home: string, libRoot: string): { id: string; created: boolean } {
+export function initOwnerKey(
+  home: string,
+  libRoot: string,
+  opts: KeyOptions = {},
+): { id: string; created: boolean } {
   const current = loadOwnerKey(home)
   if (current.ok && existsSync(blobFile(home, current.id)))
     return { id: current.id, created: false }
-  return { id: createKey(home, libRoot), created: true }
+  return { id: createKey(home, libRoot, opts), created: true }
 }
 
 /** 새 키로 바꾸고 이전 blob을 지운다. 공개 키는 장부의 지난 줄을 검증하려고 남긴다. */
 export function rotateOwnerKey(
   home: string,
   libRoot: string,
+  opts: KeyOptions = {},
 ): { id: string; previous: string | undefined } {
   const previous = activeOwnerId(home)
-  const id = createKey(home, libRoot)
+  const id = createKey(home, libRoot, opts)
   if (previous && OWNER_KEY_ID.test(previous)) rmSync(blobFile(home, previous), { force: true })
   return { id, previous }
 }
 
 /**
- * 여러 메시지를 한 번의 오너 확인으로 서명한다. 서명 도구가 Touch ID 창을 띄우고, 창에는 reason이 보인다.
- * 오너가 취소하면 OwnerCancelled.
+ * 결정 서명 대상과 그 장부 줄을 한 번의 오너 확인으로 서명한다. 서명 도구가 둘이 맞는지 검사하고,
+ * 확인 창 문구(게이트 번호와 선택)도 서명 대상에서 직접 만든다. 오너가 취소하면 OwnerCancelled.
  */
 export async function signWithOwnerKey(
   home: string,
-  messages: string[],
-  reason: string,
-): Promise<string[]> {
+  payload: string,
+  ledgerLine: string,
+): Promise<[string, string]> {
+  const messages = [payload, ledgerLine]
   const key = loadOwnerKey(home)
   if (!key.ok) throw new Error(key.problem)
   const blob = blobFile(home, key.id)
@@ -175,7 +202,7 @@ export async function signWithOwnerKey(
   const tool = ownerToolPath(home)
   if (!existsSync(tool)) throw new Error('서명 도구가 없어요. gotechy keys init을 다시 실행하세요')
   const proc = Bun.spawn({
-    cmd: [tool, 'sign', blob, '--reason', reason],
+    cmd: [tool, 'sign', blob],
     stdin: new Blob([JSON.stringify(messages)]),
     stdout: 'pipe',
     stderr: 'pipe',
@@ -196,5 +223,5 @@ export async function signWithOwnerKey(
     !sigs.every((x) => typeof x === 'string')
   )
     throw new Error('서명 도구의 출력이 서명 배열이 아니에요')
-  return sigs as string[]
+  return sigs as [string, string]
 }

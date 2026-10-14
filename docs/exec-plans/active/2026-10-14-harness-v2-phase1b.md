@@ -22,8 +22,8 @@
 
 - [x] (2026-10-14) 초안 작성 (밤샘 루프, 오너 부재)
 - [x] (2026-10-14 13:05) 오너 검토와 범위 승인 (밤샘 보고 T-007)
-- [x] (2026-10-14 18:40) N0 전제 확인 (실험). Touch ID를 실제로 통과시키는 확인과 Claude Code 확장 경로 일부는 오너 확인으로 남김
-- [x] (2026-10-14 19:30) N1 오너 인증 관통 중 Touch ID 없이 할 수 있는 부분: 계약 6.3, 6.4절, `native/ownerkey.swift`, 오너 키 관리(`keys init`, `keys rotate`), ECDSA 검증, 서명된 결정 장부, 테스트용 가짜 서명 도구, 실제 Swift 도구 테스트, ADR 0006(제안)
+- [x] (2026-10-14 18:33) N0 전제 확인 (실험). Touch ID를 실제로 통과시키는 확인과 Claude Code 확장 경로 일부는 오너 확인으로 남김
+- [x] (2026-10-14 18:55) N1 오너 인증 관통 중 Touch ID 없이 할 수 있는 부분: 계약 6.3, 6.4절, `native/ownerkey.swift`, 오너 키 관리(`keys init`, `keys rotate`), ECDSA 검증, 서명된 결정 장부, 테스트용 가짜 서명 도구, 실제 Swift 도구 테스트, ADR 0006(제안)
 - [ ] N1 마무리: 오너가 실제 Touch ID로 확인(설명 문서의 "확인 필수"), ADR 0006 승인, 프로젝트 공개 키 고정(TD-013)
 - [ ] N2 화면에서 결정: `gotechy serve`
 - [ ] N3 무인 루프: `gotechy loop`와 아침 보고서
@@ -35,14 +35,19 @@
 
 ## Surprises & Discoveries
 
-**N1 오너 인증 (2026-10-14 18:55~19:30, 오너 외출)**
-- 18:50쯤 맥 화면이 잠기자 Secure Enclave 키 만들기가 `-25308`(errSecInteractionNotAllowed)로 실패했다. `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` 키는 화면이 잠긴 동안 만들 수도 쓸 수도 없다. 오너가 앞에 있어야 결정하는 설계와 맞으므로 그대로 둔다. 실제 키 생성 테스트는 잠겨 있으면 건너뛴다. [확인]
+**보안 감사 6차, N1 (2026-10-14 18:56~19:20, 오너 외출)**
+- 높음 0, 중간 1, 낮음 5. 중간 1: 서명 도구가 한 번의 확인으로 메시지를 개수 제한 없이 서명했고, 창 문구도 호출한 쪽이 정했다. decide 경로가 바뀌면 오너가 기대한 순간의 지문 한 번으로 숨은 결정까지 서명될 수 있었다. 도구가 `[결정 서명 대상, 그 장부 줄]` 두 개만 받아 서로 맞는지 검사하고, 문구를 서명 대상에서 직접 만들게 했다. [확인]
+- 낮음: 장부 끝줄 지우기(TD-014로 남김), 남아 있던 도구로 사람 확인 없는 키를 만드는 경로(`keys init`이 도구를 다시 빌드하고 `probe`로 확인), `null` 장부 줄에서 예외(깨진 줄로 판정), 샌드박스 서명 테스트 보강(화면 잠김으로 건너뜀), 워커 로그인 값 검사(되살림). [확인]
+- mutation 6종 중 1종은 처음에 살아남았다(null 검사 하나만 빼면 뒤 검사가 예외를 catch로 넘겨 결과가 같음). 형식 검사 전체를 빼는 mutation은 테스트가 잡았다. 테스트 도구(가짜 서명 도구)의 쌍 검사 mutation은 살아남는다. 같은 성질은 실제 Swift 도구 테스트가 검사한다. [확인]
+
+**N1 오너 인증 (2026-10-14 18:41~18:55, 오너 외출. 시각은 커밋 기록 기준)**
+- 맥 화면이 18:35:15에 잠겼다(`ioreg`의 `CGSSessionScreenLockedTime`). 그 뒤 Secure Enclave 키 만들기가 `-25308`(errSecInteractionNotAllowed)로 실패했다. `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` 키는 화면이 잠긴 동안 만들 수도 쓸 수도 없다. 오너가 앞에 있어야 결정하는 설계와 맞으므로 그대로 둔다. 실제 키 생성 테스트는 잠겨 있으면 건너뛴다. [확인]
 - 샌드박스 안에서는 `SecureEnclave.isAvailable`부터 false가 되어 도구가 exit 3으로 끝난다. 밖에서는 0(성공)이나 1(잠김)이라 화면 잠금과 상관없이 테스트로 구별된다. [확인]
 - 순서를 지키지 못한 부분: 계약을 먼저 쓴 뒤 구현하고 수용 테스트를 나중에 썼다(오너 부재 중 큰 리팩터링이라 기존 테스트 289개를 먼저 옮겨 회귀를 막는 쪽을 택함). 대신 mutation 9종으로 테스트의 힘을 확인했고, 그중 하나(payload 묶기)는 처음 테스트가 약해 시나리오를 바꿨다. [확인]
 - `Bun.which`도 `Bun.spawn`처럼 PATH를 생략하면 시작 시점의 PATH를 쓴다(`process.env.PATH`를 바꿔도 `/bin/ls`를 찾음). swiftc가 없을 때의 테스트가 실제 빌드를 돌려 드러났다. `Bun.which`에 PATH를 명시하고 위생 테스트로 고정했다. [확인]
 - 서명 도구는 테스트에서 소프트웨어 키를 쓰는 가짜 도구(`tests/fixtures/ownerkey/fake-ownerkey.ts`)로 바꿔 끼운다. 같은 명령과 종료 코드를 쓰므로 decide의 실제 실행 경로(프로세스 실행, 종료 코드 4, 출력 검증)가 테스트된다. [확인]
 
-**N0 전제 확인 (2026-10-14 18:28~18:40, 오너 외출, macOS arm64, Swift 6.1.2)** 증거 `docs/references/evidence/2026-10-14-n0/`
+**N0 전제 확인 (2026-10-14 18:29~18:33, 오너 외출, macOS arm64, Swift 6.1.2. 시각은 커밋 기록 기준)** 증거 `docs/references/evidence/2026-10-14-n0/`
 - 1. Secure Enclave 도구: CryptoKit으로 쓴 Swift 도구(70줄)가 `swiftc -O`로 5초에 빌드됐다. 서명을 위한 entitlement나 코드 서명 없이 동작한다. 키 파일(blob)은 개인 키 원문이 아니라 Secure Enclave가 감싼 ASN.1 구조(사람 확인 없는 키 324바이트, 있는 키 427바이트)다. [확인]
 - 1. 사람 확인(userPresence) 키로 서명하면 결과 없이 기다렸다(5초 제한에서 끝냄). Touch ID를 실제로 통과시키거나 취소하는 확인은 오너가 한다. [확인, Touch ID 통과는 미확인]
 - 2. CryptoKit 서명(DER)과 공개 키(SPKI DER)를 Bun의 `crypto.verify('sha256', ..., { dsaEncoding: 'der' })`가 검증한다. 원문을 한 글자 바꾸면 false. [확인]

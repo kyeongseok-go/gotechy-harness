@@ -217,7 +217,7 @@ keys
   .description('오너 키가 없으면 만든다. 서명 도구가 없으면 swiftc로 빌드한다')
   .action(() => {
     try {
-      const r = initOwnerKey(gotechyHome(), libraryRoot())
+      const r = initOwnerKey(gotechyHome(), libraryRoot(), { rebuildTool: true })
       console.log(r.created ? `오너 키를 만들었어요: ${r.id}` : `이미 오너 키가 있어요: ${r.id}`)
     } catch (e) {
       console.error((e as Error).message)
@@ -229,7 +229,7 @@ keys
   .description('새 오너 키로 바꾸고 이전 키를 지운다. 이전 키로 한 결정은 다시 결정해야 한다')
   .action(() => {
     try {
-      const r = rotateOwnerKey(gotechyHome(), libraryRoot())
+      const r = rotateOwnerKey(gotechyHome(), libraryRoot(), { rebuildTool: true })
       console.log(`새 키: ${r.id}${r.previous ? ` (지운 키: ${r.previous})` : ''}`)
       console.log(
         '이전 키로 서명한 결정은 gotechy gate verify에서 실패해요. 해당 게이트를 다시 결정하세요.',

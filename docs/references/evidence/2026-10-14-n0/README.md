@@ -8,7 +8,7 @@ tags: [gotechy-harness, secure-enclave, touch-id, ecdsa, orca, claude-code]
 
 # 1b N0 전제 확인 실험
 
-오너가 외출한 동안(18:28~18:40) 실험했어요. 결과 요약은 1b ExecPlan의 Surprises에 있어요. 실험 키는 세션 임시 폴더에만 만들었고 키체인에는 저장하지 않았어요.
+오너가 외출한 동안(18:29~18:33, 커밋 기록 기준) 실험했어요. 결과 요약은 1b ExecPlan의 Surprises에 있어요. 실험 키는 세션 임시 폴더에만 만들었고 키체인에는 저장하지 않았어요.
 
 ## 파일
 

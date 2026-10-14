@@ -148,6 +148,26 @@ describe('중간 D: 하드 링크와 키 유출', () => {
   })
 })
 
+describe('감사 6차 낮음 6: 워커에 넘긴 로그인 값이 결과에 들어가면 되돌린다', () => {
+  test('워커가 OPENAI_API_KEY 값을 파일에 쓰면 되돌리고 실패로 처리한다', async () => {
+    const before = process.env.OPENAI_API_KEY
+    process.env.OPENAI_API_KEY = 'sk-gotechy-sentinel-0123456789abcdef'
+    try {
+      const id = newTask(root, { ownership: ['k.txt'], verify: 'true' })
+      const out = await run(
+        id,
+        fixture({ 'k.txt': `leaked ${process.env.OPENAI_API_KEY}\n` }, { handoff: okHandoff }),
+      )
+      expect(out.status).toBe('failed')
+      expect(String(fm(handoffFile(root, id)).lead_note)).toContain('로그인 값')
+      expect(branchFiles(id)).not.toContain('k.txt')
+    } finally {
+      if (before === undefined) delete process.env.OPENAI_API_KEY
+      else process.env.OPENAI_API_KEY = before
+    }
+  })
+})
+
 describe('낮음 E: 되돌리기 어려움은 실제로 바뀐 파일도 본다', () => {
   test('ownership이 src/여도 src/auth/를 바꿨으면 이해 게이트 대상이다', async () => {
     const id = newTask(root, { ownership: ['src/'], verify: 'test -f src/auth/login.ts' })

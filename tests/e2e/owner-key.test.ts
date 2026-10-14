@@ -207,3 +207,34 @@ describe('오너 키 만들기의 실패 경로', () => {
     expect(existsSync(ledger())).toBe(false)
   })
 })
+
+describe('보안 감사 6차', () => {
+  test('낮음 3: 만든 키가 사람 확인 없이 서명되면(probe exit 5) 쓰지 않는다', () => {
+    const h = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-probe-')))
+    mkdirSync(join(h, 'bin'), { recursive: true })
+    const pub = generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
+      .publicKey.export({ format: 'der', type: 'spki' })
+      .toString('base64')
+    writeFileSync(
+      ownerToolPath(h),
+      `#!/bin/sh\ncase "$1" in create) : > "$2"; echo '${pub}' ;; probe) exit 5 ;; esac\n`,
+    )
+    chmodSync(ownerToolPath(h), 0o755)
+    expect(() => initOwnerKey(h, LIB)).toThrow('사람 확인 없이')
+    expect(loadOwnerKey(h).ok).toBe(false)
+  })
+
+  test('낮음 4: 장부에 객체가 아닌 줄이 있으면 예외 없이 장부 사유로 실패한다', async () => {
+    await decideGate({ root }, home, 'G-001', { choice: '5분', confirm: yes })
+    writeFileSync(ledger(), 'null\n', { flag: 'a' })
+    const v = verdict('G-001')
+    expect(v?.status).toBe('fail')
+    expect(v?.reasons.join(' ')).toContain('장부')
+  })
+
+  test('중간 1: 서명 도구에는 결정 하나와 그 장부 줄만 넘긴다', async () => {
+    // 가짜 도구도 실제 도구처럼 두 메시지가 서로 맞지 않으면 exit 2로 거부한다
+    await decideGate({ root }, home, 'G-001', { choice: '5분', confirm: yes })
+    expect(readFileSync(`${ownerBlob(home)}.reasons`, 'utf8')).toBe('gotechy G-001: 5분\n')
+  })
+})

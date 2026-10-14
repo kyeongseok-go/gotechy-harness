@@ -139,15 +139,22 @@ export async function runTask(
   // 게이트나 키 같은 다른 파일을 건드리거나, 바깥 파일 내용을 커밋하게 된다(보안 감사 1차 높음 2, 2차 중간 D).
   const links = changed.filter((f) => isSymlink(join(wt, f)))
   const hard = changed.filter((f) => !links.includes(f) && isHardLinked(join(wt, f)))
-  // 1a의 "서명 키 값이 든 파일" 검사는 뺐다. 오너 키는 Secure Enclave 안에 있어 파일에 들어갈 비밀 값이 없다(contract.md 6.3절)
+  // 워커에 넘긴 로그인 값(contract.md 6.3절 워커 환경 변수)이 결과 파일에 들어가면 되돌린다. 리드의 커밋은 hook을 끄고 돌아
+  // gitleaks가 보지 못한다(보안 감사 6차 낮음 6). 오너 키는 Secure Enclave 안에 있어 파일에 들어갈 비밀 값이 없다
+  const secrets = WORKER_SECRET_VARS.map((k) => process.env[k] ?? '').filter((v) => v.length >= 16)
+  const leaks = changed.filter(
+    (f) => !links.includes(f) && !hard.includes(f) && containsAny(join(wt, f), secrets),
+  )
   const outside = disallowedChanges(changed, task.ownership, task.id)
-  const bad = [...new Set([...outside, ...links, ...hard])]
+  const bad = [...new Set([...outside, ...links, ...hard, ...leaks])]
   if (bad.length > 0) {
     await restoreFiles(wt, base, bad)
     const only = outside.filter((f) => !links.includes(f) && !hard.includes(f))
     if (only.length > 0) notes.push(`허용 밖 파일을 바꿔 되돌렸습니다: ${only.join(', ')}`)
     if (links.length > 0) notes.push(`심볼릭 링크를 만들어 되돌렸습니다: ${links.join(', ')}`)
     if (hard.length > 0) notes.push(`하드 링크를 만들어 되돌렸습니다: ${hard.join(', ')}`)
+    if (leaks.length > 0)
+      notes.push(`워커에 넘긴 로그인 값이 들어 있어 되돌렸습니다: ${leaks.join(', ')}`)
   }
   const allowed = changed.filter((f) => !bad.includes(f))
 
@@ -405,4 +412,21 @@ function finishTampered(
   appendEvent(p, { type: 'run.end', task: task.id, status: 'failed', tampered: true })
   log(`${task.id}: failed (git 설정 변경)`)
   return { status: 'failed', messages: notes, handoffFile: mainHandoff }
+}
+
+/** 워커에 넘기는 로그인 변수(src/runtime/adapters의 허용 목록). 값이 결과에 들어가면 안 된다 */
+const WORKER_SECRET_VARS = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY']
+
+/** 10MB 이하 일반 파일에 비밀 값이 들어 있는가. */
+function containsAny(path: string, needles: string[]): boolean {
+  if (needles.length === 0) return false
+  try {
+    const st = lstatSync(path)
+    if (!st.isFile() || st.size > 10 * 1024 * 1024) return false
+    return needles.some((n) =>
+      readFileSync(path, 'latin1').includes(Buffer.from(n).toString('latin1')),
+    )
+  } catch {
+    return false
+  }
 }

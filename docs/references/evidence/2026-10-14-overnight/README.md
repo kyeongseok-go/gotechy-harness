@@ -8,7 +8,7 @@ tags: [gotechy-harness, overnight, handoff]
 
 # 밤샘 자율 실행 보고 (2026-10-14 밤)
 
-아침에 여기서 시작하세요. 루프 설계는 [`docs/exec-plans/active/2026-10-14-overnight-loop.md`](../../../exec-plans/active/2026-10-14-overnight-loop.md)에 있어요.
+아침에 여기서 시작하세요. 루프 설계는 [`docs/exec-plans/completed/2026-10-14-overnight-loop.md`](../../../exec-plans/completed/2026-10-14-overnight-loop.md)에 있어요.
 
 ## 3초 요약
 

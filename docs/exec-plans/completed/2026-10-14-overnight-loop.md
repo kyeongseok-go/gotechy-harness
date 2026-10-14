@@ -1,7 +1,7 @@
 ---
 title: 밤샘 자율 실행 루프 (2026-10-14 밤)
 status: active
-parent: docs/exec-plans/active/2026-10-13-harness-v2-phase1.md
+parent: docs/exec-plans/completed/2026-10-13-harness-v2-phase1.md
 mode: overnight
 ---
 

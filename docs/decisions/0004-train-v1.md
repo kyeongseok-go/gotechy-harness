@@ -2,7 +2,7 @@
 
 - 상태: 승인됨
 - 날짜: 2026-10-14 (결정 D13, 2026-10-13)
-- 관련: [설계 문서 10-1절, 12절 D13](../design-docs/2026-10-13-expert-library-v0.md), [1a ExecPlan M0, M3](../exec-plans/active/2026-10-13-harness-v2-phase1.md)
+- 관련: [설계 문서 10-1절, 12절 D13](../design-docs/2026-10-13-expert-library-v0.md), [1a ExecPlan M0, M3](../exec-plans/completed/2026-10-13-harness-v2-phase1.md)
 
 ## 맥락
 
@@ -18,7 +18,7 @@
 
 ## 결정
 
-A. train v1 = `Claude Code`, `Codex`, `Orca`, `mise`, `apm`, `node`, `uv`, `gh`(+ `gitleaks`). macOS 우선, Windows는 회사 모드로 2순위, Linux는 CI 검증만. Cursor CLI 같은 도구는 쓰기 시작할 때 더한다(파일 계약으로는 지금도 동작). 갱신은 자동 감지, doctor와 eval 통과 시 적용, 실패하면 이전 train으로 돌아간다.
+A. train v1 = `Claude Code`, `Codex`, `Orca`, `mise`, `apm`, `node`, `uv`, `gh`(+ `gitleaks`, 구현 스택 `bun`). macOS 우선, Windows는 회사 모드로 2순위, Linux는 CI 검증만. Cursor CLI 같은 도구는 쓰기 시작할 때 더한다(파일 계약으로는 지금도 동작). 갱신은 자동 감지, doctor와 eval 통과 시 적용, 실패하면 이전 train으로 돌아간다.
 
 ## 결과 (Consequences)
 

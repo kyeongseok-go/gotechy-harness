@@ -60,7 +60,7 @@
 | 도구와 팩의 공급망 | 바뀐 바이너리나 스킬이 깔린다 | `bin/gotechy`, `mise install`, `apm install` | train의 mise sha256, `mise.lock` 체크섬과 `MISE_LOCKED`, 팩의 커밋 SHA 고정, `apm audit --ci`, 깔린 팩을 라이브러리 커밋과 대조, init이 남의 apm.yml 의존성을 거부, CI action은 커밋 SHA | 서드파티 스킬 채택 정책 D3 미결(지금은 채택 0건) |
 | 공개 저장소 | 비밀 값이나 개인 데이터가 커밋된다 | 커밋과 푸시 | gitleaks hook(없으면 막음), `doctor --history` | CI 전체 이력 검사(2단계) |
 | 비용 | 워커가 폭주한다(LLM10) | `run` | 작업마다 `budget_usd`(claude), `timeout_min` | Codex 비용 상한 TD-015, 무인 루프 밤 예산(1b N3) |
-| 부작용 명령 | 리드가 결정을 대신 내리거나 키를 바꾸거나 force push, 배포를 한다(LLM06) | 리드 에이전트 세션 | 정책 deny(`gotechy decide`, `serve`, `keys`, `script`, `expect`), 저장소 `guard-bash.sh` | 부작용 가드(1b N4, TD-008) |
+| 부작용 명령 | 리드가 결정을 대신 내리거나 키를 바꾸거나 force push, 배포를 한다(LLM06) | 리드 에이전트 세션 | 정책 deny(`gotechy decide`, `serve`, `keys`, `loop`, `script`, `expect`)는 `gotechy setup`(전역)이나 `gotechy init`(프로젝트)이 넣어야 걸린다. 프로젝트의 PreToolUse 가드 `gotechy guard`(계약 12절), 이 저장소의 `guard-bash.sh` | 숨긴 명령 이름은 가드가 못 잡음(최종 방어선은 Touch ID). Codex 리드에는 가드 없음 |
 
 ## 사고 대응
 

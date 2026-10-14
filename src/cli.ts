@@ -253,7 +253,7 @@ const keys = program
   .description('오너 키: Secure Enclave 키와 Touch ID로 결정에 서명한다 (contract.md 6.3절)')
 keys
   .command('init')
-  .description('오너 키가 없으면 만든다. 서명 도구가 없으면 swiftc로 빌드한다')
+  .description('오너 키가 없으면 만든다. 서명 도구는 실행할 때마다 소스에서 swiftc로 다시 빌드한다')
   .action(() => {
     try {
       const r = initOwnerKey(gotechyHome(), libraryRoot(), { rebuildTool: true })

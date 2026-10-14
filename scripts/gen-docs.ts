@@ -16,7 +16,10 @@ const help = (args: string[]) => {
   return r.stdout.toString().trim()
 }
 const top = help([])
-const commands = [...top.matchAll(/^ {2}([a-z]+)(?: \[[^\]]+\]| <[^>]+>)*\s{2,}/gm)].map((m) => m[1] as string)
+// 설명 없는 명령 뒤의 줄바꿈까지 먹지 않게 공백은 같은 줄에서만 센다(doc-gardener 2026-10-15)
+const commands = [...top.matchAll(/^ {2}([a-z]+)(?: \[[^\]]+\]| <[^>]+>)*(?:[ \t]{2,}|$)/gm)].map(
+  (m) => m[1] as string,
+)
 const groups: Record<string, string[]> = { task: ['new', 'lint'], handoff: ['lint'], text: ['lint'], keys: ['init', 'rotate'], gate: ['verify'] }
 const sections = [`## gotechy\n\n\`\`\`text\n${top}\n\`\`\``]
 for (const c of commands.filter((x) => x !== 'help')) {

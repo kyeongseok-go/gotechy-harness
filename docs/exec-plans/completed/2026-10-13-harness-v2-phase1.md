@@ -26,7 +26,7 @@
 - [x] (2026-10-13 23:45) M1 관통 경로 — 계약 문서, CLI(init·task new/lint·run·handoff lint), worktree 격리, claude·codex·fake 어댑터. 테스트 49개 통과, 커버리지 91%, 실제 Claude·Codex 워커 각 1회 성공
 - [x] (2026-10-14 00:24) M2a HANDOFF 규칙과 문체 검사: 계약 v1.1(4.1절 HANDOFF 규칙 8개, 7절 문체 규칙), `handoff lint` 내용 규칙, 문체 lint(2026-10-20까지 경고, 21일부터 오류), `text lint` 명령, 용어 은행 53개, 예외 구간 표지. 테스트 87개 통과
 - [x] (2026-10-14 00:53) M2b 인박스와 읽기 전용 HTML: 계약 8절, `gotechy inbox`(3초 카드, golden test), `gotechy render`(hono/jsx, markdown-it `html: false`, CSP, 허용 요소 목록), HANDOFF 예외 표지 금지, 터미널과 HTML의 제어 문자 제거, 저장소 위생 테스트. 테스트 115개 통과
-- [x] (2026-10-14 01:53) M2c 결정과 반영 (밤샘 루프, `docs/exec-plans/active/2026-10-14-overnight-loop.md`): 계약 6절(게이트, 서명, decide, verify, run의 강제)과 9절(이해 게이트, 측정, 인박스 게이트 표시, accept, 용어 누적). `keys init`, `keys rotate`, `decide`, `gate verify`, `accept`. 보안 감사 1차 지적(높음 3, 중간 3, 낮음 4) 수정. 보안 감사 2차 지적(높음 3, 중간 1, 낮음 2) 수정. 테스트 196개 통과
+- [x] (2026-10-14 01:53) M2c 결정과 반영 (밤샘 루프, `docs/exec-plans/completed/2026-10-14-overnight-loop.md`): 계약 6절(게이트, 서명, decide, verify, run의 강제)과 9절(이해 게이트, 측정, 인박스 게이트 표시, accept, 용어 누적). `keys init`, `keys rotate`, `decide`, `gate verify`, `accept`. 보안 감사 1차 지적(높음 3, 중간 3, 낮음 4) 수정. 보안 감사 2차 지적(높음 3, 중간 1, 낮음 2) 수정. 테스트 196개 통과
 - [x] (2026-10-14 02:09) M3 설치 계층 중 격리 환경에서 검증할 수 있는 부분 (밤샘 루프): 계약 10절, `train.yaml`(train 2026.10.0), `gotechy doctor [--history]`, `gotechy setup [--dry-run] [--restore]`, gitleaks hook과 `.gitleaks.toml`(주민등록번호 규칙), `bin/gotechy` 부트스트랩. M3 보안 리뷰 수정 뒤 테스트 258개 통과
 - [x] (2026-10-14 13:06) 이 맥에 실제 `setup` 적용과 복원 (Validation 14 실측, 오너 결정 T-006). 두 설정 파일의 바이트와 권한이 원본과 같아짐. 증거 `docs/references/evidence/2026-10-14-setup-real/`
 - [x] (2026-10-14 13:23) train A등급 도구 6개의 mise 락(4개 플랫폼 29항목, 모두 체크섬). 부트스트랩이 mise를 PATH에 두고 락 그대로만 설치(`MISE_LOCKED=1`, `bun install --frozen-lockfile`)
@@ -37,7 +37,7 @@
 - [x] (2026-10-14 18:41) 보안 감사 5차(security-auditor): 3차 수정, M3 수정, 오늘 변경분. 높음 0, 중간 1, 낮음 3, 중간과 낮음 2건 수정
 - [x] (2026-10-15, 밤샘 루프 2) 보안 리뷰 (/gotechy-security 절차) — 1a 전체(워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정, 설치, 오늘의 apm). security-auditor 7차: 높음 0, 중간 4, 낮음 4. 낮음 7(Codex 비용 상한, TD-015) 말고 모두 수정. `bun audit` 0건, gitleaks 전체 이력 0건, SECURITY.md 위협 모델 작성. 증거 `docs/references/evidence/2026-10-15-night/audit-7.md`
 - [x] (2026-10-15, 밤샘 루프 2) 1a 완료 게이트 (/gotechy-ship 기능 등급). 결과는 Outcomes와 `docs/references/evidence/2026-10-15-night/ship-1a.md`. 공문서 프로젝트 착수는 오너 결정
-- [ ] **(필수, 사용자 지시 2026-10-13) 1b ExecPlan 작성·착수** (2026-10-14 밤 초안 작성: `2026-10-14-harness-v2-phase1b.md`, 2026-10-14 13:05 오너가 범위와 순서 승인, 착수 전) — 1a 완료 게이트는 1b ExecPlan 파일이 `active/`에 생겨야 통과한다
+- [x] (2026-10-14 13:05 승인, 18:33 착수) **(필수, 사용자 지시 2026-10-13) 1b ExecPlan 작성·착수**: `2026-10-14-harness-v2-phase1b.md`. 2026-10-15 새벽까지 N0, N1(Touch ID 확인 전), N2, N3, N4(가드와 상태 줄)
 
 ## Surprises & Discoveries
 
@@ -199,11 +199,11 @@
 
 ## Outcomes & Retrospective
 
-**결과 (2026-10-15 새벽, 시각은 커밋 기록 기준).** 1a의 목표 네 가지가 모두 동작한다. ①Claude Code와 Codex 워커에게 같은 작업 명세로 일을 맡긴다(실제 워커 각 1회 성공, M1). ②HANDOFF를 3초 카드와 읽기 전용 HTML로 읽는다(M2b). ③서명한 결정으로 다음 작업을 지시하고 승인한 결과를 메인에 병합한다(M2c, 1b N1에서 서명을 Secure Enclave와 Touch ID로 바꿈). ④새 클론과 빈 HOME에서 부트스트랩부터 doctor까지 2분 31초에 같은 버전 묶음을 깐다(M3, Validation 12). Validation 18개를 모두 통과했고, 마지막 전체 검사는 테스트 414개 통과, 줄 커버리지 97.02%, 핵심 모듈 20개 모두 95% 이상이다.
+**결과 (2026-10-15 새벽, 시각은 커밋 기록 기준).** 1a의 목표 네 가지가 모두 동작한다. ①Claude Code와 Codex 워커에게 같은 작업 명세로 일을 맡긴다(실제 워커 각 1회 성공, M1). ②HANDOFF를 3초 카드와 읽기 전용 HTML로 읽는다(M2b). ③서명한 결정으로 다음 작업을 지시하고 승인한 결과를 메인에 병합한다(M2c, 1b N1에서 서명을 Secure Enclave와 Touch ID로 바꿈. 실제 Touch ID 경로는 오너 확인 전이고, 자동 테스트는 가짜 서명 도구로 돈다). ④새 클론과 빈 HOME에서 부트스트랩부터 doctor까지 2분 31초에 같은 버전 묶음을 깐다(M3, Validation 12). Validation 18개를 모두 통과했고, 마지막 전체 검사는 테스트 414개 통과, 줄 커버리지 97.02%, 핵심 모듈 20개 모두 95% 이상이다.
 
 **잘 된 것.**
 - 가장 얇은 관통 경로를 먼저 뚫은 순서(M1 다음 M2, M3)가 맞았다. 설치 계층에서 가정이 여러 번 깨졌지만(mise 락 갱신, GOTECHY_CWD 누출, claude 자동 업데이트) 그때마다 관통 경로는 이미 돌고 있었다.
-- 보안 감사를 마일스톤마다 돌린 것. 1a 동안 감사 7번에서 높음 6건을 찾아 모두 고쳤다(1차 3, 2차 3. 3차부터 7차까지는 높음 0). 7차(1a 전체)에서는 git 이름 바꾸기 감지로 보호 파일이 범위 검사를 빠져나가던 구멍을 찾았다.
+- 보안 감사를 마일스톤마다 돌린 것. 1a 동안 감사와 리뷰에서 높음 8건을 찾아 모두 고쳤다(1차 3, 2차 3, 3차 1, M3 리뷰 1. 4차부터 7차까지는 높음 0). 7차(1a 전체)에서는 git 이름 바꾸기 감지로 보호 파일이 범위 검사를 빠져나가던 구멍을 찾았다.
 - mutation check(방어 코드를 하나씩 빼 보기)로 테스트의 힘을 쟀다. 테스트를 구현 뒤에 쓴 N1에서도 테스트가 실제로 막는지 확인할 수 있었다.
 
 **아쉬운 것.**
@@ -220,6 +220,8 @@
 **위키 적재 대상.** `docs/references/contract.md`(파일 계약), `docs/references/evidence/2026-10-15-night/audit-7.md`, `audit-8.md`, 이 회고. 적재는 오너가 지시할 때만 한다.
 
 ## Context and Orientation
+
+> 2026-10-15: 이 절의 일부는 계획 당시의 설계다. 바뀐 것: 구현 스택은 TypeScript와 Bun(ADR 0001), 결정 서명은 HMAC에서 Secure Enclave(ADR 0006, `~/.gotechy/keys` 없음), 워커 HOME은 그대로 넘기고 verify만 임시 HOME, `--answer-file`은 만들지 않음, 저장소 배치는 `ARCHITECTURE.md`가 원천.
 
 먼저 읽을 것: `docs/design-docs/2026-10-13-expert-library-v0.md`(설계·결정), `docs/product-specs/harness-v2.md`(스펙), `docs/references/research/expert-library-research-2026-10.md`(근거).
 
@@ -327,6 +329,8 @@
 
 ## Concrete Steps
 
+> 2026-10-15: 아래 M1, M3 예시는 계획 당시의 것이라 지금 명령과 다르다(Python과 uv, `examples/sandbox`, `--backend`, `setup --profile`, `--dry-run`). 실제 명령은 `docs/generated/cli.md`, 실측 기록은 `docs/references/evidence/`를 본다.
+
 M1 (예상 출력은 구현하며 실제 값으로 갱신):
 
     $ cd examples/sandbox && ../../bin/gotechy init --packs owner
@@ -411,6 +415,6 @@ career_signals:
     metrics:
       - "테스트 414개 통과, 줄 커버리지 97.02%, 핵심 모듈 20개 모두 95% 이상 (2026-10-15)"
       - "새 클론과 빈 HOME에서 부트스트랩부터 doctor 13개 검사 통과까지 2분 31초 (2026-10-14)"
-      - "보안 감사 7번(1a), 높음 6건 모두 수정. mutation check로 방어 코드 테스트 확인"
+      - "보안 감사와 리뷰(1a), 높음 8건 모두 수정. mutation check로 방어 코드 테스트 확인"
     story: "같은 파일 계약으로 Claude Code와 Codex에게 일을 맡기고, 사람이 이해하고 서명한 결정만 다음 작업과 병합으로 이어지게 하는 하네스를 이틀 동안 SDD와 수용 테스트 먼저, 마일스톤마다 보안 감사로 만들었다. 같은 OS 사용자로 도는 워커가 오너인 척 결정하는 위협을 정직하게 한정하고 1b에서 Secure Enclave로 막았다"
 ```

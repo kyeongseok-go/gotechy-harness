@@ -1,140 +1,60 @@
-# Gotechy Harness v1.2
+# Gotechy Harness v2
 
 > **Go, Build the technology, more easier.**
-> 고텍이(고경석)의 AI 하네스 엔지니어링 템플릿 — 아이디어에서 배포·콘텐츠·커리어 시그널까지, 에이전트가 최고 성능으로 일하게 만드는 저장소 구조.
+> 고텍이(고경석)의 개인 작업 시스템. Claude Code와 Codex 같은 AI 워커에게 같은 파일 약속으로 일을 맡기고, 사람이 이해하고 서명한 결정만 다음 일과 병합으로 이어지게 한다.
 
-## 이게 뭔가요?
+## 무엇인가
 
-OpenAI의 하네스 엔지니어링(Harness Engineering) 문서 구조 + Anthropic Claude Code 공식 베스트 프랙티스 + 기존 gotechy-dev 파이프라인을 통합한 **여러 프로젝트 공용 템플릿**입니다.
+`gotechy`는 TypeScript와 Bun으로 쓴 명령줄 도구다. 하는 일은 다섯 가지다.
 
-- **OpenAI에서 가져온 것**: AGENTS.md 지도 패턴, docs/ 문서 수명주기(design-docs → exec-plans → product-specs → references), ExecPlan 헌법(PLANS.md), 품질 문서군, llms.txt 벤더링, doc-gardening
-- **Anthropic에서 가져온 것**: CLAUDE.md 200줄 원칙과 @import 브리지, .claude/rules(paths 스코프), 스킬 점진적 공개(3층), 서브에이전트 격리, "권고는 CLAUDE.md, 강제는 hook"
-- **고텍이 고유의 것**: 3종 출력 변환(제품+커리어 시그널+콘텐츠), 완료 게이트(50% 증후군 방어), Gotechy-Wiki ingest 파이프라인, 고텍이 브랜드 스킬
+1. **맡기기**: 작업 명세(`orchestration/tasks/T-###.md`)로 워커에게 일을 맡긴다. 워커는 별도 git worktree에서 일하고, 리드가 샌드박스 안에서 검증한다.
+2. **보고 받기**: 워커는 정해진 형식의 HANDOFF를 남기고, lint가 형식과 문체를 검사한다.
+3. **이해하기**: 인박스 3초 카드, 읽기 전용 HTML, 화면에서 결정하는 로컬 서버(`gotechy serve`).
+4. **결정하기**: 맥의 보안 칩(Secure Enclave) 키와 Touch ID로 결정에 서명한다. 되돌리기 어려운 결정은 이해 질문에 먼저 답한다. 승인한 결과만 메인에 병합한다(`gotechy accept`).
+5. **어디서든 같게**: 검증한 도구 버전 묶음(train)을 체크섬 그대로 깔고(`bin/gotechy`), 팩(스킬)은 apm으로 커밋에 고정해 깐다.
 
-## 새 프로젝트에 적용하기
+진행 상태(2026-10-15): 1a 완료(Validation 18개 통과), 1b는 화면 결정(N2), 무인 루프(N3), 부작용 가드(N4)까지. 실제 Touch ID 서명은 오너 확인 전. 자세한 상태는 `docs/exec-plans/active/`.
+
+## 시작하기 (macOS)
 
 ```bash
-# 1. 템플릿 복사 (원본 이력은 두고 온다)
-cp -r ~/gotechy-harness/ ~/workspace/my-new-project/
-cd ~/workspace/my-new-project && rm -rf .git docs/references/research
-
-# 2. 부트스트랩 — 스택·테스트·배포를 묻고 실제로 채운다
-npm run init:harness -- --fix        # 대화형. 비대화형은 --yes --stack=node --deploy=vercel
-npm install                          # 방금 추가된 devDependencies
-
-# 3. 게이트가 살아있는지 확인 (여기까지 green이면 1일차 세팅 끝)
-npm test && npm run lint && npm run check:boundaries
-
-# 4. 시작
-claude   # AGENTS.md 표준이라 Codex도 진입 가능 — 단 스킬·rules는 Claude Code 전용
+git clone https://github.com/kyeongseok-go/gotechy-harness.git && cd gotechy-harness
+bin/gotechy doctor            # 처음이면 ~/.gotechy에 mise와 train 도구를 체크섬 그대로 받는다
+bin/gotechy setup --dry-run   # 전역 설정(Claude Code, Codex)에 넣을 정책을 먼저 본다
+bin/gotechy keys init         # 오너 키를 보안 칩에 만든다(Xcode Command Line Tools 필요)
 ```
 
-`--fix`가 채우는 것: `src/` 레이어 골격(types→config→repo→service→runtime→ui) · 통과하는 예제 테스트 1개 · tsconfig · vitest 설정(커버리지 임계값 포함) · package.json 스크립트 전부 · ARCHITECTURE/AGENTS/DEPLOYMENT의 교체 자리.
-무엇이 바뀌는지 먼저 보려면 `bash scripts/bootstrap.sh --dry-run`.
+프로젝트에서(`gotechy`는 이 저장소의 `bin/gotechy`. PATH에 두거나 별칭을 만든다):
 
-> **왜 자동으로 채우나**: 복사 직후에는 모든 게이트 명령이 실패 스텁이라, 규칙을 정확히 지키는 에이전트는 1일차에 완료를 선언할 수 없다. 검사만 하고 고쳐주지 않는 검사기가 온보딩 이탈의 최대 원인이었다.
-
-Claude Code는 `CLAUDE.md → @AGENTS.md` 브리지로, Codex·Cursor 등은 `AGENTS.md`를 직접 읽습니다.
-
-## 구조 한눈에 보기
-
-```
-gotechy-harness/
-├── AGENTS.md            # 지도 (120줄 이하, agents.md 표준)
-├── CLAUDE.md            # @AGENTS.md + Claude 전용
-├── ARCHITECTURE.md      # 레이어·경계 지도 (matklad 관례)
-├── docs/
-│   ├── PLANS.md             # ExecPlan 작성 헌법
-│   ├── WIZARD.md            # 기획·디자인 위저드 헌법 (7단계·질문 엔진·승인 락)
-│   ├── AI_PLAYBOOK.md       # AI 기능 개발 과정 (4대 역량·eval·가드레일)
-│   ├── ROUTINES.md          # 개발·프롬프팅 루틴
-│   ├── PRODUCT_SENSE.md     # 제품 감각·대상 사용자
-│   ├── DESIGN.md            # 디자인 시스템 (토큰·수치·anti-slop)
-│   ├── FRONTEND.md          # 프론트 규범
-│   ├── QUALITY_BAR.md       # 품질 기준 + 점수표 + 하네스 자체 측정
-│   ├── QUALITY_MODEL.md     # ISO 25010·25023·25030 품질 목표 방법론
-│   ├── RELIABILITY.md       # 신뢰성·백업·인시던트 런북
-│   ├── SECURITY.md          # 보안 규범 (웹 + OWASP LLM Top 10)
-│   ├── DEPLOYMENT.md        # 배포·롤백·시크릿 수명주기
-│   ├── BRAND.md             # 고텍이 브랜드·콘텐츠 규범
-│   ├── career.example.yaml  # 커리어 시그널 구조 (실명은 ~/.claude/에)
-│   ├── design-docs/         # 설계 문서 (index + core-beliefs)
-│   ├── product-specs/       # PRD + 위저드 템플릿 7종 (Brief→…→스타일가이드)
-│   ├── exec-plans/          # active/ completed/ + 부채 추적
-│   ├── decisions/           # ADR
-│   ├── evals/               # LLM 골든셋 + eval 규약
-│   ├── generated/           # 자동 생성 문서 (수동 편집 금지)
-│   └── references/          # llms.txt 벤더링 + 리서치 보고서
-├── .claude/
-│   ├── settings.json        # 권한 + PreToolUse 가드 hook (guard-bash.sh — 스모크 테스트 필수)
-│   ├── hooks/guard-bash.sh  # force push·시크릿 접근·재귀 삭제 차단 (L3 최소 구현)
-│   ├── rules/               # paths 스코프 규칙 (코드/테스트/보안)
-│   ├── skills/              # /gotechy-spec(위저드)·design·quality·plan·ship·security·launch + blog-writer v2
-│   └── agents/              # spec-reviewer, security-auditor, doc-gardener
-├── prompts/                 # 프로덕션 프롬프트 버전 관리
-├── scripts/
-│   ├── init.sh              # 온보딩 검사 (npm run init:harness)
-│   └── bootstrap.sh         # --fix 시 실제로 채우는 부트스트래퍼
-├── .github/workflows/ci.yml # 완료 게이트의 CI 미러 (격리된 채점자)
-└── .dependency-cruiser.cjs  # 레이어 경계 기계 강제
+```bash
+gotechy init --packs owner            # 계약 폴더, 지도, 팩(apm), 부작용 가드
+gotechy task new "README에 설치 줄" --verify "grep -q 설치 README.md" --ownership README.md
+gotechy run T-001                     # 워커 실행, 검증, HANDOFF
+gotechy inbox                         # 3초 카드
+gotechy serve                         # 화면에서 결정(터미널에서 직접)
+gotechy accept T-001                  # 승인한 결과를 메인에 병합
+gotechy loop --budget 5               # 자리를 비운 동안 autonomy L2 작업을 차례로(아침 보고서)
 ```
 
-## 작업 수명주기
+명령 전체는 `docs/generated/cli.md`(자동 생성).
 
-`AGENTS.md`의 "작업 수명주기" 절이 단일 출처다 (스펙 → 설계 → 계획 → 구현 → 검증 게이트 → 완료 → 출력 변환).
+## 안전 장치
 
-## 기존 gotechy 도구와의 관계 (중요)
+- 결정(`decide`, `serve`), 오너 키(`keys`), 무인 루프(`loop`)는 오너만 실행한다. `gotechy init`이 프로젝트에 deny 규칙과 PreToolUse 가드를 깐다.
+- 에이전트는 이 저장소를 확인할 때 `bin/gotechy` 대신 `bun run dev -- <명령>`을 쓴다. `bin/gotechy`는 처음 실행할 때 `~/.gotechy`에 도구를 내려받는다.
+- 위협 모델과 알려진 한계: `docs/SECURITY.md`, `docs/references/contract.md` 6.3절. 보안 감사 기록: `docs/references/evidence/`.
 
-`~/.claude/skills/`에 이미 설치된 **gotechy-dev 계열 9개 스킬**과 이 하네스는 **레이어가 다르다**. 경쟁 관계가 아니라 실행 엔진과 런타임 환경의 관계다.
+## 어디를 볼까
 
-| | gotechy-dev (전역 스킬) | Gotechy Harness (이 템플릿) |
-|---|---|---|
-| 역할 | **세션 오케스트레이터** — 언제 무엇을 실행할지, 상태(state.json), 체크포인트·재개 | **저장소 기질** — 에이전트가 읽는 컨텍스트·규범·강제 장치 |
-| 사는 곳 | `~/.claude/skills/` (전역, 모든 프로젝트) | 프로젝트 저장소 안 (프로젝트마다 진화) |
-| 생명주기 | 세션 단위 | 프로젝트 영속 |
-
-**역할 분담** — 겹치는 기능은 아래 담당을 따른다:
-
-| 하는 일 | 담당 |
+| 알고 싶은 것 | 문서 |
 |---|---|
-| 새 프로젝트 scaffold + GitHub repo | `/gotechy-start` (phase 0) — 단, **scaffold 내용물로 이 템플릿을 쓴다** |
-| 스펙·계획 문서의 양식 | 하네스 (`_template-prd.md`, `_template-exec-plan.md`) |
-| 세션 상태·재개·중단 | `/gotechy-status` · `/gotechy-resume` · `/gotechy-abort` |
-| phase 완료 체크리스트 | `/gotechy-gate <phase>` |
-| 프로젝트 완료 게이트 (테스트·품질·문서·부채·evidence) | 하네스 `/gotechy-ship` |
-| 블로그·SNS·카드뉴스 생성 | `/gotechy-blog` (gotekie-blog-writer 사용) |
-| Gotechy-Wiki 적재 | `/gotechy-ingest` |
-| 런치 체크·SEO/GEO 감사 | 하네스 `/gotechy-launch` |
+| 지도(에이전트와 사람 공통) | `AGENTS.md` |
+| 파일 약속과 명령의 원천 | `docs/references/contract.md` |
+| 구조와 레이어 | `ARCHITECTURE.md` |
+| 설계와 결정 | `docs/design-docs/`, `docs/decisions/` |
+| 진행 중인 계획 | `docs/exec-plans/active/` |
+| 검사 | `bun run check`, `bun run check:boundaries`, `bun run gen:docs` |
 
-> gotechy-dev가 설치되지 않은 환경(예: 로컬 데스크톱)에서는 하네스의 스킬만으로 전 과정이 돌아간다 — 템플릿은 자립적이다.
+## v1.x 템플릿
 
-### ⚠️ 알려진 충돌 2건
-
-1. **CLAUDE.md 덮어쓰기** — `/gotechy-start`의 phase 0.5가 인터뷰 답변으로 `CLAUDE.md`를 렌더한다. 하네스가 이미 있는 저장소에서 실행하면 `@AGENTS.md` 브리지가 사라지고 **하네스 문서 전체가 Claude Code에게 안 보이게 된다**. 조용한 치명적 실패라 `npm run init:harness`의 [5]번 검사가 이를 잡는다 — 걸리면 `CLAUDE.md` 첫 줄에 `@AGENTS.md`를 복구한다.
-2. **`gotekie-blog-writer` 이름 충돌** — 전역 v1과 이 템플릿의 v2가 같은 이름이다. 프로젝트 스코프가 우선하지만 어느 쪽이 로드됐는지 헷갈린다. 전역을 v2로 교체해 단일화할 것을 권한다.
-
-## 하네스가 실제로 효과 있는지 측정하기
-
-주장이 아니라 숫자로 말한다 — `~/workspace/harness-bench`가 같은 과제를 하네스 켠 상태와 끈 상태로 풀려 통과율·재시도·토큰을 비교한다. 자세한 연결 방법은 `docs/QUALITY_BAR.md`의 "하네스 자체의 측정" 절.
-
-## 함께 쓰면 좋은 외부 스킬 (조사 기반 추천)
-
-상세: `docs/references/research/github-skills-ecosystem.md`
-
-| 용도 | 추천 |
-|---|---|
-| 개발 방법론 뼈대 | obra/superpowers (이미 gotechy-dev가 래핑 중) |
-| UI 품질 | anthropics/skills `frontend-design` + Leonxlnx/taste-skill |
-| E2E 테스트 | anthropics/skills `webapp-testing` |
-| 보안 감사 | trailofbits/skills, anthropics/claude-code-security-review |
-| 마케팅 | coreyhaines31/marketingskills, AgriciDaniel/claude-seo |
-
-## 리서치 원문 · 심사 기록
-
-- `docs/references/research/openai-harness-engineering.md` — OpenAI 하네스 원문 분석
-- `docs/references/research/anthropic-claude-code-harness.md` — Anthropic 공식 가이드 분석
-- `docs/references/research/github-skills-ecosystem.md` — GitHub 스킬 생태계 조사
-- `docs/references/research/ai-best-practices-2026.md` — AI 활용법 2025–26 (핵심 원칙 10·eval 구축법)
-- `docs/references/research/expert-panel-review-v1.md` — 6인 전문가 심사 + Codex 교차 검토 + 최종 검증 원장
-
-> 이 폴더는 **하네스 자신의 이력**이다. 새 프로젝트로 복사할 때는 제거하고 원본 저장소(`~/workspace/gotechy-harness`)에만 남기는 것을 권한다.
+v1.2까지는 프로젝트마다 통째로 복사하는 템플릿이었다. 그 방식과 설명은 git 이력(커밋 `6a4d892`)에 있다. 새 프로젝트용 지도와 hook 원본은 `templates/project/`로 옮겼고, 남은 v1.x 문서의 정리는 2단계(문서 다이어트, TD-003)에서 한다.

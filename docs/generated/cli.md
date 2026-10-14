@@ -138,7 +138,7 @@ Options:
 ```text
 Usage: gotechy keys init [options]
 
-오너 키가 없으면 만든다. 서명 도구가 없으면 swiftc로 빌드한다
+오너 키가 없으면 만든다. 서명 도구는 실행할 때마다 소스에서 swiftc로 다시 빌드한다
 
 Options:
   -h, --help  display help for command

@@ -15,6 +15,7 @@
 
 | 알아야 할 것 | 문서 |
 |---|---|
+| 파일 계약(진실의 원천: 작업 명세, HANDOFF, 게이트, 명령) | `docs/references/contract.md` |
 | 시스템 전체 구조·레이어 | `ARCHITECTURE.md` |
 | 에이전트 우선 운영 원칙 (왜 이렇게 일하나) | `docs/design-docs/core-beliefs.md` |
 | 설계 문서 색인 | `docs/design-docs/index.md` |
@@ -65,7 +66,7 @@
 ## 에이전트 행동 규칙
 
 - 사용자가 기능을 요청하면 **크기를 먼저 판정해 알리고** 해당 경로로 진행한다. 애매하면 큰 쪽으로 잡고 사용자에게 확인받는다.
-- 스펙·계획·게이트는 에이전트가 직접 수행한다. **부작용이 있는 것**(배포, 외부 발행, 위키 적재, force push)은 사용자가 명시적으로 지시했을 때만 실행한다.
+- 스펙·계획·게이트는 에이전트가 직접 수행한다. **부작용이 있는 것**(배포, 외부 발행, 위키 적재, force push, 전역 설정 바꾸기 `gotechy setup`, 오너 키와 결정 `gotechy keys`·`decide`·`serve`, 무인 루프 `gotechy loop`)은 사용자가 명시적으로 지시했을 때만 실행한다. 결정은 오너만 한다.
 - 계획만 늘어놓고 턴을 끝내지 않는다 — 실행하거나, 막힌 지점을 명확히 보고한다.
 
 ## 슬래시 커맨드 (스킬 — Claude Code 전용)
@@ -99,7 +100,7 @@
 > 새 프로젝트는 이 저장소를 복사하지 않고 `gotechy init`으로 `templates/project/`의 지도를 받는다.
 
 - **검사**: `bun run check`(lint, 타입, `gotechy test`의 테스트와 커버리지 기준). 레이어는 `bun run check:boundaries`, 생성 문서는 `bun run gen:docs`
-- **실행**: `bin/gotechy <명령>`(부트스트랩이 train의 도구로 실행). 개발할 때는 `bun run dev -- <명령>`(소스로 바로 실행). 개발 서버는 없다(명령줄 도구)
+- **실행**: 오너는 `bin/gotechy <명령>`(부트스트랩이 처음에 `~/.gotechy`로 train 도구를 받는다). 에이전트는 확인할 때 `bin/gotechy`를 쓰지 않고 `bun run dev -- <명령>`(소스로 바로 실행)을 쓴다. 개발 서버는 없다(명령줄 도구)
 - **배포**: 없다. 공개 저장소의 커밋이 배포이고, 프로젝트는 train의 `packs.ref` 커밋으로 팩을 받는다(`docs/DEPLOYMENT.md`)
 - **스택**: TypeScript 7, Bun 1.4.3(ADR 0001). 차선은 Python 3.14와 uv
-- 온보딩 검사: `npm run init:harness`. 교체 표시가 남아 있으면 지도가 거짓말을 하는 상태다
+- 온보딩 검사: `bash scripts/init.sh`(검사만. `--fix`는 v1.5 템플릿용이라 이 저장소에서는 거부한다). 교체 표시가 남아 있으면 지도가 거짓말을 하는 상태다

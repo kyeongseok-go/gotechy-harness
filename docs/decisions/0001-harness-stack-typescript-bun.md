@@ -2,7 +2,7 @@
 
 - 상태: 승인됨
 - 날짜: 2026-10-14
-- 관련: [1a ExecPlan](../exec-plans/active/2026-10-13-harness-v2-phase1.md) · [스택 리서치 근거](../references/research/expert-library-research-2026-10.md)
+- 관련: [1a ExecPlan](../exec-plans/completed/2026-10-13-harness-v2-phase1.md) · [스택 리서치 근거](../references/research/expert-library-research-2026-10.md)
 
 > 범위: **하네스 자체**를 만드는 스택이다. 하네스로 진행하는 프로젝트의 스택은 그 프로젝트의 기획·설계 단계에서 따로 정한다.
 

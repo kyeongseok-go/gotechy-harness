@@ -1,7 +1,7 @@
 # 하네스 v2 1b단계: 화면에서 결정하고, 오너만 결정할 수 있게
 
 - 상태: **승인됨, 착수 전** (2026-10-14 밤샘 루프에서 작성. 2026-10-14 13:05 오너가 범위와 순서를 승인. N0부터 착수)
-- 관련: [1a ExecPlan](2026-10-13-harness-v2-phase1.md), [스펙](../../product-specs/harness-v2.md), [계약](../../references/contract.md), [ADR 0005 결정 서명](../../decisions/0005-decision-signing.md), [밤샘 보고](../../references/evidence/2026-10-14-overnight/README.md)
+- 관련: [1a ExecPlan](../completed/2026-10-13-harness-v2-phase1.md), [스펙](../../product-specs/harness-v2.md), [계약](../../references/contract.md), [ADR 0005 결정 서명](../../decisions/0005-decision-signing.md), [밤샘 보고](../../references/evidence/2026-10-14-overnight/README.md)
 
 ## Purpose / Big Picture
 
@@ -88,7 +88,7 @@
 - 결정의 현재 구조: `src/core/gate.ts`(서명 대상과 판정), `src/runtime/gates.ts`(게이트 열기, decide, 필요한 게이트 계산), `src/runtime/keys.ts`(파일 키). 계약은 `docs/references/contract.md` 6절과 9절.
 - 화면: `src/core/view/pages.tsx`(읽기 전용, CSP로 스크립트와 form 금지). 1b의 결정 화면은 이 렌더러를 그대로 쓰되 serve 모드에서만 form을 허용한다.
 - 워커 격리: worktree, 보호 경로 되돌리기, 심볼릭 링크 거부, verify 샌드박스(`src/runtime/sandbox.ts`).
-- 오늘 밤의 수동 루프 설계: `docs/exec-plans/active/2026-10-14-overnight-loop.md`. N3는 이것을 코드로 옮긴다.
+- 오늘 밤의 수동 루프 설계: `docs/exec-plans/completed/2026-10-14-overnight-loop.md`. N3는 이것을 코드로 옮긴다.
 - 처음 보는 용어
   - Secure Enclave: 맥의 보안 칩이에요. 안에서 만든 개인 키는 밖으로 꺼낼 수 없고, 서명할 때 Touch ID 같은 사용자 확인을 요구하게 할 수 있어요.
   - user presence: "지금 사람이 기기 앞에 있다"는 확인이에요. Touch ID나 암호 입력으로 증명해요.

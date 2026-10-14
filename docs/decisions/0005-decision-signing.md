@@ -2,7 +2,7 @@
 
 - 상태: 승인됨 (1a 범위). 서명 방식(HMAC)은 2026-10-14 1b N1에서 [0006](0006-owner-auth-secure-enclave.md)으로 대체
 - 날짜: 2026-10-14
-- 관련: [계약 6절, 9절](../references/contract.md), [1a ExecPlan Decision Log](../exec-plans/active/2026-10-13-harness-v2-phase1.md), [밤샘 보고](../references/evidence/2026-10-14-overnight/README.md)
+- 관련: [계약 6절, 9절](../references/contract.md), [1a ExecPlan Decision Log](../exec-plans/completed/2026-10-13-harness-v2-phase1.md), [밤샘 보고](../references/evidence/2026-10-14-overnight/README.md)
 
 ## 맥락
 

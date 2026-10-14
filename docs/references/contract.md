@@ -22,7 +22,9 @@ orchestration/
     comprehension.jsonl   이해 문항의 답과 핵심어 적중(9.1절)
   terms.jsonl             프로젝트 용어 은행(9.5절)
   project.yaml            프로젝트 id, 결정 서명에 들어감(6.3절)
-  .seq, .gate-seq         번호 발급 상태 (잠금 파일 .seq.lock, .gate-seq.lock로 원자적 갱신)
+  .seq, .gate-seq         번호 발급 상태 (잠금 폴더 .seq.lock, .gate-seq.lock로 원자적 갱신)
+  private/run-T-###.lock  작업별 실행 잠금 폴더(pid, 3절)
+.gotechy/                 git에 올리지 않는 리드의 작업 공간: worktrees/, view/, runs/(워커 원문 로그), loop/, digest/, tmp/, accept/
 ```
 
 ## 2. 작업 명세 `tasks/T-###.md`
@@ -33,11 +35,13 @@ frontmatter (YAML):
 |---|---|---|---|
 | `id` | `T-` + 3자리 이상 숫자 | ✓ | 파일명과 같아야 한다 |
 | `title` | 문자열 1~80자 | ✓ | |
-| `status` | `draft`, `ready`, `running`, `done`, `failed`, `needs-decision` | ✓ | 상태 전이는 3절 |
+| `status` | `draft`, `ready`, `running`, `done`, `accepted`, `failed`, `needs-decision` | ✓ | 상태 전이는 3절 |
 | `packs` | 문자열 목록 | ✓ | 워커에게 줄 팩 |
 | `tier` | `T0`~`T3` | ✓ | 라우팅 등급 (1b에서 모델 매핑) |
 | `agent` | `claude`, `codex`, `fake` | | 없으면 `--adapter` 옵션 |
-| `model`, `effort` | 문자열 | | 없으면 도구 기본값 |
+| `model` | 문자열 | | 없으면 도구 기본값 |
+| `effort` | `low`, `medium`, `high`, `xhigh`, `max` | | 없으면 도구 기본값 |
+| `created_at` | ISO 시각 | | `task new`가 쓴다 |
 | `deps` | 작업 id 목록 | ✓ | 모두 `done`이어야 시작 |
 | `ownership` | 상대 경로 목록 (파일 또는 `/`로 끝나는 폴더) | ✓ | 워커가 바꿀 수 있는 범위. 보호 경로(5절), `..`, 절대 경로, 글롭 금지 |
 | `data_class` | `public`, `internal`, `confidential` | ✓ | 1a는 `public`만 실행 |
@@ -45,8 +49,8 @@ frontmatter (YAML):
 | `verify` | 셸 명령 문자열 | ✓ | 리드가 워커 worktree에서 실행, exit 0이면 통과 |
 | `irreversible` | 불리언 | ✓ | 보호 경로 규칙(5절)에 걸리면 명세 값과 무관하게 참으로 본다 |
 | `gate` | `none`, `before`, `after` | ✓ | `before`: 게이트 해소 전 실행 불가, `after`: HANDOFF 후 게이트 생성 (M2) |
-| `budget_usd` | 숫자 | | 워커 비용 상한 (기본 1.0) |
-| `timeout_min` | 정수 | | 워커 시간 상한 (기본 20) |
+| `budget_usd` | 숫자(0 초과, 20 이하) | | 워커 비용 상한 (기본 1.0). claude 워커에만 걸린다(TD-015) |
+| `timeout_min` | 정수(1~240) | | 워커 시간 상한 (기본 20) |
 
 본문 절 (Orca task-spec 5요소): `## Target`, `## Change`, `## Constraints`, `## Ownership`, `## Observable acceptance`.
 
@@ -60,7 +64,7 @@ task:  draft → ready → running → done | failed | needs-decision
 gate:  pending → resolved (거절도 resolution 값의 하나다)
 ```
 
-- `run`은 `ready`이고 `deps`가 모두 `accepted`인 작업만 시작한다. 선행 작업의 변경이 메인에 병합돼 있어야 뒤 작업이 그 결과 위에서 일하기 때문이다(M2c에서 `done`에서 바꿈).
+- `run`은 `ready`(또는 멈춘 run을 이어 가는 `running`)이고 `deps`가 모두 `accepted`인 작업만 시작한다. 선행 작업의 변경이 메인에 병합돼 있어야 뒤 작업이 그 결과 위에서 일하기 때문이다(M2c에서 `done`에서 바꿈).
 - 같은 작업을 다시 `run`하면 기존 worktree와 마지막 HANDOFF 판본(`rev`)에서 이어 간다.
 - 한 작업에는 한 번에 run 하나만 돈다. `run`은 `orchestration/private/run-T-###.lock`에 자기 pid를 적고, 살아 있는 프로세스가 잡고 있으면 거부한다. 죽은 run의 잠금은 회수한다. serve의 자동 실행과 리드의 run이 같은 worktree에서 겹치지 않게 한다(보안 감사 8차 중간 3).
 
@@ -155,7 +159,7 @@ frontmatter:
 
 ## 6. 게이트 `gates/G-###.md` (M2c)
 
-오너의 결정 하나가 게이트 파일 하나다. 리드가 열고(`pending`), 오너가 `gotechy decide`로 닫는다(`resolved`). 워커는 게이트를 읽거나 쓸 수 없다(5절 보호 경로).
+오너의 결정 하나가 게이트 파일 하나다. 리드가 열고(`pending`), 오너가 `gotechy decide`로 닫는다(`resolved`). 워커는 게이트를 쓸 수 없다(5절 보호 경로). 읽기는 claude 워커만 막는다. codex 워커(`workspace-write`)는 작업 폴더의 파일을 읽을 수 있다(1a M0 실험). 게이트는 공개 정보라 읽기는 위협이 아니고, 위조는 서명이 막는다.
 
 ### 6.1 게이트가 열리는 때
 
@@ -190,7 +194,7 @@ frontmatter:
 - 오너 키(1b N1): Secure Enclave에서 만든 P-256 키. 만들 때 사람 확인(`userPresence`)을 걸어 서명마다 Touch ID나 Mac 암호가 필요하다. 개인 키는 Secure Enclave 밖으로 나오지 않는다. 디스크에는 Secure Enclave가 감싼 blob(`$GOTECHY_HOME/owner/<key_id>.blob`)과 공개 키(`<key_id>.pub`, SPKI DER의 base64)만 있다. blob을 다른 곳에 복사해도 이 맥의 Secure Enclave와 오너의 손가락 없이는 서명할 수 없다.
 - `key_id`: `o-`와 공개 키(SPKI DER)의 sha256 앞 16자리 hex. 현재 키는 `owner/active`에 적는다. 형식이 다르거나, 공개 키 파일의 지문이 `key_id`와 다르거나, 폴더 권한이 0700보다 넓거나, 파일이 심볼릭 링크면 서명과 검증을 거부한다.
 - 검증은 공개 키만으로 한다. 비밀 값이 필요 없으므로 검증 경로 어디에도 비밀 키 파일이 없다.
-- 서명 도구 `$GOTECHY_HOME/bin/gotechy-ownerkey`: 원본은 라이브러리의 `native/ownerkey.swift`이고, `gotechy keys init`이 도구가 없을 때 `swiftc`(Xcode Command Line Tools)로 빌드한다. 명령은 `create <blob>`(새 키를 만들고 공개 키를 출력), `pub <blob>`, `probe <blob>`(사람 확인 없이 서명되는 키면 exit 5), `sign <blob>`이다. `sign`은 표준 입력으로 `[결정 서명 대상, 그 결정의 장부 줄]` 두 문자열만 받고, 장부 줄의 게이트, nonce, 키 id, `payload_sha256`이 서명 대상과 맞을 때만 한 번의 사람 확인으로 둘을 서명한다. 확인 창 문구는 호출한 쪽이 정하지 않고 도구가 서명 대상의 `gate_id`, `task_id`, `choice`, `nonce` 앞 4자리(확인 코드)로 만든다(`gotechy G-001 T-001: 5분 (확인 7F3A)`). 제어 문자와 형식 문자(Cc, Cf)는 지운다. 같은 확인 코드가 decide 터미널이나 serve 화면에도 보여서, 오너가 자기가 제출한 결정의 창인지 알아본다(보안 감사 8차 중간 5). 한 번의 확인으로 결정 하나만 서명되게 하려는 것이다(보안 감사 6차 중간 1). 입력이 틀리면 exit 2, 오너가 인증을 취소하면 exit 4.
+- 서명 도구 `$GOTECHY_HOME/bin/gotechy-ownerkey`: 원본은 라이브러리의 `native/ownerkey.swift`이고, `gotechy keys init`이 실행할 때마다 소스에서 `swiftc`(Xcode Command Line Tools)로 다시 빌드한다. 명령은 `create <blob>`(새 키를 만들고 공개 키를 출력), `pub <blob>`, `probe <blob>`(사람 확인 없이 서명되는 키면 exit 5), `sign <blob>`이다. `sign`은 표준 입력으로 `[결정 서명 대상, 그 결정의 장부 줄]` 두 문자열만 받고, 장부 줄의 게이트, nonce, 키 id, `payload_sha256`이 서명 대상과 맞을 때만 한 번의 사람 확인으로 둘을 서명한다. 확인 창 문구는 호출한 쪽이 정하지 않고 도구가 서명 대상의 `gate_id`, `task_id`, `choice`, `nonce` 앞 4자리(확인 코드)로 만든다(`gotechy G-001 T-001: 5분 (확인 7F3A)`). 제어 문자와 형식 문자(Cc, Cf)는 지운다. 같은 확인 코드가 decide 터미널이나 serve 화면에도 보여서, 오너가 자기가 제출한 결정의 창인지 알아본다(보안 감사 8차 중간 5). 한 번의 확인으로 결정 하나만 서명되게 하려는 것이다(보안 감사 6차 중간 1). 입력이 틀리면 exit 2, 오너가 인증을 취소하면 exit 4.
 - `gotechy keys init`: 오너 키가 없을 때만 만든다(만들 때는 Touch ID가 필요 없다). 서명 도구는 이미 있어도 소스에서 다시 빌드하고, 만든 키를 `probe`로 확인해 사람 확인 없이 서명되면 쓰지 않는다(보안 감사 6차 낮음 3). Secure Enclave가 없거나 `swiftc`가 없으면 exit 2와 설치 방법. `gotechy keys rotate`: 새 키를 만들어 현재 키로 바꾸고 이전 blob을 지운다. 이전 키로 서명한 결정은 모두 다시 결정해야 한다. 1a의 HMAC 결정(`key_id`가 `k-`로 시작)도 같다. 실제로 쓰인 HMAC 결정이 없어 따로 옮기는 명령은 두지 않는다.
 - nonce와 결정 장부: 결정마다 16바이트 난수. `orchestration/private/decisions.jsonl`에 줄마다 `{gate, nonce, key_id, decided_at, payload_sha256, sig}`를 남긴다(소비 기록). `payload_sha256`은 게이트 서명 대상의 sha256이고, 줄의 `sig`는 앞의 다섯 키를 정렬한 JSON에 대한 오너 서명이다. decide는 게이트 서명과 장부 줄 서명을 한 번의 Touch ID로 만든다. 서명이 맞지 않거나 읽을 수 없는 줄이 하나라도 있으면 장부 전체를 믿지 않고 모든 결정을 `fail`로 본다.
 - 위협 모델(1b N1): 실수, 낡은 판본, 손으로 고친 결정 파일과 장부, 다른 프로젝트의 결정 재사용, 격리된 워커에 더해, 오너와 같은 OS 사용자로 도는 프로세스(워커, 스크립트)가 오너의 Touch ID 없이 결정을 만드는 것을 막는다.
@@ -271,10 +275,10 @@ frontmatter:
 | 2 | 신호 줄. 막는 결정 수와 기본값 결정 수(0이면 생략), 계약 위반 수(`형식 오류 N건`, 4절과 4.1절 규칙만 세고 문체 규칙은 빼며 0이면 생략), 검증(`검증 통과`, `검증 실패 exit N`, `검증 기록 없음`), 리스크 수(`리스크 N`, 절이 "없음"이면 `리스크 없음`, 절 자체가 없으면 `리스크 기록 없음`), 비용(`$0.00`, 모르면 `비용 모름`), 바뀐 파일 수(`파일 N개`, HANDOFF 파일 자신은 세지 않음, 기록이 없으면 `파일 기록 없음`) |
 | 3 | 한 줄 요약 |
 | 4~ | 막는 결정마다 `결정: 질문 (추천 X)`, 최대 3줄. 넘치면 `결정 외 N건` |
-| 실패 카드 | `리드: lead_note` 한 줄(80자에서 자름) |
+| 실패 카드와 결정 필요 카드 | `리드: lead_note` 한 줄(80자에서 자름). `lead_note`는 리드만 쓴다(4절) |
 
 - 읽을 수 없는 HANDOFF(frontmatter나 스키마 오류)는 `[읽기 실패]` 카드로 실패 묶음에 넣고, 둘째 줄에 첫 오류, 셋째 줄에 `gotechy handoff lint <경로>`를 쓴다. 한 파일이 깨져도 인박스 전체는 멈추지 않는다.
-- 화면에 보여 주는 모든 문자열에서 터미널 제어 문자(ESC 등 C0, C1 제어 문자, 줄바꿈과 탭 제외)와 양방향 제어 문자(U+202A~U+202E, U+2066~U+2069)를 지운다. 악성 HANDOFF가 터미널 화면을 덮어쓰거나 글자 순서를 뒤바꿔 보이게 하는 것을 막는다. HTML 화면에도 같은 규칙을 적용한다.
+- 화면에 보여 주는 모든 문자열에서 터미널 제어 문자(ESC 등 C0, C1 제어 문자, 줄바꿈과 탭 제외), 형식 문자(Cf: 폭 없는 공백, U+061C 등), 양방향 제어 문자(U+202A~U+202E, U+2066~U+2069)를 지운다. 악성 HANDOFF가 터미널 화면을 덮어쓰거나 글자 순서를 뒤바꿔 보이게 하는 것을 막는다. HTML 화면에도 같은 규칙을 적용한다.
 - 종료코드는 항상 0이다(보기 명령). 병합한 작업을 인박스에서 빼는 규칙은 M2c의 `accept`에서 정한다.
 
 ### 8.2 `gotechy render [T-###]`
@@ -331,7 +335,7 @@ frontmatter:
 
 ### 9.3 인박스의 게이트 표시
 
-- 결정 필요 카드의 결정 줄은 열린 게이트가 있으면 번호를 붙인다: `결정 G-001: 질문 (추천 X)`. 마지막 줄에 `결정하려면: gotechy decide G-001 <선택>`.
+- 결정 필요 카드의 결정 줄은 열린 게이트가 있으면 번호를 붙인다: `결정 G-001: 질문 (추천 X)`. 마지막 줄에 `결정하려면: gotechy decide <게이트 번호> <선택>`.
 - HANDOFF가 아직 없는 작업의 `approval-before` 게이트는 따로 카드를 만든다: `[결정 필요] T-### 제목`, `시작 승인 대기 G-###: gotechy decide G-### 진행|중단`.
 - `approval-after` 게이트가 열린 `done` 작업은 결정 필요 묶음으로 올린다: `승인 대기 G-###: gotechy decide G-### 승인|다시`.
 - `accepted` 작업의 HANDOFF는 인박스와 화면 목록에서 뺀다.

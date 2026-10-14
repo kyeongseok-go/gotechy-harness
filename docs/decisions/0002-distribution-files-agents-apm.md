@@ -2,7 +2,7 @@
 
 - 상태: 승인됨
 - 날짜: 2026-10-14 (결정 D5, 2026-10-13)
-- 관련: [설계 문서 12절 D5](../design-docs/2026-10-13-expert-library-v0.md), [1a ExecPlan M3](../exec-plans/active/2026-10-13-harness-v2-phase1.md), [리서치 15절](../references/research/expert-library-research-2026-10.md)
+- 관련: [설계 문서 12절 D5](../design-docs/2026-10-13-expert-library-v0.md), [1a ExecPlan M3](../exec-plans/completed/2026-10-13-harness-v2-phase1.md), [리서치 15절](../references/research/expert-library-research-2026-10.md)
 
 ## 맥락
 
@@ -18,7 +18,7 @@
 
 ## 결정
 
-A. 정본은 저장소의 파일(SKILL.md, AGENTS.md)이다. AGENTS.md는 백과사전이 아니라 "어디를 볼지"만 담은 짧은 지도다. 설치는 apm(`targets: [claude, agent-skills]`, git 원격 태그 고정)으로 하고, apm은 교체 가능한 부품으로 둔다. MCP 배포는 주요 도구가 SEP-2640을 지원하면 어댑터로 더한다.
+A. 정본은 저장소의 파일(SKILL.md, AGENTS.md)이다. AGENTS.md는 백과사전이 아니라 "어디를 볼지"만 담은 짧은 지도다. 설치는 apm(`targets: [claude, agent-skills]`, git 원격의 커밋 SHA 고정, 2026-10-15에 태그에서 바꿈)으로 하고, apm은 교체 가능한 부품으로 둔다. MCP 배포는 주요 도구가 SEP-2640을 지원하면 어댑터로 더한다.
 
 ## 결과 (Consequences)
 

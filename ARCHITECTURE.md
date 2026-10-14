@@ -38,12 +38,15 @@ UI      → 컴포넌트·페이지
 | 경로 | 담당 |
 |---|---|
 | `src/core/` | 계약 스키마, HANDOFF와 작업 명세 lint, 문체 규칙, 게이트 서명 대상과 판정, 인박스 카드, 화면 HTML(`view/`), 커버리지 기준, apm 매니페스트와 락 판정 |
-| `src/runtime/` | 프로젝트 파일 접근, 워커 실행과 격리(`run`, `sandbox`, `git`, `adapters/`), 결정(`gates`, `keys`), 병합(`accept`), 화면 서버(`serve`), 설치(`init`, `packs`, `setup`, `doctor`) |
+| `src/runtime/` | 프로젝트 파일 접근, 워커 실행과 격리(`run`, `sandbox`, `git`, `adapters/`), 결정(`gates`, `keys`), 병합(`accept`), 화면 서버(`serve`), 무인 루프(`loop`), 설치(`init`, `packs`, `setup`, `doctor`) |
 | `src/cli.ts` | `gotechy` 명령과 종료 코드 |
 | `native/ownerkey.swift` | Secure Enclave 서명 도구 원본(`keys init`이 빌드) |
 | `bin/gotechy` | 부트스트랩(POSIX sh): train의 mise를 체크섬으로 받아 CLI로 넘김 |
 | `skills/` | 팩의 스킬 원본(apm이 프로젝트에 깜) |
-| `templates/project/` | 새 프로젝트에 까는 AGENTS.md, CLAUDE.md, gitleaks hook 원본 |
+| `templates/project/` | 새 프로젝트에 까는 AGENTS.md, CLAUDE.md, gitleaks hook과 설정, .gitignore 조각, v1.5 package.json 스텁 |
+| `knowledge/` | 용어 은행(`terms.jsonl`, HANDOFF "새 용어" 검사) |
+| `scripts/` | 오너용 스크립트(Touch ID 확인), 생성 문서(`gen-docs.ts`), v1.5 템플릿 검사(`init.sh`, `bootstrap.sh`) |
+| `prompts/` | 버전 관리하는 프로덕션 프롬프트(새 프로젝트용 자리) |
 | `train.yaml`, `mise.toml`, `mise.lock` | 함께 검증한 도구 버전 묶음 |
 | `tests/` | `core/` 단위, `e2e/` 명령과 흐름, `boundaries/` 레이어 규칙, `fixtures/` 녹화 워커와 가짜 서명 도구 |
 | `docs/` | 계약, 설계, ADR, ExecPlan, 증거, 자동 생성 문서(`generated/`) |

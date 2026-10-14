@@ -38,7 +38,8 @@ jobs:
       - run: bun run typecheck
       - run: bun test --coverage
       # 생성 문서(CLI 참조)가 코드와 같은지(완료 게이트 3단계)
-      - run: bun run gen:docs && git diff --exit-code docs/generated/
+      # untracked 파일도 잡도록 diff 대신 status를 본다(doc-gardener 2026-10-15)
+      - run: bun run gen:docs && test -z "$(git status --porcelain docs/generated/)"
       - name: exec-plan hygiene
         run: |
           for f in docs/exec-plans/active/*.md; do

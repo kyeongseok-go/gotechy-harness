@@ -6,10 +6,10 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 
 # Gotechy Harness v2 — 제품 스펙
 
-- 상태: 초안 (spec-reviewer 검토 전)
+- 상태: 구현 중. 1a 완료(2026-10-15), 1b 진행 중(N0~N4의 자동화 부분까지). spec-reviewer 검토는 2026-10-13에 반영
 - 우선순위: P0
 - 작성: 2026-10-13
-- 관련 ExecPlan: [1a단계](../exec-plans/active/2026-10-13-harness-v2-phase1.md) · 1b단계(1a 완료 직후 작성) · 2단계
+- 관련 ExecPlan: [1a단계](../exec-plans/completed/2026-10-13-harness-v2-phase1.md) · [1b단계](../exec-plans/active/2026-10-14-harness-v2-phase1b.md) · 2단계
 - 근거: [설계·결정 트리 D1~D14](../design-docs/2026-10-13-expert-library-v0.md) · [리서치](../references/research/expert-library-research-2026-10.md)
 
 ## 0. 착수 판정
@@ -29,10 +29,10 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 **한 줄 정의**: 어떤 에이전트 도구·어떤 환경에서도 같은 파일 계약으로 동작하고, 필요한 전문가만 불러 쓰며, 오너가 HANDOFF만 보고 이해·결정하면 나머지는 에이전트가 수행하는 개인 작업 시스템.
 
 **사용자 여정** (가장 얇은 완결 경로):
-1. 새 컴퓨터에서 `gotechy setup --profile home` 한 번 → 고정된 버전 묶음(train)이 설치되고 `doctor`가 통과한다.
+1. 새 컴퓨터에서 `bin/gotechy`가 고정된 버전 묶음(train)을 체크섬 그대로 깔고, `gotechy setup`이 전역 정책을 넣고, `gotechy doctor`가 통과한다(2026-10-15 실제 명령으로 고침. `--profile`은 아직 없다).
 2. 프로젝트 폴더에서 `gotechy init --packs <팩들>` → 필요한 팩만 `.claude/skills`·`.agents/skills`에 설치되고 AGENTS.md 라우터가 생긴다.
 3. 메인 세션에서 오너와 리드가 작업을 정하면 리드가 작업 명세(`orchestration/tasks/T-###.md`)를 쓰고 워커(Orca 또는 native)에게 맡긴다.
-4. 워커는 작업을 끝내고 lint를 통과한 HANDOFF를 남긴다. 결정이 필요하면 알림이 온다.
+4. 워커는 작업을 끝내고 lint를 통과한 HANDOFF를 남긴다. 결정이 필요하면 인박스와 상태 줄(`gotechy status --line`)에 보인다. 폰과 맥 알림은 1b N4의 남은 일이다.
 5. 오너는 3초 카드 → HTML 본 화면에서 이해하고, 화면에서 바로 선택지를 고르거나 다음 지시를 적어 제출한다. 되돌리기 어려운 결정이면 "내 말로 설명" 1~2문항을 먼저 답한다.
 6. 리드가 결정 파일을 읽고 다음 작업을 이어간다.
 
@@ -50,7 +50,7 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 
 | 성공 기준 (행동) | 측정 방법 | 측정 시점 | 실패 판정선 |
 |---|---|---|---|
-| 깨끗한 맥에서 setup 한 번으로 doctor 통과 | 격리 HOME에서 `gotechy setup` 후 `gotechy doctor` 종료코드 | 1a M3 완료 시 | exit ≠ 0 |
+| 깨끗한 맥에서 부트스트랩과 setup으로 doctor 통과 | 격리 HOME에서 `bin/gotechy` 부트스트랩, `gotechy setup` 후 `gotechy doctor` 종료코드 | 1a M3 완료 시 | exit ≠ 0 |
 | Claude Code와 Codex가 같은 작업 명세로 같은 형식의 HANDOFF를 낸다 | claude·codex 백엔드로 각각 실행 → verify 통과 + handoff lint 통과 | 1a M1 완료 시 | 어느 한쪽이라도 lint 실패 |
 | 오너가 HANDOFF 한 건을 이해하고 결정하는 데 3분 이내, 이해도 유지 | 게이트 `active_seconds` + 이해 게이트 핵심어 적중률 | 1a 완료 후 공문서 프로젝트 실사용 10건 | 중앙값 3분 초과, 또는 핵심어 적중률 60% 미만 |
 | 결정이 서명된 파일로 반영되고 위조는 거부된다 | `decide` → `gate verify`, 수기 편집·낡은 판본·재사용 주입 (같은 OS 사용자의 악의적 위조는 1b 오너 인증에서) | 1a M2 완료 시 | 주입한 결정이 통과 |
@@ -63,7 +63,7 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 | 상황 | 동작 |
 |---|---|
 | doctor 실패 (버전 불일치·업데이트 차단 누락) | 실패 항목과 교정 명령을 출력, 이전 train 유지 |
-| HANDOFF lint 실패 | 워커가 교정 메시지를 보고 재작성 (최대 2회), 이후 실패로 오너에게 |
+| HANDOFF lint 실패 | 워커가 교정 메시지를 보고 재작성 (최대 2회), 이후 실패로 오너에게 | (아직 없음: 지금은 lint에 실패하면 바로 failed다. TD-016)
 | 막는 결정이 3개 초과 | lint가 "쪼개거나 결정 세션으로" 안내, 리드가 grill 세션으로 처리 |
 | 오래된 HANDOFF 판본으로 결정 제출 | 결정 거부, 최신 판본 다시 보기 안내 |
 | Orca 미설치·실행 불가 환경 | native 어댑터로 자동 전환, 기능 차이를 HANDOFF에 표시 |

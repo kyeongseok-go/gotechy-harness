@@ -2,7 +2,7 @@
 
 - 상태: 승인됨
 - 날짜: 2026-10-14 (결정 D7, 2026-10-13)
-- 관련: [계약 문서](../references/contract.md), [설계 문서 12절 D7](../design-docs/2026-10-13-expert-library-v0.md), [1a ExecPlan M0, M1](../exec-plans/active/2026-10-13-harness-v2-phase1.md)
+- 관련: [계약 문서](../references/contract.md), [설계 문서 12절 D7](../design-docs/2026-10-13-expert-library-v0.md), [1a ExecPlan M0, M1](../exec-plans/completed/2026-10-13-harness-v2-phase1.md)
 
 ## 맥락
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 하네스 온보딩 검사 — 새 프로젝트에 복사한 뒤 실행한다: npm run init:harness
+# 하네스 온보딩 검사. v1.5 템플릿 프로젝트에서는 npm run init:harness, 이 라이브러리 저장소에서는 bash scripts/init.sh(검사만)
 # "(교체)" 마커가 남아 있으면 지도가 거짓말을 하는 상태다. /gotechy-ship 게이트 2단계도 이걸 검사한다.
 #
 #   npm run init:harness            # 검사만
@@ -10,8 +10,16 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# 하네스 v2 라이브러리 저장소(이 저장소 자신)인가. 그렇다면 --fix(v1.5 템플릿 부트스트랩)는 라이브러리 파일을 덮어쓴다
+LIBRARY=0
+if [ -f train.yaml ] && [ -f src/cli.ts ]; then LIBRARY=1; fi
+
 for arg in "$@"; do
   if [ "$arg" = "--fix" ]; then
+    if [ "$LIBRARY" = "1" ]; then
+      echo "이 저장소는 하네스 v2 라이브러리라 --fix를 쓰지 않아요. v1.5 템플릿 부트스트랩이 package.json, tsconfig.json, src를 덮어써요." >&2
+      exit 1
+    fi
     bash scripts/bootstrap.sh "$@" || exit 1
     echo
     echo "── 부트스트랩 후 재검사 ──"
@@ -103,7 +111,9 @@ if [ "$FAIL" = "0" ]; then
   exit 0
 else
   echo "== 초기화 미완 — 위 항목을 처리하라 =="
-  echo "   대부분은 자동으로 채울 수 있다:  npm run init:harness -- --fix"
-  echo "   (무엇이 바뀌는지 먼저 보려면:    bash scripts/bootstrap.sh --dry-run)"
+  if [ "$LIBRARY" = "0" ]; then
+    echo "   대부분은 자동으로 채울 수 있다:  npm run init:harness -- --fix"
+    echo "   (무엇이 바뀌는지 먼저 보려면:    bash scripts/bootstrap.sh --dry-run)"
+  fi
   exit 1
 fi

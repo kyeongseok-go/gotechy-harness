@@ -94,12 +94,12 @@
 - **언어**: 한국어 (기술 고유명사는 원어: skill, phase, PR, RAG 등)
 - 테스트 실패·미완료는 숨기지 말고 그대로 보고 (실패 은폐 금지).
 
-## 프로젝트별 설정 (새 프로젝트에서 채울 것)
+## 이 저장소의 설정 (하네스 v2 라이브러리)
 
-> 이 템플릿을 새 프로젝트에 복사한 뒤, 아래를 프로젝트 값으로 교체한다.
+> 새 프로젝트는 이 저장소를 복사하지 않고 `gotechy init`으로 `templates/project/`의 지도를 받는다.
 
-- **빌드/테스트 명령**: `npm run build` · `npm test` (교체 — 현재는 명시적 실패 스텁)
-- **개발 서버**: `npm run dev` (교체)
-- **배포**: `docs/DEPLOYMENT.md`의 환경 매트릭스·명령 채우기 (교체)
-- **스택**: TypeScript strict, React/Next.js, Node.js (기본값 — 교체 가능)
-- 복사 직후 `npm run init:harness`로 온보딩 검사를 통과시킨다 — 교체 마커가 남아 있으면 지도가 거짓말을 하는 상태다.
+- **검사**: `bun run check`(lint, 타입, `gotechy test`의 테스트와 커버리지 기준). 레이어는 `bun run check:boundaries`, 생성 문서는 `bun run gen:docs`
+- **실행**: `bin/gotechy <명령>`(부트스트랩이 train의 도구로 실행). 개발할 때는 `bun run dev -- <명령>`(소스로 바로 실행). 개발 서버는 없다(명령줄 도구)
+- **배포**: 없다. 공개 저장소의 커밋이 배포이고, 프로젝트는 train의 `packs.ref` 커밋으로 팩을 받는다(`docs/DEPLOYMENT.md`)
+- **스택**: TypeScript 7, Bun 1.4.3(ADR 0001). 차선은 Python 3.14와 uv
+- 온보딩 검사: `npm run init:harness`. 교체 표시가 남아 있으면 지도가 거짓말을 하는 상태다

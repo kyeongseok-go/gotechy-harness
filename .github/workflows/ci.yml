@@ -37,6 +37,8 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test --coverage
+      # 생성 문서(CLI 참조)가 코드와 같은지(완료 게이트 3단계)
+      - run: bun run gen:docs && git diff --exit-code docs/generated/
       - name: exec-plan hygiene
         run: |
           for f in docs/exec-plans/active/*.md; do

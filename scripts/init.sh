@@ -25,7 +25,8 @@ FAIL=0
 
 echo
 echo "[1] '(교체)' 마커 잔존 검사"
-MATCHES=$(grep -rn "(교체)" --include="*.md" --include="*.json" . 2>/dev/null | grep -v "scripts/init.sh" | grep -v "docs/references/research" || true)
+# templates/는 새 프로젝트에 복사될 원본이라 교체 표시를 일부러 담는다. 검사 대상이 아니다
+MATCHES=$(grep -rn "(교체)" --include="*.md" --include="*.json" . 2>/dev/null | grep -v "scripts/init.sh" | grep -v "docs/references/research" | grep -v "^./templates/" | grep -v "^./node_modules/" || true)
 if [ -n "$MATCHES" ]; then
   echo "$MATCHES"
   echo "→ 위 항목을 프로젝트 값으로 교체하라."

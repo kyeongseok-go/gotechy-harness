@@ -36,7 +36,7 @@
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [x] (2026-10-14 18:41) 보안 감사 5차(security-auditor): 3차 수정, M3 수정, 오늘 변경분. 높음 0, 중간 1, 낮음 3, 중간과 낮음 2건 수정
 - [x] (2026-10-15, 밤샘 루프 2) 보안 리뷰 (/gotechy-security 절차) — 1a 전체(워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정, 설치, 오늘의 apm). security-auditor 7차: 높음 0, 중간 4, 낮음 4. 낮음 7(Codex 비용 상한, TD-015) 말고 모두 수정. `bun audit` 0건, gitleaks 전체 이력 0건, SECURITY.md 위협 모델 작성. 증거 `docs/references/evidence/2026-10-15-night/audit-7.md`
-- [ ] 1a 완료 게이트 (/gotechy-ship 기능 등급) → 공문서 프로젝트 착수
+- [x] (2026-10-15, 밤샘 루프 2) 1a 완료 게이트 (/gotechy-ship 기능 등급). 결과는 Outcomes와 `docs/references/evidence/2026-10-15-night/ship-1a.md`. 공문서 프로젝트 착수는 오너 결정
 - [ ] **(필수, 사용자 지시 2026-10-13) 1b ExecPlan 작성·착수** (2026-10-14 밤 초안 작성: `2026-10-14-harness-v2-phase1b.md`, 2026-10-14 13:05 오너가 범위와 순서 승인, 착수 전) — 1a 완료 게이트는 1b ExecPlan 파일이 `active/`에 생겨야 통과한다
 
 ## Surprises & Discoveries
@@ -199,7 +199,25 @@
 
 ## Outcomes & Retrospective
 
-(완료 시 작성)
+**결과 (2026-10-15 새벽, 시각은 커밋 기록 기준).** 1a의 목표 네 가지가 모두 동작한다. ①Claude Code와 Codex 워커에게 같은 작업 명세로 일을 맡긴다(실제 워커 각 1회 성공, M1). ②HANDOFF를 3초 카드와 읽기 전용 HTML로 읽는다(M2b). ③서명한 결정으로 다음 작업을 지시하고 승인한 결과를 메인에 병합한다(M2c, 1b N1에서 서명을 Secure Enclave와 Touch ID로 바꿈). ④새 클론과 빈 HOME에서 부트스트랩부터 doctor까지 2분 31초에 같은 버전 묶음을 깐다(M3, Validation 12). Validation 18개를 모두 통과했고, 마지막 전체 검사는 테스트 414개 통과, 줄 커버리지 97.02%, 핵심 모듈 20개 모두 95% 이상이다.
+
+**잘 된 것.**
+- 가장 얇은 관통 경로를 먼저 뚫은 순서(M1 다음 M2, M3)가 맞았다. 설치 계층에서 가정이 여러 번 깨졌지만(mise 락 갱신, GOTECHY_CWD 누출, claude 자동 업데이트) 그때마다 관통 경로는 이미 돌고 있었다.
+- 보안 감사를 마일스톤마다 돌린 것. 1a 동안 감사 7번에서 높음 6건을 찾아 모두 고쳤다(1차 3, 2차 3. 3차부터 7차까지는 높음 0). 7차(1a 전체)에서는 git 이름 바꾸기 감지로 보호 파일이 범위 검사를 빠져나가던 구멍을 찾았다.
+- mutation check(방어 코드를 하나씩 빼 보기)로 테스트의 힘을 쟀다. 테스트를 구현 뒤에 쓴 N1에서도 테스트가 실제로 막는지 확인할 수 있었다.
+
+**아쉬운 것.**
+- 외부 경계는 실험으로 확인한다는 규칙을 브라우저에는 적용하지 않고 1b N2를 먼저 커밋했다. 자동 테스트가 fetch에 Origin을 직접 넣어, 실제 Chrome에서 제출이 막히는 것을 감사 8차와 실험이 잡을 때까지 몰랐다.
+- 추정 시각을 문서에 두 번 적었다가 커밋 기록으로 고쳤다(2026-10-14). 시각은 `git log`와 `date`로만 쓴다.
+- 이 맥의 저장소 `.git`이 SMB 네트워크 공유에 있어 git 객체 읽기가 느리다(객체당 약 130ms). 테스트 설계에 영향을 줬다.
+
+**하네스 개선 항목(회고에서 뽑음).**
+- 외부 경계(브라우저, OS, 외부 CLI)를 건드리는 기능은 실험 증거 없이 커밋하지 않는다. `.claude/rules/testing.md`의 예외 규칙을 "커밋 전"으로 못박는 개정을 2단계 후보로 둔다.
+- `init.sh`는 v1.5 템플릿 검사라 라이브러리 저장소에는 맞지 않는 항목이 있었다(템플릿 폴더의 표시). 2단계 문서 다이어트(TD-003)에서 라이브러리 검사와 템플릿 검사를 나눈다.
+
+**블로그 소재.** "AI 워커가 결정을 위조하지 못하게": 같은 OS 사용자로 도는 AI가 오너인 척 결정하는 문제를 HMAC에서 Secure Enclave와 Touch ID로 옮긴 과정과, 보안 감사 8번이 찾은 구멍들(샌드박스 안의 보안 칩 접근, git 이름 바꾸기, 브라우저의 Origin: null).
+
+**위키 적재 대상.** `docs/references/contract.md`(파일 계약), `docs/references/evidence/2026-10-15-night/audit-7.md`, `audit-8.md`, 이 회고. 적재는 오너가 지시할 때만 한다.
 
 ## Context and Orientation
 
@@ -383,7 +401,16 @@ career_signals:
       - 버전 고정·격리 검증 기반 재현 가능한 에이전트 환경
     jd_keywords_matched: [AI 에이전트, Claude Code skill, Human-in-the-loop, 에이전트 하네스, 자동화 파이프라인, 컨텍스트 엔지니어링]
   evidence:
-    links: []
-    metrics: []
-    story: ""
+    links:
+      - https://github.com/kyeongseok-go/gotechy-harness/commit/4e80bb7  # M1 관통 경로(실제 Claude, Codex 워커 각 1회)
+      - https://github.com/kyeongseok-go/gotechy-harness/commit/8a71f2e  # M2c 결정 서명, 이해 게이트, accept, 보안 감사 두 바퀴
+      - https://github.com/kyeongseok-go/gotechy-harness/commit/5677672  # M3 fresh install 실측
+      - https://github.com/kyeongseok-go/gotechy-harness/commit/d6e2b83  # init의 apm 전환(커밋 고정, 변조 감지)
+      - https://github.com/kyeongseok-go/gotechy-harness/commit/3774690  # 1a 전체 보안 리뷰(감사 7차) 수정
+      - https://github.com/kyeongseok-go/gotechy-harness/actions  # 커밋마다 CI(lint, 타입, 테스트)
+    metrics:
+      - "테스트 414개 통과, 줄 커버리지 97.02%, 핵심 모듈 20개 모두 95% 이상 (2026-10-15)"
+      - "새 클론과 빈 HOME에서 부트스트랩부터 doctor 13개 검사 통과까지 2분 31초 (2026-10-14)"
+      - "보안 감사 7번(1a), 높음 6건 모두 수정. mutation check로 방어 코드 테스트 확인"
+    story: "같은 파일 계약으로 Claude Code와 Codex에게 일을 맡기고, 사람이 이해하고 서명한 결정만 다음 작업과 병합으로 이어지게 하는 하네스를 이틀 동안 SDD와 수용 테스트 먼저, 마일스톤마다 보안 감사로 만들었다. 같은 OS 사용자로 도는 워커가 오너인 척 결정하는 위협을 정직하게 한정하고 1b에서 Secure Enclave로 막았다"
 ```

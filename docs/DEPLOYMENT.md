@@ -13,8 +13,10 @@
 
 > 프로덕션 배포는 **에이전트가 실행하지 않는다** — 사용자가 직접 실행하거나 CI가 실행한다 (고위험 행동의 human-in-the-loop).
 
+하네스 v2 라이브러리(이 저장소)에는 배포 명령이 없다. `harness-v2` 브랜치에 푸시한 커밋이 곧 배포다. 프로젝트는 `gotechy init`이 train의 `packs.ref` 커밋으로 팩을 받고, 도구는 `bin/gotechy`가 train의 버전으로 설치한다. 되돌리기는 train의 `packs.ref`와 도구 버전을 이전 값으로 돌린 커밋이다. 새 프로젝트의 배포 명령은 그 프로젝트의 이 문서에 적는다.
+
 ```bash
-# (교체) 예: vercel --prod / wrangler deploy / fly deploy
+# 새 프로젝트에서 채운다. 예: vercel --prod / wrangler deploy / fly deploy
 ```
 
 ## 배포 전 체크

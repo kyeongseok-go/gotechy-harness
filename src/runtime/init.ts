@@ -1,5 +1,5 @@
-// gotechy init: 프로젝트에 계약 골격·라우터·팩을 깐다. 이미 있는 파일은 덮어쓰지 않는다.
-// M1은 팩을 복사로 설치하고, M3에서 apm(버전 고정·해시 감사)으로 교체한다.
+// gotechy init: 프로젝트에 계약 골격과 라우터, gitleaks hook을 깐다. 이미 있는 파일은 덮어쓰지 않는다.
+// 팩은 runtime/packs.ts가 apm으로 깐다(contract.md 10.7절).
 import {
   appendFileSync,
   chmodSync,
@@ -16,8 +16,6 @@ import { gotechyHome } from './keys'
 import { libraryRoot } from './library'
 import { projectId } from './project'
 
-const PACKS: Record<string, string[]> = { owner: ['owner-protocol'] }
-
 export type InitReport = { created: string[]; skipped: string[]; warnings: string[] }
 
 export type InitOptions = {
@@ -27,7 +25,7 @@ export type InitOptions = {
   gotechyHome?: string
 }
 
-export function initProject(root: string, packs: string[], opts: InitOptions = {}): InitReport {
+export function initProject(root: string, opts: InitOptions = {}): InitReport {
   const lib = libraryRoot()
   const report: InitReport = { created: [], skipped: [], warnings: [] }
   const note = (path: string, made: boolean) => (made ? report.created : report.skipped).push(path)
@@ -77,21 +75,6 @@ export function initProject(root: string, packs: string[], opts: InitOptions = {
 
   if (opts.hooks !== false) installHooks(root, lib, opts.gotechyHome ?? gotechyHome(), report, note)
 
-  for (const pack of packs) {
-    const skills = PACKS[pack]
-    if (!skills) {
-      report.warnings.push(`알 수 없는 팩: ${pack} (사용 가능: ${Object.keys(PACKS).join(', ')})`)
-      continue
-    }
-    for (const skill of skills) {
-      for (const dest of ['.claude/skills', '.agents/skills']) {
-        const target = join(root, dest, skill)
-        const made = !existsSync(target)
-        if (made) cpSync(join(lib, 'skills', skill), target, { recursive: true })
-        note(`${dest}/${skill}/`, made)
-      }
-    }
-  }
   return report
 }
 

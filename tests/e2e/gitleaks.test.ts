@@ -33,7 +33,7 @@ beforeEach(() => {
   git(['init', '-q', '-b', 'main'], root)
   writeFileSync(join(root, 'README.md'), '# 깨끗한 저장소\n')
   // hook은 임시 GOTECHY_HOME에 깐다. 실제 ~/.gotechy를 건드리지 않는다
-  initProject(root, ['owner'], {
+  initProject(root, {
     gotechyHome: realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-gh-'))),
   })
   git(['add', '-A'], root)

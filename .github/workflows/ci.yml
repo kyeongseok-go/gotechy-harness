@@ -6,10 +6,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # train의 packs.ref가 HEAD의 조상인지, 그 커밋의 skills/가 지금과 같은지 테스트가 본다(전체 이력 필요)
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+      # 팩 설치 테스트에 train의 apm이 필요하다(contract.md 10.6절). 부트스트랩으로 mise를 체크섬 검증해 받고,
+      # 다른 도구는 설치하지 않은 채 mise 락 그대로 apm 하나만 설치한다
+      - name: train의 apm 설치
+        env:
+          GOTECHY_HOME: ${{ runner.temp }}/gotechy
+          MISE_AUTO_INSTALL: "0"
+          MISE_EXEC_AUTO_INSTALL: "0"
+          MISE_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          sh bin/gotechy --version
+          M="$GOTECHY_HOME/bin/mise"
+          MISE_LOCKED=1 "$M" install github:microsoft/apm
+          dirname "$(MISE_LOCKED=1 "$M" which apm)" >> "$GITHUB_PATH"
+      - run: apm --version
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test --coverage

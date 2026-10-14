@@ -31,6 +31,13 @@ export const Train = z
             message: 'A등급 도구에는 mise 이름이 필요해요',
           })
     }),
+    // 프로젝트에 까는 팩의 출처(contract.md 10.1절). 커밋 SHA만 받는다. 태그와 브랜치는 가리키는 커밋이 바뀔 수 있다
+    packs: z
+      .object({
+        source: z.string().regex(/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/),
+        ref: z.string().regex(/^[0-9a-f]{40}$/),
+      })
+      .strict(),
     policy: z
       .object({
         claude: z

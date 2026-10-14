@@ -1,0 +1,50 @@
+# apm 전환 실측 (2026-10-15 01:32, 밤샘 루프 2)
+# 격리 환경: 빈 HOME, 새 클론에 지금 변경분을 덮어쓴 라이브러리, PATH는 시스템 폴더와 B/C 등급 도구 링크만.
+# 실제 GitHub(kyeongseok-go/gotechy-harness, 공개 저장소)에서 train의 커밋으로 설치했다. 로컬 경로는 <격리 HOME>으로 바꿔 적었다.
+
+$ git init -q -b main && gotechy init --packs owner   (01:32:27, 2.85초)
+created: orchestration/tasks/
+created: orchestration/handoffs/
+created: orchestration/gates/
+created: orchestration/private/
+created: orchestration/project.yaml
+created: AGENTS.md
+created: CLAUDE.md
+created: .gitignore (gotechy 항목)
+created: core.hooksPath <격리 HOME>/.gotechy/githooks
+created: apm.yml
+created: .claude/skills/owner-protocol/ (apm)
+created: .agents/skills/owner-protocol/ (apm)
+exit=0
+
+$ cat apm.yml
+name: proj.dbci
+version: 0.0.0
+targets:
+  - claude
+  - agent-skills
+dependencies:
+  apm:
+    - kyeongseok-go/gotechy-harness/skills/owner-protocol#0911a92296891606021a1f7264d0657aa5a650dc
+
+$ grep repo_url, resolved_commit, deployed_file_hashes apm.lock.yaml
+- repo_url: kyeongseok-go/gotechy-harness
+  resolved_commit: 0911a92296891606021a1f7264d0657aa5a650dc
+    .agents/skills/owner-protocol/SKILL.md: sha256:aade2c3a85906eb4201a30bf880aa606c95ea75b00a625ce1c785edd1396b177
+    .claude/skills/owner-protocol/SKILL.md: sha256:aade2c3a85906eb4201a30bf880aa606c95ea75b00a625ce1c785edd1396b177
+
+$ date
+Thu Oct 15 01:32:39 KST 2026
+$ gotechy doctor (팩 줄만)
+train 2026.10.0
+ok   mise 바이너리: <격리 HOME>/.gotechy/bin/mise 체크섬이 train과 같아요
+ok   팩: 깔린 팩이 apm.lock.yaml과 같아요
+모두 통과했어요
+$ echo evil >> .claude/skills/owner-protocol/SKILL.md
+$ gotechy doctor (팩 줄만)
+실패 팩: 깔린 팩이 apm.lock.yaml과 달라요 (apm audit --ci exit 1)
+     고치는 법: 프로젝트 폴더에서 `apm install --frozen`으로 락대로 다시 까세요
+$ apm install --frozen
+exit 0
+$ gotechy doctor (팩 줄만)
+ok   팩: 깔린 팩이 apm.lock.yaml과 같아요

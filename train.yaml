@@ -19,6 +19,10 @@ tools:
   claude: { version: 2.1.296, pin: A, check: claude --version, mise: "aqua:anthropics/claude-code" }
   codex: { version: 0.162.1, pin: A, check: codex --version, mise: "aqua:openai/codex" }
   orca: { version: 1.4.209, pin: C, check: orca --version }
+# 프로젝트에 까는 팩의 출처(contract.md 10.1절, 10.7절). ref는 이 저장소의 커밋이고, 그 커밋의 skills/가 지금과 같아야 한다
+packs:
+  source: kyeongseok-go/gotechy-harness
+  ref: 0911a92296891606021a1f7264d0657aa5a650dc
 policy:
   claude:
     env:

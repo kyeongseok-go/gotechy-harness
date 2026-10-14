@@ -32,7 +32,7 @@
 - [x] (2026-10-14 13:23) train A등급 도구 6개의 mise 락(4개 플랫폼 29항목, 모두 체크섬). 부트스트랩이 mise를 PATH에 두고 락 그대로만 설치(`MISE_LOCKED=1`, `bun install --frozen-lockfile`)
 - [x] (2026-10-14 18:14) claude, codex를 mise로 고정(A등급, 오너 외출 중 기본값으로 진행, 확인 필요). 새 클론과 빈 HOME에서 doctor 13개 모두 통과(Validation 12)
 - [x] (2026-10-14 18:26) `gotechy test`와 커버리지 기준(Validation 17). 격리 셸에서 찾은 `GOTECHY_CWD` 누출 수정. 핵심 모듈 목록을 `ARCHITECTURE.md`에 채움
-- [ ] M3 나머지: `init`의 apm 전환(작업 5) (오너와 함께)
+- [x] (2026-10-15, 밤샘 루프 2) M3 나머지: `init`의 apm 전환(작업 5, TD-011). 팩은 train의 커밋(`packs.ref`)에 고정해 `.claude/skills`와 `.agents/skills`에 깔고, doctor가 프로젝트 안에서 `apm audit --ci`로 변조를 잡는다. 격리 HOME에서 실제 GitHub로 설치와 변조 감지, 복구를 실측
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [x] (2026-10-14 18:41) 보안 감사 5차(security-auditor): 3차 수정, M3 수정, 오늘 변경분. 높음 0, 중간 1, 낮음 3, 중간과 낮음 2건 수정
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음
@@ -40,6 +40,14 @@
 - [ ] **(필수, 사용자 지시 2026-10-13) 1b ExecPlan 작성·착수** (2026-10-14 밤 초안 작성: `2026-10-14-harness-v2-phase1b.md`, 2026-10-14 13:05 오너가 범위와 순서 승인, 착수 전) — 1a 완료 게이트는 1b ExecPlan 파일이 `active/`에 생겨야 통과한다
 
 ## Surprises & Discoveries
+
+**apm 전환 (2026-10-15 새벽, 밤샘 루프 2)** 증거 `docs/references/evidence/2026-10-15-night/`
+- apm 0.33.0은 git 의존성 `owner/repo/skills/<스킬>#<커밋 SHA>`를 받아 락에 `repo_url`, `resolved_commit`, 파일별 sha256만 남긴다. M0에서 본 로컬 경로 설치의 절대 경로 문제가 없다. 실제 GitHub에서 설치까지 2.9초. [확인]
+- **apm은 자기가 관리하지 않는 같은 이름 폴더(예전 init이 복사한 스킬)를 건너뛰고도 exit 0으로 끝난다**("1 file skipped -- local files exist"). 그대로 두면 옛 스킬이 남은 채 성공으로 보인다. init이 설치 전에 그런 폴더를 찾아 멈추고, 설치 뒤 락에 두 위치와 커밋이 맞는지 다시 본다. [확인]
+- 변조는 `apm audit --ci` exit 1, 파일 삭제도 exit 1. `apm install --frozen`이 둘 다 원래대로 되돌린다. apm은 락이 apm.yml과 맞지 않으면 다시 풀어서 락을 고쳐 쓴다. [확인]
+- git `url.<base>.insteadOf`가 apm의 clone에도 적용된다. 테스트는 GitHub 주소를 임시 bare 저장소로 돌려 네트워크 없이 같은 코드 경로를 돈다. [확인]
+- **이 맥의 저장소 `.git`은 SMB 네트워크 공유(`/Volumes/...`)에 있다.** 느슨한 객체 984개를 읽는 데 2분이 넘게 걸렸다(CPU 1%, 객체당 약 130ms). 그래서 테스트 fixture는 라이브러리 이력을 옮기지 않고 임시 폴더에 새 커밋을 만든다. 저장소 정리(`git gc`)는 공유 `.git`을 바꾸는 일이라 하지 않았다. [확인]
+- apm은 사용자 홈에 `~/.apm/config.json`과 캐시를 쓰고, 시작할 때 새 버전을 확인한다(스스로 업데이트하지는 않음). [확인]
 
 - (설계) Orca 오케스트레이션은 문서상 "Experimental 토글"이 필요하다고 되어 있었지만 1.4.209에서 토글 없이 동작했다. 증거: `orca orchestration run-list --json` → `"ok": true`.
 - (설계) harness-bench(`<workspace>/harness-bench`)는 토큰을 시도마다 마지막 `output_tokens` 하나만 세고 있었다 → 2026-10-13 수정(`bench/usage.py`).
@@ -176,6 +184,9 @@
 | 인박스와 화면의 모든 문자열에서 제어 문자와 양방향 제어 문자를 지운다 | 악성 HANDOFF가 터미널 화면을 덮어쓰거나 글자 순서를 속일 수 있다 | 2026-10-14 | - |
 | 새 영어 용어는 용어 은행(라이브러리 `knowledge/terms.jsonl`, 프로젝트 `orchestration/terms.jsonl`)에 없을 때만 "새 용어" 풀이를 요구한다 | 사용자가 용어를 익히려는 목적, 같은 풀이 반복은 소음 | 2026-10-14 | - |
 | claude, codex를 B등급에서 A등급(mise 고정)으로 올린다. 워커에는 자동 업데이트 끄기를 넘긴다. 전역 정책의 자동 업데이트 끄기를 뺄지는 오너 결정으로 남긴다 | B등급은 새 설치에서 train 버전을 만들 수 없다(13:12에 전역 claude가 저절로 2.1.299가 됨). 오너 외출 중 추천안을 기본값으로 진행, 확인 필요 | 2026-10-14 | ADR 0004 갱신 |
+| 팩은 git 의존성을 커밋 SHA로 고정한다(train `packs.ref`). 태그를 쓰지 않는다 | 커밋은 바뀌지 않고, 태그 푸시라는 새 외부 동작이 필요 없다. 로컬 경로 설치는 락에 절대 경로가 들어간다(M0) | 2026-10-15 | ADR 0002 갱신 |
+| `init`은 골격과 hook만(동기), 팩은 `installPacks`(apm, 비동기)로 나눈다. 팩 오류는 exit 1 | 기존 테스트 7곳이 골격만 쓰므로 apm과 네트워크 없이 돌게 하고, 팩 설치 실패를 경고로 묻지 않는다 | 2026-10-15 | - |
+| CI는 부트스트랩으로 mise를 받고 락 그대로 apm 하나만 설치한다. checkout은 전체 이력 | 팩 설치 테스트를 건너뛰지 않고 CI에서도 돌린다. train ref가 HEAD의 조상인지 보려면 이력이 필요하다 | 2026-10-15 | - |
 | 밤샘 루프 결정 4건: 밤사이 푸시 유지(T-002), 선행 조건 accepted 유지(T-003), setup 실측은 바로(T-006), 1b 범위와 순서 승인(T-007) | 오너가 채팅으로 답함(13:05). 기본값 5건에는 이의 없음. 이 맥에 키가 아직 없어 `decide` 서명 기록은 아님 | 2026-10-14 | - |
 
 ## Outcomes & Retrospective

@@ -38,7 +38,7 @@ function makeProject(): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-gate-')))
   sh(['git', 'init', '-q', '-b', 'main'], root)
   writeFileSync(join(root, 'README.md'), '# Sandbox\n')
-  initProject(root, ['owner'], { hooks: false })
+  initProject(root, { hooks: false })
   sh(['git', 'add', '-A'], root)
   sh(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'init'], root)
   return root

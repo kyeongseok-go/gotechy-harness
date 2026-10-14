@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseVersion, scriptProblems, skillProblems } from '../core/doctor'
 import { parseTrain } from '../core/train'
+import { checkPacks } from './packs'
 import { runProc } from './proc'
 import { planSetup } from './setup'
 
@@ -25,6 +26,8 @@ export type DoctorOptions = {
   gotechyHome?: string
   /** 주면 이 저장소의 git 이력 전체를 gitleaks로 검사한다 */
   history?: { root: string; gitleaks: string }
+  /** 프로젝트 안에서 실행했으면 그 프로젝트의 팩을 apm 락과 대조한다(contract.md 10.2절) */
+  project?: string
 }
 
 const MAX_SKILLS = 15
@@ -162,6 +165,11 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
         detail: problems.join(', '),
         fix: 'macOS 기본 셸에서 도는 문법으로 바꾸세요 (contract.md 10.2절)',
       })
+  }
+
+  if (o.project) {
+    const packs = await checkPacks(o.project, env)
+    if (packs) checks.push(packs)
   }
 
   if (o.history) {

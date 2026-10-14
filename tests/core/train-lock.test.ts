@@ -67,3 +67,38 @@ describe('train과 mise 락', () => {
       expect({ k, known: known.has(k) }).toEqual({ k, known: true })
   })
 })
+
+// contract.md 10.1절, 10.7절: 프로젝트에 까는 팩은 라이브러리 저장소의 커밋에 고정한다.
+// 그 커밋의 skills/가 지금 skills/와 다르면 init이 옛 스킬을 깐다.
+describe('train의 팩 고정', () => {
+  const git = (args: string[]) =>
+    Bun.spawnSync({
+      cmd: ['git', ...args],
+      cwd: LIB,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { PATH: process.env.PATH ?? '', HOME: LIB, GIT_CONFIG_GLOBAL: '/dev/null' },
+    })
+
+  test('출처는 GitHub 저장소, ref는 커밋 SHA 40자리다', () => {
+    expect(train.packs.source).toMatch(/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/)
+    expect(train.packs.ref).toMatch(/^[0-9a-f]{40}$/)
+  })
+
+  test('태그나 짧은 SHA로 고정한 train은 읽지 않는다', () => {
+    const text = readFileSync(join(LIB, 'train.yaml'), 'utf8')
+    expect(() => parseTrain(text.replace(train.packs.ref, 'v2.0.0'))).toThrow()
+    expect(() => parseTrain(text.replace(train.packs.ref, train.packs.ref.slice(0, 12)))).toThrow()
+  })
+
+  test('ref는 HEAD의 조상이다 (HEAD를 푸시하면 ref도 원격에 있다)', () => {
+    expect(git(['merge-base', '--is-ancestor', train.packs.ref, 'HEAD']).exitCode).toBe(0)
+  })
+
+  test('ref의 skills/는 작업 폴더의 skills/와 같다 (스킬을 바꾸면 ref도 올린다)', () => {
+    const r = git(['diff', '--stat', train.packs.ref, '--', 'skills/'])
+    expect({ exit: r.exitCode, diff: r.stdout.toString() }).toEqual({ exit: 0, diff: '' })
+    const untracked = git(['ls-files', '--others', '--exclude-standard', '--', 'skills/'])
+    expect(untracked.stdout.toString()).toBe('')
+  })
+})

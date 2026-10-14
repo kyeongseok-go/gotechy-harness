@@ -333,6 +333,8 @@ frontmatter:
 
 워커는 train 버전 그대로 돈다. claude 워커에는 `DISABLE_AUTOUPDATER=1` 환경 변수를, codex 워커에는 `-c check_for_update_on_startup=false`를 넘긴다. `bin/gotechy`로 실행하면 워커는 PATH 맨 앞의 mise 설치본을 쓴다.
 
+`packs`는 프로젝트에 설치할 팩의 출처다. `source`는 라이브러리의 GitHub 저장소(`owner/repo`), `ref`는 그 저장소의 커밋 SHA(40자리)다. 태그 대신 커밋으로 고정하는 이유는 커밋은 바뀌지 않고, 태그를 따로 푸시하지 않아도 되기 때문이다. `ref`는 라이브러리 HEAD의 조상이어야 하고, 그 커밋의 `skills/`는 작업 폴더의 `skills/`와 같아야 한다(`tests/core/train-lock.test.ts`). 스킬을 바꾸면 그 변경을 커밋한 뒤 `ref`를 그 커밋으로 올린다.
+
 `policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008). Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
 
 ### 10.2 `gotechy doctor [--history]`
@@ -341,6 +343,7 @@ frontmatter:
 - 실패마다 고치는 명령을 출력한다. 하나라도 실패하면 exit 1, 모두 통과하면 exit 0.
 - `GOTECHY_TRAIN`으로 다른 train 파일을 줄 수 있다(테스트에서 불일치를 주입할 때). train의 `check` 명령을 셸로 실행하므로 라이브러리 안의 파일만 받는다. 부트스트랩이 둔 `$GOTECHY_HOME/bin/mise`가 있으면 train 체크섬과 대조한다.
 - `--history`: 라이브러리의 gitleaks 설정으로 저장소 전체 이력을 검사한다(저장소의 `.gitleaks.toml`은 쓰지 않는다). 찾으면 exit 1.
+- 프로젝트 안에서 실행하면(`orchestration/tasks/`가 있는 폴더) 팩 검사를 더한다. `apm.lock.yaml`이 있으면 그 폴더에서 `apm audit --ci`를 돌려 exit 0이어야 통과다. 실패하면 고치는 법은 `apm install --frozen`(락대로 다시 깔기)이다. `apm.yml`은 있는데 `apm.lock.yaml`이 없으면 실패다. 둘 다 없으면 검사하지 않는다(팩 없이 쓰는 프로젝트).
 
 ### 10.3 `gotechy setup [--dry-run] [--restore <시각>]`
 
@@ -373,3 +376,15 @@ frontmatter:
 - 기준: 전체 줄 커버리지 80% 이상, 핵심 모듈은 파일마다 95% 이상. 핵심 모듈 목록은 `src/core/coverage.ts`의 `CORE_MODULES`(lint, 결정, 검증, 반영, 어댑터)이고 `ARCHITECTURE.md`에도 적는다.
 - 핵심 모듈이 측정에 없으면(테스트가 그 파일을 불러오지 않으면) 실패다. 측정에서 빠지는 것으로 기준을 피하지 못하게 한다.
 - 기준은 macOS에서 잰다. 리눅스 CI에서는 verify 샌드박스 경로가 달라 `bun test --coverage`만 돌린다.
+- 팩 설치 테스트에는 train의 apm이 필요하다. 없으면 건너뛰지 않고 실패한다. `gotechy test`는 mise 안에서 돌아 apm이 PATH에 있다. CI는 부트스트랩으로 mise를 받고 락 그대로 apm 하나만 설치한다.
+
+### 10.7 팩 설치 `gotechy init --packs <팩들>`
+
+- `init`은 골격(1절)을 만든 뒤 팩을 apm으로 설치한다. 복사로 깔지 않는다. 설치 결과의 변조와 드리프트를 `apm audit --ci`로 잡기 위해서다.
+- 팩 하나는 스킬 여러 개다(`owner` = `owner-protocol`). 스킬마다 `apm.yml`의 `dependencies.apm`에 `<packs.source>/skills/<스킬>#<packs.ref>` 한 줄을 넣고, `targets: [claude, agent-skills]`로 `.claude/skills/`와 `.agents/skills/` 두 곳에 깐다. `apm.yml`이 없으면 만들고(이름은 폴더 이름), 있으면 빠진 줄만 더한다. 같은 스킬이 다른 ref로 이미 있으면 바꾸지 않고 exit 1이다(어느 판본을 쓸지는 오너가 정한다).
+- 설치 전: `.claude/skills/<스킬>`이나 `.agents/skills/<스킬>`이 있는데 `apm.lock.yaml`이 그 파일을 관리하지 않으면(예전 `init`이 복사한 폴더) 덮어쓰지 않고 exit 1과 지울 폴더를 알려 준다. apm은 이런 폴더를 건너뛰고도 exit 0으로 끝나기 때문이다(2026-10-15 실험).
+- 설치: 프로젝트 폴더에서 `apm install`. apm이 PATH에 없으면 팩을 깔지 않고 exit 1이다(`bin/gotechy`로 실행하면 train의 mise가 apm을 PATH에 둔다). 처음 설치에는 GitHub에 닿아야 한다.
+- 설치 뒤: `apm.lock.yaml`에서 스킬마다 `resolved_commit`이 `packs.ref`와 같고, 두 곳의 `SKILL.md`가 `deployed_files`에 있어야 한다. 아니면 exit 1.
+- 락 파일에는 로컬 경로가 들어가지 않는다(git 의존성의 `repo_url`, `resolved_commit`, 파일별 sha256만). 그래서 `apm.yml`, `apm.lock.yaml`, 깔린 스킬 파일을 커밋해도 된다. apm이 `.gitignore`에 `apm_modules/`를 더한다.
+- 다시 실행해도 `apm.yml`과 `apm.lock.yaml`은 바뀌지 않는다.
+- apm은 사용자 홈에 설정(`~/.apm/`)과 캐시를 쓰고, 시작할 때 새 버전이 있는지 확인한다(스스로 업데이트하지는 않는다).

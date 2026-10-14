@@ -13,6 +13,7 @@ import { formatIssue } from './core/issues'
 import { hasErrors, lintHandoff } from './core/lint-handoff'
 import { lintTask } from './core/lint-task'
 import { lintStyle } from './core/style'
+import { parseTrain } from './core/train'
 import { acceptTask } from './runtime/accept'
 import { formatDoctor, runDoctor } from './runtime/doctor'
 import { decideGate, verifyGates } from './runtime/gates'
@@ -21,6 +22,7 @@ import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
 import { gotechyHome, initOwnerKey, rotateOwnerKey } from './runtime/keys'
 import { libraryRoot } from './runtime/library'
+import { installPacks } from './runtime/packs'
 import { findProject } from './runtime/project'
 import { runTask } from './runtime/run'
 import { applySetup, formatPlan, planSetup, restoreSetup } from './runtime/setup'
@@ -83,19 +85,28 @@ function lintFiles(files: string[], kind: 'task' | 'handoff' | 'text'): number {
 
 program
   .command('init')
-  .description('현재 폴더에 계약 골격(orchestration/), AGENTS.md 라우터, 팩을 깐다')
+  .description(
+    '현재 폴더에 계약 골격(orchestration/), AGENTS.md 라우터, 팩을 깐다 (팩은 apm, contract.md 10.7절)',
+  )
   .option('--packs <list>', '설치할 팩 (쉼표 구분)', 'owner')
-  .action((o: { packs: string }) => {
-    const r = initProject(
-      process.cwd(),
-      o.packs
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
-    )
+  .action(async (o: { packs: string }) => {
+    const root = process.cwd()
+    const r = initProject(root)
     for (const c of r.created) console.log(`created: ${c}`)
     for (const s of r.skipped) console.log(`kept:    ${s}`)
     for (const w of r.warnings) console.warn(`warning: ${w}`)
+    const packs = o.packs
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (packs.length === 0) return
+    // 팩의 출처는 라이브러리의 train만 따른다(setup과 같음)
+    const train = parseTrain(readFileSync(join(libraryRoot(), 'train.yaml'), 'utf8'))
+    const p = await installPacks(root, packs, train.packs, process.env)
+    for (const c of p.created) console.log(`created: ${c}`)
+    for (const s of p.skipped) console.log(`kept:    ${s}`)
+    for (const e of p.errors) console.error(`error:   ${e}`)
+    if (p.errors.length > 0) process.exit(1)
   })
 
 const task = program.command('task').description('작업 명세')
@@ -337,12 +348,14 @@ program
       console.error(`GOTECHY_TRAIN은 라이브러리(${lib}) 안의 파일만 쓸 수 있어요: ${trainFile}`)
       process.exit(2)
     }
+    const project = findProject(process.cwd())
     const report = await runDoctor({
       trainFile,
       libRoot: lib,
       home: homedir(),
       gotechyHome: gotechyHome(),
       ...(history ? { history } : {}),
+      ...(project ? { project: project.root } : {}),
     })
     process.stdout.write(formatDoctor(report))
     process.exit(report.checks.some((c) => c.status === 'fail') ? 1 : 0)

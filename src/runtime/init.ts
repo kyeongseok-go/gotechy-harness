@@ -108,7 +108,7 @@ function installHooks(
   note: (path: string, made: boolean) => void,
 ): void {
   const git = (args: string[]) =>
-    Bun.spawnSync({ cmd: ['git', ...args], cwd: root, stdout: 'pipe' })
+    Bun.spawnSync({ cmd: ['git', ...args], cwd: root, stdout: 'pipe', env: process.env })
   if (git(['rev-parse', '--git-dir']).exitCode !== 0) {
     report.warnings.push(
       'git 저장소가 아니라 hook을 연결하지 못했어요. git init 뒤에 gotechy init을 다시 실행하세요.',

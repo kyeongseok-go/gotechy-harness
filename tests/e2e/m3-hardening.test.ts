@@ -133,6 +133,24 @@ describe('중간 2: 부트스트랩은 사용자의 작업 폴더를 지킨다',
     )
   })
 
+  test('CLI는 GOTECHY_CWD를 읽은 뒤 자식 프로세스에 물려주지 않는다', () => {
+    // 물려주면 CLI가 부르는 다른 gotechy(테스트, hook)가 엉뚱한 폴더로 이동한다(2026-10-14 격리 셸 bin/gotechy test에서 7개 실패)
+    const repo = tmp('gotechy-cwdleak-')
+    Bun.spawnSync({ cmd: ['git', 'init', '-q', repo] })
+    const seen = join(repo, 'seen.txt')
+    const fake = join(tmp('gotechy-fakegl-'), 'gitleaks')
+    writeFileSync(fake, `#!/bin/sh\nprintf '%s' "\${GOTECHY_CWD-unset}" > '${seen}'\n`)
+    chmodSync(fake, 0o755)
+    Bun.spawnSync({
+      cmd: [process.execPath, CLI, 'doctor', '--history'],
+      cwd: LIB,
+      env: { ...process.env, GOTECHY_CWD: repo, GOTECHY_GITLEAKS: fake },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    expect(readFileSync(seen, 'utf8')).toBe('unset')
+  })
+
   test('부트스트랩의 다운로드는 https만 쓴다', () => {
     expect(readFileSync(join(LIB, 'bin', 'gotechy'), 'utf8')).toContain("--proto '=https'")
   })

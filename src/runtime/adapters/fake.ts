@@ -75,7 +75,7 @@ export const fakeAdapter: WorkerAdapter = {
     }
     // 공격 재현용: commit 파일이 있으면 워커가 직접 커밋한다(셸이 있는 Codex 흉내)
     if (existsSync(join(dir, 'commit'))) {
-      Bun.spawnSync({ cmd: ['git', 'add', '-A'], cwd: req.cwd })
+      Bun.spawnSync({ cmd: ['git', 'add', '-A'], cwd: req.cwd, env: process.env })
       Bun.spawnSync({
         cmd: [
           'git',
@@ -90,6 +90,7 @@ export const fakeAdapter: WorkerAdapter = {
           'worker',
         ],
         cwd: req.cwd,
+        env: process.env,
       })
     }
     return {

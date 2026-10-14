@@ -28,7 +28,10 @@ import { createTask } from './runtime/task-new'
 import { loadKnownTerms } from './runtime/terms'
 
 // 부트스트랩(bin/gotechy)은 mise exec -C로 라이브러리 폴더에서 실행되므로, 사용자가 있던 폴더로 돌아간다(contract.md 10.5절)
-if (process.env.GOTECHY_CWD) process.chdir(process.env.GOTECHY_CWD)
+// 읽은 뒤에는 지운다. 남겨 두면 이 CLI가 부르는 다른 gotechy(테스트, hook)까지 같은 폴더로 이동한다
+const startCwd = process.env.GOTECHY_CWD
+delete process.env.GOTECHY_CWD
+if (startCwd) process.chdir(startCwd)
 
 const program = new Command()
 program
@@ -378,7 +381,8 @@ program
         '--coverage-reporter=lcov',
         `--coverage-dir=${dir}`,
       ],
-      { cwd: lib, stdin: 'ignore', stdout: 'inherit', stderr: 'inherit' },
+      // env를 생략하면 bun은 지운 GOTECHY_CWD까지 넘긴다(Surprises)
+      { cwd: lib, stdin: 'ignore', stdout: 'inherit', stderr: 'inherit', env: process.env },
     )
     if ((await proc.exited) !== 0) {
       console.error('테스트가 실패했어요. 커버리지 기준은 보지 않았어요.')

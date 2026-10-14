@@ -47,3 +47,24 @@ test('소스와 문서에 보이지 않는 제어 문자가 없다', () => {
   }
   expect(hits).toEqual([])
 })
+
+test('src의 Bun.spawn과 Bun.spawnSync는 env를 명시한다', () => {
+  // bun은 env를 생략하면 시작 시점의 환경을 넘기고, process.env에서 지운 값(GOTECHY_CWD 같은)을 반영하지 않는다
+  // (2026-10-14 실험, ExecPlan Surprises). 그래서 지운 값이 자식에게 새지 않도록 늘 env를 준다.
+  const missing: string[] = []
+  for (const f of walk(join(ROOT, 'src'))) {
+    const text = readFileSync(f, 'utf8')
+    for (const m of text.matchAll(/Bun\.spawn(Sync)?\(/g)) {
+      // 호출의 여는 괄호부터 짝이 맞는 닫는 괄호까지
+      let depth = 0
+      let end = m.index + m[0].length - 1
+      for (; end < text.length; end++) {
+        if (text[end] === '(') depth++
+        else if (text[end] === ')' && --depth === 0) break
+      }
+      if (!/\benv\s*:/.test(text.slice(m.index, end)))
+        missing.push(`${relative(ROOT, f)}:${text.slice(0, m.index).split('\n').length}`)
+    }
+  }
+  expect(missing).toEqual([])
+})

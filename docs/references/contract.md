@@ -356,6 +356,7 @@ frontmatter:
 - `--bootstrap-dry-run`이면 무엇을 내려받고 어디에 둘지만 출력하고, 어떤 다운로드나 폴더 생성도 하지 않는다.
 - `$GOTECHY_HOME/bin`을 PATH 맨 앞에 두고 `MISE_LOCKED=1`로 넘긴다. mise는 `mise.lock`에 있는 URL과 체크섬으로만 도구를 설치하고 락 파일을 고치지 않는다.
 - 라이브러리에 `node_modules`가 없으면(새 클론) `bun install --frozen-lockfile`을 먼저 돌린다. 설치 출력은 stderr로 보낸다.
+- CLI는 시작할 때 `GOTECHY_CWD`를 읽어 그 폴더로 돌아간 뒤 환경 변수에서 지운다. CLI가 띄우는 자식 프로세스(테스트, hook, 다른 gotechy)는 이 값을 받지 않는다. 그래서 src의 `Bun.spawn`은 env를 항상 명시한다(생략하면 bun이 지운 값까지 넘긴다).
 - 그다음 `mise exec -C <라이브러리> -- bun <라이브러리>/src/cli.ts "$@"`. `mise exec -C`는 작업 폴더를 라이브러리로 바꾸므로, 원래 작업 폴더를 `GOTECHY_CWD`로 넘기고 CLI가 시작할 때 그 폴더로 돌아간다.
 
 ### 10.6 `gotechy test`

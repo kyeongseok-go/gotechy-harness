@@ -188,16 +188,54 @@ function installGuard(
     note('.claude/settings.json (deny 규칙)', true)
   }
   const local = join(dir, 'settings.local.json')
-  if (existsSync(local)) {
-    note('.claude/settings.local.json', false)
+  const command = guardHookCommand(join(lib, 'bin', 'gotechy'))
+  const entry = { matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 120 }] }
+  if (!existsSync(local)) {
+    writeFileSync(local, `${JSON.stringify({ hooks: { PreToolUse: [entry] } }, null, 2)}\n`)
+    note('.claude/settings.local.json (부작용 가드 hook)', true)
     return
   }
-  const bin = join(lib, 'bin', 'gotechy')
-  const q = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`
-  const command = `sh -c ${q(`[ -x ${q(bin)} ] || { echo "gotechy 가드를 실행할 수 없어 명령을 막았어요: ${bin}" >&2; exit 2; }; exec ${q(bin)} guard`)}`
+  // Claude Code가 허용 규칙을 쌓아 둔 개인 파일이 대부분 이미 있다. 다른 키는 지키고 가드 hook만 더하거나 경로를 갱신한다
+  // (감사 10차 중간 5: 파일이 있다고 건너뛰면 가드가 조용히 꺼진다)
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(readFileSync(local, 'utf8'))
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('객체가 아님')
+  } catch {
+    report.warnings.push(
+      `.claude/settings.local.json을 읽지 못해 부작용 가드 hook을 넣지 못했어요. 파일을 고친 뒤 init을 다시 실행하세요. 넣을 항목: ${JSON.stringify(entry)}`,
+    )
+    return
+  }
+  const hooks = (data.hooks ?? {}) as Record<string, unknown>
+  const pre = Array.isArray(hooks.PreToolUse) ? (hooks.PreToolUse as Record<string, unknown>[]) : []
+  const ours = (h: Record<string, unknown>) => JSON.stringify(h).includes(GUARD_MARK)
+  const existing = pre.find(ours)
+  if (existing && JSON.stringify(existing) === JSON.stringify(entry)) {
+    note('.claude/settings.local.json (가드 hook 있음)', false)
+    return
+  }
+  const next = existing ? pre.map((h) => (ours(h) ? entry : h)) : [...pre, entry]
   writeFileSync(
     local,
-    `${JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command }] }] } }, null, 2)}\n`,
+    `${JSON.stringify({ ...data, hooks: { ...hooks, PreToolUse: next } }, null, 2)}\n`,
   )
-  note('.claude/settings.local.json (부작용 가드 hook)', true)
+  note(
+    `.claude/settings.local.json (${existing ? '가드 hook 경로 갱신' : '부작용 가드 hook 추가'})`,
+    true,
+  )
+}
+
+/** init이 깐 hook임을 알아보는 표시(hook 문구 안에 들어간다) */
+const GUARD_MARK = 'gotechy 가드'
+
+/**
+ * 가드 hook 명령. 가드가 0으로 끝날 때만 통과시키고, 실행 파일이 없거나 다른 코드로 죽으면 exit 2로 막는다.
+ * Claude Code는 2가 아닌 실패를 "막지 않는 오류"로 보고 명령을 실행하기 때문이다(감사 10차 중간 4)
+ */
+export function guardHookCommand(bin: string): string {
+  const q = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`
+  const fix = `라이브러리를 옮겼으면 프로젝트에서 gotechy init을 다시 실행하세요`
+  const script = `[ -x ${q(bin)} ] || { printf '%s\\n' ${q(`${GUARD_MARK}를 실행할 수 없어 명령을 막았어요: ${bin}. ${fix}`)} >&2; exit 2; }; ${q(bin)} guard; rc=$?; [ "$rc" -eq 0 ] && exit 0; printf '%s\\n' ${q(`${GUARD_MARK}가 실패해 명령을 막았어요(코드 `)}"$rc)" >&2; exit 2`
+  return `sh -c ${q(script)}`
 }

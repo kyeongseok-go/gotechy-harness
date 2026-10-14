@@ -51,6 +51,43 @@ program
   .description('파일 계약 기반 에이전트 작업 위임 (하네스 v2)')
   .version('2.0.0-alpha.0')
 
+/** 가드가 hook 입력을 기다리는 시간(밀리초). 테스트는 GOTECHY_GUARD_STDIN_MS로 줄인다 */
+const GUARD_STDIN_MS = Number(process.env.GOTECHY_GUARD_STDIN_MS ?? 5000)
+
+/** 표준 입력을 기한과 크기 상한 안에서 읽는다. 넘으면 undefined */
+async function readStdin(ms: number, max: number): Promise<string | undefined> {
+  const reader = Bun.stdin.stream().getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const late = new Promise<'late'>((r) => {
+    timer = setTimeout(() => r('late'), ms)
+  })
+  try {
+    for (;;) {
+      const next = await Promise.race([reader.read(), late])
+      if (next === 'late') return undefined
+      if (next.done) break
+      size += next.value.length
+      if (size > max) return undefined
+      chunks.push(next.value)
+    }
+    return Buffer.concat(chunks).toString('utf8')
+  } finally {
+    // 타이머가 남으면 판정이 끝나도 프로세스가 기한까지 살아 있다
+    clearTimeout(timer)
+    reader.releaseLock()
+  }
+}
+
+/** 오너 키를 만들거나 바꾸는 명령은 대화형 터미널에서만. rotate는 지난 결정을 모두 무효로 만든다(감사 10차 중간 6) */
+function requireOwnerTerminal(): void {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    console.error('오너 키 명령은 대화형 터미널에서만 실행해요. 터미널에서 직접 실행하세요.')
+    process.exit(2)
+  }
+}
+
 function requireProject() {
   const p = findProject(process.cwd())
   if (!p) {
@@ -255,6 +292,7 @@ keys
   .command('init')
   .description('오너 키가 없으면 만든다. 서명 도구는 실행할 때마다 소스에서 swiftc로 다시 빌드한다')
   .action(() => {
+    requireOwnerTerminal()
     try {
       const r = initOwnerKey(gotechyHome(), libraryRoot(), { rebuildTool: true })
       console.log(r.created ? `오너 키를 만들었어요: ${r.id}` : `이미 오너 키가 있어요: ${r.id}`)
@@ -267,6 +305,7 @@ keys
   .command('rotate')
   .description('새 오너 키로 바꾸고 이전 키를 지운다. 이전 키로 한 결정은 다시 결정해야 한다')
   .action(() => {
+    requireOwnerTerminal()
     try {
       const r = rotateOwnerKey(gotechyHome(), libraryRoot(), { rebuildTool: true })
       console.log(`새 키: ${r.id}${r.previous ? ` (지운 키: ${r.previous})` : ''}`)
@@ -433,17 +472,33 @@ program
           },
         }),
       )
-    let input: { tool_name?: unknown; tool_input?: { command?: unknown } }
+    // 무엇이 잘못되든 막는 쪽으로 끝낸다(감사 10차 중간 4, 낮음 8, 9)
     try {
-      input = JSON.parse(await Bun.stdin.text())
-    } catch {
-      return deny('gotechy 가드가 hook 입력을 읽지 못해 명령을 막았어요')
+      await (async () => {
+        const text = await readStdin(GUARD_STDIN_MS, 1_000_000)
+        if (text === undefined)
+          return deny('gotechy 가드가 hook 입력을 제때 받지 못해 명령을 막았어요')
+        let input: unknown
+        try {
+          input = JSON.parse(text)
+        } catch {
+          return deny('gotechy 가드가 hook 입력을 읽지 못해 명령을 막았어요')
+        }
+        const o = input as { tool_name?: unknown; tool_input?: { command?: unknown } } | null
+        if (!o || typeof o !== 'object' || Array.isArray(o) || typeof o.tool_name !== 'string')
+          return deny('gotechy 가드가 hook 입력의 형식을 몰라 명령을 막았어요')
+        if (o.tool_name !== 'Bash') return
+        const command = o.tool_input?.command
+        if (typeof command !== 'string')
+          return deny('gotechy 가드가 Bash 명령을 읽지 못해 막았어요')
+        const d = guardBash(command)
+        if (d.deny) deny(d.reason)
+      })()
+    } catch (e) {
+      deny(`gotechy 가드에 오류가 나 명령을 막았어요: ${(e as Error).message}`)
     }
-    if (input?.tool_name !== 'Bash') return
-    const command = input.tool_input?.command
-    if (typeof command !== 'string') return deny('gotechy 가드가 Bash 명령을 읽지 못해 막았어요')
-    const d = guardBash(command)
-    if (d.deny) deny(d.reason)
+    // 닫히지 않은 표준 입력이 프로세스를 붙잡지 않게 판정 뒤 바로 끝낸다
+    process.exit(0)
   })
 
 program
@@ -453,6 +508,12 @@ program
   .action(() => {
     const p = findProject(process.cwd())
     if (!p) return
+    // 상태 줄은 자주 불린다. 링크(예: /dev/zero)를 따라 끝없이 읽지 않게 링크가 있으면 아무것도 보여 주지 않는다
+    if (
+      linkedPaths(p.root, PROJECT_DIRS).length > 0 ||
+      linkedEntries(p.root, CONTRACT_FILE_DIRS).length > 0
+    )
+      return
     const open = listGates(p).filter((g) => g.status === 'pending').length
     console.log(open > 0 ? `gotechy 결정 대기 ${open}` : 'gotechy 대기 없음')
   })

@@ -43,7 +43,7 @@ function fakeMise(ghome: string): void {
   const fake = join(ghome, 'bin', 'mise')
   writeFileSync(
     fake,
-    '#!/bin/sh\necho "mise $*"\necho "PATH=$PATH"\necho "MISE_LOCKED=${MISE_LOCKED:-}"\n',
+    '#!/bin/sh\necho "mise $*"\necho "PATH=$PATH"\necho "MISE_LOCKED=$MISE_LOCKED"\n',
   )
   chmodSync(fake, 0o755)
 }

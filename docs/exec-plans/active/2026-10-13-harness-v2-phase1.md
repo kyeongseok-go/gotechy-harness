@@ -50,7 +50,7 @@
 
 **보안 감사 5차 (2026-10-14 18:29~18:41, 오너 외출. 시각은 커밋 기록 기준)**
 - 범위: 3차 수정(git 무결성), verify 샌드박스, M3 수정, 오늘 바꾼 부트스트랩과 mise 락, 워커 환경 변수, `gotechy test`. 높음 0, 중간 1, 낮음 3. [확인]
-- 중간 1: 워커(claude, codex)가 오너 셸의 환경 변수를 모두 물려받았다. 셸이 있는 codex 워커는 `GITHUB_TOKEN` 같은 값을 파일에 써서 accept로 메인에 들여올 수 있었다(리드와 accept의 커밋은 hook을 끄고 돌아 gitleaks도 지나감). 이 세션에도 이름에 KEY, TOKEN, SECRET이 든 변수가 6개 있었다. 워커에는 허용 목록만 넘긴다. 허용 목록만으로도 `claude auth status`와 `codex login status`가 로그인 상태였다. [확인]
+- 중간 1: 워커(claude, codex)가 오너 셸의 환경 변수를 모두 물려받았다. 셸이 있는 codex 워커는 `GITHUB_TOKEN` 같은 값을 파일에 써서 accept로 메인에 들여올 수 있었다(리드와 accept의 커밋은 hook을 끄고 돌아 gitleaks도 지나감). 이 세션의 환경 변수에도 이름이나 값에 KEY, TOKEN, SECRET이 든 것이 6개 있었다(`env | grep -c`). 워커에는 허용 목록만 넘긴다. 허용 목록만으로도 `claude auth status`와 `codex login status`가 로그인 상태였다. [확인]
 - 낮음 1: verify 샌드박스의 비밀 목록에 `.git-credentials`, `.npmrc`, `.pypirc`, `.config/gcloud`, `.kube`, `.docker`를 더했다. N0에서 찾은 Secure Enclave와 인증 서비스 차단도 이때 넣었다. [확인]
 - 낮음 2: 리드의 git이 오너 셸의 `GIT_DIR`, `GIT_CONFIG_COUNT` 같은 변수를 따랐다. 넘기지 않는다. [확인]
 - 낮음 3(accept 범위 검사에 키 값 검사 없음)은 N1에서 비밀 키 파일이 없어지므로 고치지 않았다. [확인]

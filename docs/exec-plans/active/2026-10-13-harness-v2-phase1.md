@@ -31,6 +31,7 @@
 - [x] (2026-10-14 13:06) 이 맥에 실제 `setup` 적용과 복원 (Validation 14 실측, 오너 결정 T-006). 두 설정 파일의 바이트와 권한이 원본과 같아짐. 증거 `docs/references/evidence/2026-10-14-setup-real/`
 - [x] (2026-10-14 13:23) train A등급 도구 6개의 mise 락(4개 플랫폼 29항목, 모두 체크섬). 부트스트랩이 mise를 PATH에 두고 락 그대로만 설치(`MISE_LOCKED=1`, `bun install --frozen-lockfile`)
 - [x] (2026-10-14 18:14) claude, codex를 mise로 고정(A등급, 오너 외출 중 기본값으로 진행, 확인 필요). 새 클론과 빈 HOME에서 doctor 13개 모두 통과(Validation 12)
+- [x] (2026-10-14 18:40) `gotechy test`와 커버리지 기준(Validation 17). 핵심 모듈 목록을 `ARCHITECTURE.md`에 채움
 - [ ] M3 나머지: `init`의 apm 전환(작업 5) (오너와 함께)
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음
@@ -317,7 +318,7 @@ M3 (격리 환경 — 모든 명령을 같은 격리 셸에서):
 - [x] 14. (2026-10-14: 백업, 복원, 사용자 변경 시 중단은 임시 HOME 테스트로 통과. 13:06 이 맥에 실제 적용과 복원, sha256, 권한, `cmp` 결과가 모두 원본과 같음. 증거 `docs/references/evidence/2026-10-14-setup-real/`. 사용자 변경 시 중단 경로는 실제 설정을 건드리지 않으려고 임시 HOME 테스트로만 확인) 실제 `setup` 후 `--restore` 하면 두 설정 파일의 바이트·권한이 원본과 같고, 원래 없던 파일은 삭제된다. 복원 전에 사용자가 파일을 바꿨으면 복원이 중단된다. 실제 이 맥에 1회 적용·복원한 증거를 Artifacts에.
 - [x] 15. (2026-10-14: 가짜 도구와 `tests/fixtures/train/train-mismatch.yaml`) doctor에 `GOTECHY_TRAIN=tests/fixtures/train-mismatch.yaml`로 불일치를 주입하면 exit 1과 교정 명령, 교정 후 재실행은 exit 0.
 - [x] 16. (2026-10-14: gitleaks 8.30.1, `tests/e2e/gitleaks.test.ts`. gitleaks가 없는 CI에서는 fail-closed 테스트만 돈다) 격리된 임시 Git 저장소에서 합성 토큰·합성 주민번호가 든 파일의 커밋을 hook이 막고, `doctor --history`가 이력 속 합성 토큰을 찾는다.
-- [ ] 17. `bin/gotechy test` 전체 통과, 커버리지 전체 ≥80%·핵심 모듈 ≥95%.
+- [x] 17. (2026-10-14 18:40: `gotechy test` 추가, contract.md 10.6절. 279 pass, 전체 줄 96.22%, 핵심 모듈 19개 중 가장 낮은 것 keys.ts 95.45%. 처음 재 보니 codex 어댑터 64.71%, fake 어댑터 92.94%, sandbox 94.83%여서 테스트를 채움) `bin/gotechy test` 전체 통과, 커버리지 전체 ≥80%·핵심 모듈 ≥95%.
 
 ## Idempotence and Recovery
 

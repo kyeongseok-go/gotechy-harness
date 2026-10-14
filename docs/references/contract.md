@@ -357,3 +357,10 @@ frontmatter:
 - `$GOTECHY_HOME/bin`을 PATH 맨 앞에 두고 `MISE_LOCKED=1`로 넘긴다. mise는 `mise.lock`에 있는 URL과 체크섬으로만 도구를 설치하고 락 파일을 고치지 않는다.
 - 라이브러리에 `node_modules`가 없으면(새 클론) `bun install --frozen-lockfile`을 먼저 돌린다. 설치 출력은 stderr로 보낸다.
 - 그다음 `mise exec -C <라이브러리> -- bun <라이브러리>/src/cli.ts "$@"`. `mise exec -C`는 작업 폴더를 라이브러리로 바꾸므로, 원래 작업 폴더를 `GOTECHY_CWD`로 넘기고 CLI가 시작할 때 그 폴더로 돌아간다.
+
+### 10.6 `gotechy test`
+
+- 라이브러리 폴더에서 `bun test --coverage`를 돌리고, lcov 결과로 커버리지 기준을 본다. 테스트가 하나라도 실패하면 기준을 보지 않고 exit 1.
+- 기준: 전체 줄 커버리지 80% 이상, 핵심 모듈은 파일마다 95% 이상. 핵심 모듈 목록은 `src/core/coverage.ts`의 `CORE_MODULES`(lint, 결정, 검증, 반영, 어댑터)이고 `ARCHITECTURE.md`에도 적는다.
+- 핵심 모듈이 측정에 없으면(테스트가 그 파일을 불러오지 않으면) 실패다. 측정에서 빠지는 것으로 기준을 피하지 못하게 한다.
+- 기준은 macOS에서 잰다. 리눅스 CI에서는 verify 샌드박스 경로가 달라 `bun test --coverage`만 돌린다.

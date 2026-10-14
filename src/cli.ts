@@ -1,11 +1,12 @@
 #!/usr/bin/env bun
 // gotechy CLI. 종료코드: 0 성공, 1 검사 실패(고칠 수 있는 문제), 2 환경 문제(도구·경로·상태).
-import { existsSync, readFileSync, realpathSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { existsSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
 import { Command } from 'commander'
+import { CORE_MIN, judgeCoverage, parseLcov, TOTAL_MIN } from './core/coverage'
 import { parseFrontmatter } from './core/frontmatter'
 import { formatInbox } from './core/inbox'
 import { formatIssue } from './core/issues'
@@ -358,6 +359,42 @@ program
       console.error((e as Error).message)
       process.exit(1)
     }
+  })
+
+program
+  .command('test')
+  .description(
+    `라이브러리 테스트를 돌리고 커버리지 기준(전체 ${TOTAL_MIN}%, 핵심 모듈 ${CORE_MIN}%)을 본다 (contract.md 10.6절)`,
+  )
+  .action(async () => {
+    const lib = libraryRoot()
+    const dir = mkdtempSync(join(tmpdir(), 'gotechy-coverage-'))
+    const proc = Bun.spawn(
+      [
+        process.execPath,
+        'test',
+        '--coverage',
+        '--coverage-reporter=text',
+        '--coverage-reporter=lcov',
+        `--coverage-dir=${dir}`,
+      ],
+      { cwd: lib, stdin: 'ignore', stdout: 'inherit', stderr: 'inherit' },
+    )
+    if ((await proc.exited) !== 0) {
+      console.error('테스트가 실패했어요. 커버리지 기준은 보지 않았어요.')
+      process.exit(1)
+    }
+    const j = judgeCoverage(parseLcov(readFileSync(join(dir, 'lcov.info'), 'utf8'), lib))
+    console.log(`전체 줄 커버리지 ${j.totalPct.toFixed(2)}% (기준 ${TOTAL_MIN}%)`)
+    const low = j.core.filter((c) => c.pct !== null).sort((a, b) => (a.pct ?? 0) - (b.pct ?? 0))
+    console.log(
+      `핵심 모듈 ${j.core.length}개, 가장 낮은 것 ${low[0]?.file ?? '-'} ${low[0]?.pct?.toFixed(2) ?? '-'}% (기준 ${CORE_MIN}%)`,
+    )
+    if (!j.ok) {
+      for (const f of j.failures) console.error(`실패 ${f}`)
+      process.exit(1)
+    }
+    console.log('커버리지 기준을 통과했어요')
   })
 
 await program.parseAsync()

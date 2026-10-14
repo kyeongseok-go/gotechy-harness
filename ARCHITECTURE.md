@@ -45,7 +45,11 @@ UI      → 컴포넌트·페이지
 
 <!-- 프로젝트별로 채운다. 예: src/service/billing/**, src/service/auth/** -->
 
-- (교체)
+하네스 v2(2026-10-14): `src/core/coverage.ts`의 `CORE_MODULES`가 원본이고 `gotechy test`가 파일마다 95%를 강제한다.
+
+- lint: `src/core/{frontmatter,lint-handoff,lint-task,rules-handoff,paths,schema,schema-issues,sections,style}.ts`
+- 결정과 검증: `src/core/{gate,decisions}.ts`, `src/runtime/{gates,keys,sandbox,accept}.ts`
+- 어댑터: `src/runtime/adapters/*.ts`
 
 ## 기술 선택 원칙
 

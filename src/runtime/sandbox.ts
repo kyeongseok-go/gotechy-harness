@@ -70,9 +70,11 @@ export async function runSandboxedShell(
   cwd: string,
   paths: SandboxPaths,
   timeoutMs = 300_000,
+  /** 테스트에서 샌드박스가 없는 OS(리눅스 CI)의 경로를 보려고 넣는다 */
+  available = sandboxAvailable(),
 ): Promise<ProcResult & { sandboxed: boolean }> {
   const env = verifyEnv(paths.tmp)
-  if (!sandboxAvailable())
+  if (!available)
     return {
       ...(await runProc(['sh', '-c', command], { cwd, timeoutMs, env, replaceEnv: true })),
       sandboxed: false,

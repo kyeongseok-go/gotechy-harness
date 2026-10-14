@@ -16,7 +16,7 @@
 | TD-007 | 2026-10-14 | 허용 범위 검사(`changedFiles`)가 무시 파일(.gitignore 대상)의 변경을 보지 않는다 | src/runtime/git.ts | 🟡 | 워커가 node_modules 같은 무시 경로에 코드를 심을 수 있다. verify 샌드박스로 피해는 작업 폴더 안에 갇힌다 | 1b: 기준 시점의 무시 파일 목록과 비교 |
 | TD-008 | 2026-10-14 | 리드 에이전트 설정에 `gotechy decide`, `script`, `expect` 실행 금지 규칙이 없다. TTY 검사는 실수만 막는다 | templates/project/ | 🟡 | 무인 루프의 리드가 막혔을 때 결정을 대신 내리는 실수를 막지 못한다 | M3 setup이 프로젝트 .claude/settings.json에 deny를 넣는다 |
 | TD-009 | 2026-10-14 | verify 샌드박스가 macOS 전용이다. 다른 OS에서는 기록만 남긴다 | src/runtime/sandbox.ts | 🟡 | 리눅스 CI나 2단계 다른 아키텍처에서 격리 약속이 깨진다 | 2단계: bubblewrap 등 리눅스 샌드박스 |
-| TD-010 | 2026-10-14 | `src/runtime/run.ts` 줄 커버리지 90.7%(타임아웃, 게이트 열기 실패, 샌드박스 없음 분기). 같은 밤에 `usage.ts`(100%)와 `pages.tsx`(95.0%)는 기준을 넘겼다 | src/runtime/run.ts | 🟢 | 드문 실패 경로가 깨져도 모른다 | 1a 완료 게이트 전 |
+| TD-010 | 2026-10-14 | `src/runtime/run.ts` 줄 커버리지 90.7%, 2026-10-14 18:40에 92.1%(핵심 모듈 목록 밖. 타임아웃, 게이트 열기 실패, 샌드박스 없음 분기). 같은 밤에 `usage.ts`(100%)와 `pages.tsx`(95.0%)는 기준을 넘겼다 | src/runtime/run.ts | 🟢 | 드문 실패 경로가 깨져도 모른다 | 1a 완료 게이트 전 |
 | TD-011 | 2026-10-14 | `gotechy init`이 아직 팩을 복사로 설치한다(apm 전환 전). (mise 락은 2026-10-14 13:23에 A등급 도구 6개로 넓힘) | src/runtime/init.ts, mise.toml | 🟡 | 설치 결과의 변조와 드리프트를 `apm audit`로 잡지 못한다 | M3 나머지(오너와 함께): apm 설치 |
 | TD-012 | 2026-10-14 | `gotechy accept`가 병합하는 워커 변경에는 gitleaks 검사가 없다. 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 키 값 검사 말고는 막히지 않는다 | src/runtime/accept.ts | 🟡 | 워커가 만든 토큰 같은 값이 메인에 들어갈 수 있다 | accept에서 병합 diff에 gitleaks를 돌리기 |
 

@@ -23,6 +23,7 @@ import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
 import { gotechyHome, initOwnerKey, rotateOwnerKey } from './runtime/keys'
 import { libraryRoot } from './runtime/library'
+import { runLoop } from './runtime/loop'
 import { installPacks } from './runtime/packs'
 import { findProject, linkedPaths, PROJECT_DIRS } from './runtime/project'
 import { runTask } from './runtime/run'
@@ -218,6 +219,7 @@ program
 
 program
   .command('run')
+  .description('작업 하나를 워커에게 맡기고 검증한다 (contract.md 2절, 6.6절)')
   .argument('<taskId>')
   .option('--adapter <name>', 'claude | codex | fake (작업의 agent보다 우선)')
   .option('--fixture <dir>', 'fake 어댑터가 재생할 녹화 폴더')
@@ -363,6 +365,37 @@ program
       s.stop()
       process.exit(130)
     })
+  })
+
+program
+  .command('loop')
+  .description(
+    'autonomy L2 이상인 작업을 예산과 멈춤 규칙 안에서 차례로 돌리고 아침 보고서를 만든다 (contract.md 11절)',
+  )
+  .option('--budget <달러>', '이번 루프의 예산(시작한 작업 budget_usd의 합)', '5')
+  .option('--max-attempts <N>', '작업마다 시도 상한', '3')
+  .option('--reset', '이어 가기 상태를 비우고, 루프가 멈춘 작업도 다시 시도한다')
+  .action(async (o: { budget: string; maxAttempts: string; reset?: boolean }) => {
+    const p = requireProject()
+    const home = gotechyHome()
+    const budgetUsd = Number(o.budget)
+    const maxAttempts = Number(o.maxAttempts)
+    if (!(budgetUsd > 0) || !Number.isInteger(maxAttempts) || maxAttempts < 1) {
+      console.error('--budget은 0보다 큰 수, --max-attempts는 1 이상의 정수여야 해요')
+      process.exit(2)
+    }
+    const log = (line: string) => console.log(line)
+    const r = await runLoop(p, {
+      home,
+      budgetUsd,
+      maxAttempts,
+      ...(o.reset ? { reset: true } : {}),
+      log,
+      run: (taskId) => runTask(p, taskId, { home, log }),
+    })
+    for (const x of r.results)
+      console.log(`${x.task}: ${x.outcome}${x.reason ? ` (${x.reason})` : ''}`)
+    console.log(`아침 보고서: ${r.digest}`)
   })
 
 program

@@ -14,8 +14,16 @@ const GIT_ENV = {
 }
 const GIT_SAFE = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false']
 
+/** 오너 셸의 GIT_* 변수(GIT_DIR, GIT_CONFIG_COUNT 같은)는 넘기지 않는다(보안 감사 5차 낮음 2) */
+function gitEnv(): Record<string, string> {
+  const env: Record<string, string> = {}
+  for (const [k, v] of Object.entries(process.env))
+    if (v !== undefined && !k.startsWith('GIT_')) env[k] = v
+  return { ...env, ...GIT_ENV }
+}
+
 export function gitProc(args: string[], cwd: string) {
-  return runProc(['git', ...GIT_SAFE, ...args], { cwd, env: GIT_ENV })
+  return runProc(['git', ...GIT_SAFE, ...args], { cwd, env: gitEnv(), replaceEnv: true })
 }
 
 async function git(args: string[], cwd: string): Promise<string> {

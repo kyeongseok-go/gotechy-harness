@@ -29,6 +29,13 @@ const HOME_SECRETS = [
   '.claude',
   '.claude.json',
   '.codex',
+  // 보안 감사 5차 낮음 1
+  '.git-credentials',
+  '.npmrc',
+  '.pypirc',
+  '.config/gcloud',
+  '.kube',
+  '.docker',
 ]
 
 const real = (p: string) => (existsSync(p) ? realpathSync(p) : p)
@@ -47,6 +54,8 @@ export function sandboxProfile(s: SandboxPaths): string {
     // 샌드박스 밖 프로세스에 일을 시키는 경로를 막는다(감사 3차). 실험: bun test는 그대로 돈다
     '(deny process-exec (literal "/usr/bin/osascript") (literal "/bin/launchctl") (literal "/usr/bin/open") (literal "/usr/bin/automator") (literal "/usr/bin/shortcuts"))',
     '(deny mach-lookup (global-name "com.apple.coreservices.appleevents") (global-name "com.apple.coreservices.launchservicesd"))',
+    // 워커 코드가 오너 키로 서명하거나 인증 창을 띄우지 못하게 Secure Enclave와 인증 서비스를 막는다(1b N0 실험)
+    '(deny mach-lookup (global-name "com.apple.ctkd.token-client") (global-name "com.apple.CoreAuthentication.daemon") (global-name "com.apple.coreauthd"))',
   ].join('\n')
 }
 

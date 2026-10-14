@@ -34,6 +34,7 @@
 - [x] (2026-10-14 18:26) `gotechy test`와 커버리지 기준(Validation 17). 격리 셸에서 찾은 `GOTECHY_CWD` 누출 수정. 핵심 모듈 목록을 `ARCHITECTURE.md`에 채움
 - [ ] M3 나머지: `init`의 apm 전환(작업 5) (오너와 함께)
 - [x] (2026-10-14 01:53) ADR 작성: D5 배포(0002), D7 오케스트레이션(0003), D13 train(0004), 결정 서명(0005)
+- [x] (2026-10-14 18:55) 보안 감사 5차(security-auditor): 3차 수정, M3 수정, 오늘 변경분. 높음 0, 중간 1, 낮음 3, 중간과 낮음 2건 수정
 - [ ] 보안 리뷰 (/gotechy-security) — 워커 격리, 결정 검증, HTML 렌더링, 전역 설정 수정. M2 부분은 2026-10-14 밤 security-auditor 1차, 2차로 진행(결과는 `docs/references/evidence/2026-10-14-overnight/`). M3(전역 설정 수정) 뒤 전체 리뷰는 남음
 - [ ] 1a 완료 게이트 (/gotechy-ship 기능 등급) → 공문서 프로젝트 착수
 - [ ] **(필수, 사용자 지시 2026-10-13) 1b ExecPlan 작성·착수** (2026-10-14 밤 초안 작성: `2026-10-14-harness-v2-phase1b.md`, 2026-10-14 13:05 오너가 범위와 순서 승인, 착수 전) — 1a 완료 게이트는 1b ExecPlan 파일이 `active/`에 생겨야 통과한다
@@ -46,6 +47,14 @@
 - (리뷰) 기존 `scripts/viewer/build_html.py`는 본문을 innerHTML로 넣고 `</script>` 소문자만 치환한다 → 렌더러는 새로 쓰고 모든 텍스트를 이스케이프한다.
 - (교차 검토, 두 모델이 독립적으로 같은 지적) 워커는 오너와 같은 OS 사용자로 돌기 때문에, 대칭 키 HMAC은 워커의 자가 승인을 막지 못한다. 1a의 결정 검증은 "실수·낡은 판본·수기 편집 방지 + 워커 실행 격리"로 범위를 정직하게 줄이고, 진짜 오너 인증은 1b로 미룬다.
 - (교차 검토) macOS 기본 Python 3.9에는 `tomllib`이 없고 apm의 pip 경로는 3.10 이상을 요구한다. bash 3.2에는 bash 4 문법이 없고 `sha256sum`이 없다(`shasum -a 256`).
+
+**보안 감사 5차 (2026-10-14 18:20~18:55, 오너 외출)**
+- 범위: 3차 수정(git 무결성), verify 샌드박스, M3 수정, 오늘 바꾼 부트스트랩과 mise 락, 워커 환경 변수, `gotechy test`. 높음 0, 중간 1, 낮음 3. [확인]
+- 중간 1: 워커(claude, codex)가 오너 셸의 환경 변수를 모두 물려받았다. 셸이 있는 codex 워커는 `GITHUB_TOKEN` 같은 값을 파일에 써서 accept로 메인에 들여올 수 있었다(리드와 accept의 커밋은 hook을 끄고 돌아 gitleaks도 지나감). 이 세션에도 이름에 KEY, TOKEN, SECRET이 든 변수가 6개 있었다. 워커에는 허용 목록만 넘긴다. 허용 목록만으로도 `claude auth status`와 `codex login status`가 로그인 상태였다. [확인]
+- 낮음 1: verify 샌드박스의 비밀 목록에 `.git-credentials`, `.npmrc`, `.pypirc`, `.config/gcloud`, `.kube`, `.docker`를 더했다. N0에서 찾은 Secure Enclave와 인증 서비스 차단도 이때 넣었다. [확인]
+- 낮음 2: 리드의 git이 오너 셸의 `GIT_DIR`, `GIT_CONFIG_COUNT` 같은 변수를 따랐다. 넘기지 않는다. [확인]
+- 낮음 3(accept 범위 검사에 키 값 검사 없음)은 N1에서 비밀 키 파일이 없어지므로 고치지 않았다. [확인]
+- 재현 테스트 7개(`tests/e2e/audit5.test.ts`)를 먼저 쓰고 고쳤다. mutation 5종 모두 잡음. [확인]
 
 **`bin/gotechy test`를 격리 셸에서 (2026-10-14 18:22~18:26, 오너 외출)**
 - 보통 셸에서는 모두 통과하던 테스트 7개가 격리 셸의 `bin/gotechy test`에서 실패했다. 부트스트랩이 넘긴 `GOTECHY_CWD`가 CLI의 자식 프로세스(bun test, 그 안에서 띄운 CLI)까지 내려가, 테스트가 띄운 CLI가 엉뚱한 폴더로 이동했다. gotechy가 다른 gotechy를 부르는 실제 사용(hook 등)에서도 생길 버그다. CLI가 읽은 뒤 지우게 했다. [확인]

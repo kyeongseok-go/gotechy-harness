@@ -3,6 +3,7 @@
 import { parseClaudeUsage } from '../../core/usage'
 import { gotechyHome } from '../keys'
 import { runProc } from '../proc'
+import { workerEnv } from './env'
 import type { WorkerAdapter, WorkerRequest, WorkerResult } from './types'
 
 const DENY = [
@@ -46,8 +47,9 @@ export const claudeAdapter: WorkerAdapter = {
     const r = await runProc(claudeArgs(req), {
       cwd: req.cwd,
       timeoutMs: req.timeoutMs,
-      // 워커는 train 버전 그대로 돈다(contract.md 10.1절). 오너 환경의 값보다 우선한다
-      env: { DISABLE_AUTOUPDATER: '1' },
+      // 허용 목록만 넘긴다(contract.md 6.3절). 워커는 train 버전 그대로 돈다(10.1절)
+      env: workerEnv(['ANTHROPIC_API_KEY', 'CLAUDE_CONFIG_DIR'], { DISABLE_AUTOUPDATER: '1' }),
+      replaceEnv: true,
     })
     const usage = parseClaudeUsage(r.stdout)
     let model: string | undefined

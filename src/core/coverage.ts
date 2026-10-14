@@ -27,6 +27,7 @@ export const CORE_MODULES = [
   'src/runtime/accept.ts',
   'src/runtime/adapters/claude.ts',
   'src/runtime/adapters/codex.ts',
+  'src/runtime/adapters/env.ts',
   'src/runtime/adapters/fake.ts',
   'src/runtime/adapters/index.ts',
 ]

@@ -2,6 +2,7 @@
 // 그래서 작업 폴더를 worktree로 두고, 허용 밖 변경은 리드가 changed-files 검사로 실패 처리한다.
 import { parseCodexUsage } from '../../core/usage'
 import { runProc } from '../proc'
+import { workerEnv } from './env'
 import type { WorkerAdapter, WorkerRequest, WorkerResult } from './types'
 
 export function codexArgs(req: WorkerRequest): string[] {
@@ -27,7 +28,13 @@ export function codexArgs(req: WorkerRequest): string[] {
 export const codexAdapter: WorkerAdapter = {
   name: 'codex',
   async run(req): Promise<WorkerResult> {
-    const r = await runProc(codexArgs(req), { cwd: req.cwd, timeoutMs: req.timeoutMs })
+    const r = await runProc(codexArgs(req), {
+      cwd: req.cwd,
+      timeoutMs: req.timeoutMs,
+      // 허용 목록만 넘긴다(contract.md 6.3절). codex는 셸이 있어 받은 환경 변수를 파일에 쓸 수 있다(보안 감사 5차 중간 1)
+      env: workerEnv(['OPENAI_API_KEY', 'CODEX_HOME']),
+      replaceEnv: true,
+    })
     const result: WorkerResult = {
       exitCode: r.exitCode,
       timedOut: r.timedOut,

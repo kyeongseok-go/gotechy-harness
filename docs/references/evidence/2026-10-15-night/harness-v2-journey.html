@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>하네스 v2, 원했던 것에서 지금까지</title>
+<meta name="description" content="하네스 v2의 요구사항 10가지, 결정, 지금 되는 것, 2026-10-15 밤샘 작업과 오너가 확인할 것">
+<!-- 용어 카드 없이 써도 되는 고유 이름(프로젝트, 사람, 회사). 제품과 기술 이름은 여기 넣지 말고 용어 카드로 -->
+<meta name="explain-doc-known" content="gotechy,고텍이">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ 토큰 ============ */
+:root{
+  --bg:#f7f5f0; --surface:#fff; --surface-2:#efece5; --ink:#1c1a17; --ink-2:#4a453d; --muted:#736b5f; --line:#e2ddd2;
+  --accent:#2f5d50; --accent-soft:#e2eee9; --accent-ink:#fff;
+  --ok:#1e7a45; --ok-soft:#e0f2e7; --est:#9a6508; --est-soft:#f8ecd3; --warn:#b4471f; --warn-soft:#f8e4da; --info:#2a62a8; --info-soft:#e3edf8;
+  --font:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; --display:"Gowun Batang",serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --r:12px; --gutter:16px; --measure:44rem; --ease:cubic-bezier(.16,1,.3,1);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141619; --surface:#1c1f23; --surface-2:#252a30; --ink:#ebe7e0; --ink-2:#c4beb4; --muted:#9c958a; --line:#30353c;
+  --accent:#7fc4ae; --accent-soft:#1d3430; --accent-ink:#0f1512;
+  --ok:#5fcf8f; --ok-soft:#133022; --est:#e6b04e; --est-soft:#352a12; --warn:#f09a72; --warn-soft:#3a2319; --info:#79aef0; --info-soft:#15263b;
+}}
+:root[data-theme="dark"]{
+  --bg:#141619; --surface:#1c1f23; --surface-2:#252a30; --ink:#ebe7e0; --ink-2:#c4beb4; --muted:#9c958a; --line:#30353c;
+  --accent:#7fc4ae; --accent-soft:#1d3430; --accent-ink:#0f1512;
+  --ok:#5fcf8f; --ok-soft:#133022; --est:#e6b04e; --est-soft:#352a12; --warn:#f09a72; --warn-soft:#3a2319; --info:#79aef0; --info-soft:#15263b;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:64px}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.75 var(--font);word-break:keep-all;overflow-wrap:anywhere;-webkit-font-smoothing:antialiased}
+main{max-width:880px;margin:0 auto;padding:0 var(--gutter) 96px}
+p,li{max-width:var(--measure)}
+h1{font:700 clamp(26px,5.4vw,42px)/1.3 var(--display);margin:0 0 8px}
+h2{font:700 clamp(21px,3.2vw,27px)/1.4 var(--display);margin:56px 0 12px}
+h3{font-size:18px;margin:28px 0 8px}
+a{color:var(--accent);text-underline-offset:3px}
+code,pre{font-family:var(--mono);font-size:.88em}
+:not(pre)>code{background:var(--surface-2);padding:.08em .35em;border-radius:4px}
+pre{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;overflow-x:auto;max-width:100%}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* ============ 상단 칩 내비 ============ */
+.chips{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  display:flex;gap:6px;overflow-x:auto;padding:10px var(--gutter);scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips a{flex:none;font-size:14px;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--surface)}
+.chips a.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
+.chips .theme{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:14px;cursor:pointer}
+
+/* ============ 1. 첫 화면 네 칸 ============ */
+.hero{padding:24px 0 8px}
+.answer{font-size:clamp(18px,2.6vw,21px);color:var(--ink);font-weight:500;margin:0 0 14px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:8px;margin:0 0 14px}
+.facts div{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px}
+.facts dt{font-size:13px;color:var(--muted);font-weight:600}
+.facts dd{margin:2px 0 0;font-size:15px;line-height:1.6}
+.map{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px}
+.map svg,figure.map2 svg{display:block;width:100%;max-width:480px;height:auto;margin:0 auto}
+.map a{cursor:pointer}
+.map a:hover rect,.map a:focus rect{stroke-width:2.5}
+.map-cap{font-size:13px;color:var(--muted);margin:6px 0 0;text-align:center}
+
+/* ============ 그림 ============ */
+figure{margin:20px 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px}
+figure svg{display:block;width:100%;max-width:560px;height:auto;margin:0 auto}
+figcaption{color:var(--muted);font-size:14px;margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid var(--line)}
+.biglink{display:inline-block;margin-top:6px;font-size:14px}
+
+/* ============ 용어 카드 ============ */
+.term{border:0;background:none;padding:0;border-bottom:2px dotted var(--accent);color:inherit;cursor:pointer;font-weight:600}
+.term[aria-expanded="true"]{background:var(--accent-soft)}
+.termcard{display:block;margin:8px 0 12px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r);padding:10px 14px;font-size:15px;line-height:1.65}
+.termcard[hidden]{display:none}
+.termcard .easy{font-weight:500}
+.termcard .formal{color:var(--ink-2);margin-top:6px;font-size:14px}
+.termcard .formal b{color:var(--muted);font-weight:600;margin-right:4px}
+.glossary dl{margin:0}
+.glossary div{padding:12px 0;border-bottom:1px solid var(--line)}
+.glossary dt{font-weight:700}
+.glossary dd{margin:4px 0 0}
+.glossary .formal{color:var(--ink-2);font-size:14px;margin-top:4px}
+
+/* ============ 확인과 추정 표시 ============ */
+.tag{display:inline-block;font:500 12px/1.5 var(--font);padding:0 7px;border-radius:999px;vertical-align:2px;margin-left:4px}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.est{background:var(--est-soft);color:var(--est)}
+.tag.no{background:var(--warn-soft);color:var(--warn)}
+.tag.inf{background:var(--info-soft);color:var(--info)}
+.taglegend{font-size:13px;color:var(--muted);margin:8px 0 0}
+.asof{font-size:13px;color:var(--muted)}
+.recall{border-left:3px solid var(--accent);padding:2px 0 2px 12px;color:var(--ink-2);font-size:15px}
+details.ref{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:10px 14px;margin:14px 0}
+details.ref>summary{cursor:pointer;font-weight:600}
+.src{font-size:13px;color:var(--muted);font-family:var(--mono);word-break:break-all}
+
+/* ============ 상자들 ============ */
+.box{border-radius:var(--r);padding:14px 18px;margin:16px 0;border:1px solid var(--line);border-left-width:4px;background:var(--surface)}
+.box>b:first-child{display:block;font-size:14px;margin-bottom:4px}
+.box.analogy{border-left-color:var(--accent);background:var(--accent-soft)}
+.box.mine{border-left-color:var(--ok)}
+.box.trap{border-left-color:var(--warn);background:var(--warn-soft)}
+.box.probe{border-left-color:var(--est);background:var(--est-soft)}
+.box.limit{border-left-color:var(--muted)}
+
+/* ============ 표 ============ */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;word-break:keep-all}
+td:first-child{min-width:6em}
+th{color:var(--muted);font-weight:600;font-size:13px;background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+.scrollhint{font-size:12px;color:var(--muted);margin:-8px 0 12px}
+
+/* 폰에서는 표를 카드처럼 쌓는다 (스크립트가 td에 data-label을 붙인다). 옆으로 밀어야 하는 표를 없애기 위함 */
+@media (max-width:600px){
+  .tablewrap table:not(.keep) thead{display:none}
+  .tablewrap table:not(.keep) tr{display:block;border-bottom:1px solid var(--line);padding:6px 0}
+  .tablewrap table:not(.keep) td{display:block;border:0;padding:3px 12px}
+  .tablewrap table:not(.keep) td[data-label]::before{content:attr(data-label);display:block;font-size:12px;color:var(--muted);font-weight:600}
+}
+
+/* ============ 선택해 보기 (고르면 결과가 바뀐다) ============ */
+.whatif{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin:16px 0}
+.whatif .opts{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.whatif .opts button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 14px;font-weight:600;cursor:pointer}
+.whatif .opts button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.whatif input[type=range]{width:100%}
+.whatif .out{border-top:1px dashed var(--line);padding-top:8px;margin-top:6px}
+
+/* ============ 탭 ============ */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 0}
+.tabs [role=tab]{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 16px;font-weight:600;font-size:15px;cursor:pointer}
+.tabs [role=tab][aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+[role=tabpanel][hidden]{display:none}
+
+/* ============ 단계 넘기기 ============ */
+.stepper{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;margin:16px 0}
+.stepper .node{transition:opacity .25s var(--ease)}
+.stepper .node.dim{opacity:.5}
+.stepper svg{display:block;width:100%;max-width:560px;height:auto;margin:0 auto}
+.step-text{margin:12px 0 8px;min-height:3.4em}
+.state{width:100%;font-size:14px;margin:0 0 10px}
+.state td:first-child{font-family:var(--mono);color:var(--muted);white-space:nowrap;width:1%}
+.state td.changed{background:var(--est-soft);font-weight:600}
+.step-nav{display:flex;gap:8px;align-items:center}
+.step-nav button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:7px 14px;font-weight:600;cursor:pointer}
+.step-nav button:disabled{opacity:.35;cursor:default}
+.step-count{margin-left:auto;color:var(--muted);font-size:14px}
+
+/* ============ 접기 ============ */
+details{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 16px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+
+/* ============ 설명 연습 ============ */
+.practice .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin:12px 0}
+.practice .q{font-weight:600;margin:0 0 8px}
+.practice textarea{width:100%;min-height:72px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px;padding:8px 10px}
+.practice .reveal{margin-top:8px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 12px;font-weight:600;cursor:pointer}
+.practice .a{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.practice .a[hidden]{display:none}
+.practice .pitfall{font-size:14px;color:var(--warn)}
+.practice .kw{font-size:14px;color:var(--muted);margin-top:6px}
+.practice .kw .hit{color:var(--ok);font-weight:600}
+.practice .kw .miss{color:var(--warn)}
+
+/* ============ 그림 키트 (svg.dg): 글자 위계, 라벨 받침, 핵심 강조, 눌러서 따라가기 ============ */
+svg.dg{overflow:visible;font-family:var(--font)}
+svg.dg text{font-family:var(--font)}
+svg.dg .t-title{font-size:18px;font-weight:700;fill:var(--ink);letter-spacing:-.01em}
+svg.dg .t-name{font-size:18px;font-weight:700;fill:var(--ink);letter-spacing:-.01em}
+svg.dg .t-sub{font-size:16px;font-weight:400;fill:var(--muted)}
+svg.dg .t-tech{font-size:16px;font-weight:600;fill:var(--accent)}
+/* 화살표 라벨: 바탕색 테두리로 받쳐서 선과 겹쳐도 읽힌다 */
+svg.dg .arrow text,svg.dg .t-label{font-size:16px;font-weight:600;fill:var(--ink-2);paint-order:stroke;stroke:var(--surface);stroke-width:5px;stroke-linejoin:round}
+svg.dg .arrow line,svg.dg .arrow path,svg.dg .arrow polyline{stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s,opacity .2s}
+svg.dg .node rect,svg.dg .node circle{filter:drop-shadow(0 1px 1.5px rgb(0 0 0 / .10));transition:stroke-width .2s var(--ease),opacity .2s,fill .2s}
+svg.dg .node,svg.dg .arrow{transition:opacity .25s var(--ease)}
+svg.dg .node{outline:none}
+svg.dg a.node,svg.dg .node[data-note]{cursor:pointer}
+svg.dg .node:focus-visible rect{stroke:var(--accent);stroke-width:3}
+/* 핵심: 상자는 강조색 두꺼운 테두리, 경로는 흐르는 점선 */
+svg.dg .node.key rect{stroke:var(--accent);stroke-width:2.6;fill:var(--accent-soft)}
+svg.dg .arrow.key line,svg.dg .arrow.key path{stroke:var(--accent);stroke-width:2.6;stroke-dasharray:7 6;animation:dg-flow 1.1s linear infinite}
+svg.dg .arrow.key text{fill:var(--accent)}
+svg.dg .badge rect,svg.dg .node.key .badge rect{fill:var(--accent);stroke:none;stroke-width:0;filter:none}
+svg.dg .badge text{fill:var(--accent-ink);font-size:16px;font-weight:700;stroke:none}
+@keyframes dg-flow{to{stroke-dashoffset:-13}}
+/* 따라가기: 고른 상자와 이어진 선만 밝게 */
+svg.dg.is-focus .node:not(.on),svg.dg.is-focus .arrow:not(.on){opacity:.18}
+svg.dg.is-focus .node.on rect{stroke-width:2.8}
+svg.dg.show-key .node:not(.key),svg.dg.show-key .arrow:not(.key){opacity:.18}
+.dg-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 0}
+.dg-bar button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 12px;font:600 13px/1.6 var(--font);cursor:pointer}
+.dg-bar button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dg-note{margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--surface-2);font-size:15px;line-height:1.6;color:var(--ink-2);min-height:calc(3.2em + 20px)}
+/* 첫 화면 지도는 공간이 귀해서 설명 줄을 한 줄로 작게, 핵심 단추는 두지 않는다 */
+.map .dg-note{font-size:13px;min-height:0;padding:6px 10px}
+.map .dg-bar{display:none}
+.dg-note b{color:var(--ink);margin-right:6px}
+/* 단계 넘기기: 지금 단계 상자를 강조 */
+.stepper .node.active rect{stroke-width:3;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 45%,transparent))}
+@media (prefers-reduced-motion:reduce){svg.dg .arrow.key line,svg.dg .arrow.key path{animation:none}}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+svg.dg .t-sub,svg.dg .t-tech,svg.dg .arrow text,svg.dg .t-label,svg.dg .badge text{font-size:17px}
+figure svg,.stepper svg{max-width:540px}
+.nw{white-space:nowrap}
+.legend,.map-cap,.facts dt,.taglegend,.src{font-size:14px}
+@media (min-width:900px){figure.map2 svg,.map svg,.stepper svg{max-width:420px}}
+</style>
+</head>
+<body>
+
+<nav class="chips" aria-label="문서 안 이동">
+  <a href="#top">한눈에</a>
+  <a href="#s-analogy">비유</a>
+  <a href="#s-flow">실제 한 건</a>
+  <a href="#s-want">원한 것과 지금</a>
+  <a href="#s-parts">구성</a>
+  <a href="#s-why">왜 이렇게</a>
+  <a href="#s-check">확인할 것</a>
+  <a href="#s-practice">말해 보기</a>
+  <a href="#s-glossary">용어</a>
+  <button class="theme" id="themeBtn" type="button" aria-label="밝게 또는 어둡게 전환">밝기</button>
+</nav>
+
+<main>
+
+<header class="hero" id="top">
+  <h1>하네스 v2, 원했던 것에서 지금까지</h1>
+  <p class="answer">AI에게 일을 맡기고, 결정은 오너가 지문으로 하는 도구예요. 맡기기는 돌고, 지문은 시험만, 전문가는 아직이에요. <span class="tag inf">추론</span></p>
+  <dl class="facts">
+    <div><dt>왜 필요해요</dt><dd>AI 워커가 오너와 같은 맥 계정에서 돌아, 오너인 척 결정할 수 있었어요. <button class="term" type="button" data-term="harness" aria-expanded="false">하네스</button>는 결정을 오너 손에 두고, 도구를 바꿔도 기록이 남게 해요. <span class="tag ok">확인</span> <span class="src">ADR 0006, 0003</span></dd></div>
+    <div><dt>이 문서가 다루는 것</dt><dd>처음 원한 10가지, 정한 것, 지금 되는 것, 15일 새벽에 한 일이에요. 먼저 할 일은 <a href="#s-check">지문 확인 한 번</a>이에요. <span class="asof">2026-10-15 05:11 기준</span></dd></div>
+  </dl>
+  <div class="map">
+    <svg viewBox="0 0 360 200" role="img" aria-label="전체 지도: 오너가 하네스에 일을 맡기면 하네스의 규칙과 명령 도구가 AI 워커에게 지시하고 보고를 받는다. 결정은 하네스가 보안 칩에 서명을 요청하고 오너가 지문을 대면 보안 칩이 서명을 돌려준다. 전문가 팩은 지금 한 개가 워커에게 지식을 준다">
+      <defs><marker id="m-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+      <text class="map-title" x="180" y="16" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">하네스 v2의 전체 구조</text>
+      <rect x="132" y="28" width="96" height="72" rx="12" fill="var(--accent)" fill-opacity=".16" stroke="none"/>
+      <a href="#s-check" aria-label="오너가 할 일로 이동"><rect x="4" y="36" width="84" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="46" y="60" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">오너</text><text x="46" y="82" text-anchor="middle" fill="var(--muted)" font-size="17">결정</text></a>
+      <g class="arrow"><line x1="90" y1="54" x2="134" y2="54" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="112" y="44" text-anchor="middle" fill="var(--muted)" font-size="17">맡김</text></g>
+      <g class="arrow"><line x1="136" y1="80" x2="92" y2="80" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="112" y="99" text-anchor="middle" fill="var(--muted)" font-size="17">결과</text></g>
+      <a href="#s-parts" aria-label="하네스 구성으로 이동"><rect x="138" y="36" width="84" height="56" rx="10" fill="var(--surface)" stroke="var(--ink-2)"/><text x="180" y="60" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">하네스</text><text x="180" y="82" text-anchor="middle" fill="var(--muted)" font-size="17">규칙과 명령</text></a>
+      <g class="arrow"><line x1="224" y1="52" x2="268" y2="52" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="246" y="44" text-anchor="middle" fill="var(--muted)" font-size="17">지시</text></g>
+      <g class="arrow"><line x1="270" y1="76" x2="226" y2="76" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="246" y="95" text-anchor="middle" fill="var(--muted)" font-size="17">보고</text></g>
+      <a href="#s-parts" aria-label="AI 워커 설명으로 이동"><rect x="272" y="36" width="84" height="56" rx="10" fill="var(--surface-2)" stroke="var(--muted)"/><text x="314" y="60" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">AI 워커</text><text x="314" y="82" text-anchor="middle" fill="var(--muted)" font-size="17">맡은 일</text></a>
+      <g class="arrow"><line x1="166" y1="94" x2="166" y2="130" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="158" y="118" text-anchor="end" fill="var(--muted)" font-size="17">서명 요청</text></g>
+      <g class="arrow"><line x1="196" y1="132" x2="196" y2="96" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="204" y="116" text-anchor="start" fill="var(--muted)" font-size="17">서명</text></g>
+      <a href="#s-flow" aria-label="지문 서명 흐름으로 이동"><rect x="138" y="134" width="84" height="56" rx="10" fill="var(--surface-2)" stroke="var(--muted)"/><text x="180" y="158" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">보안 칩</text><text x="180" y="180" text-anchor="middle" fill="var(--muted)" font-size="17">지문 서명</text></a>
+      <g class="arrow"><line x1="40" y1="94" x2="134" y2="172" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="76" y="142" text-anchor="end" fill="var(--muted)" font-size="17">지문</text></g>
+      <a href="#s-want" aria-label="원한 것과 지금으로 이동"><rect x="272" y="134" width="84" height="56" rx="10" fill="var(--surface)" stroke="var(--ink-2)"/><text x="314" y="158" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">전문가 팩</text><text x="314" y="180" text-anchor="middle" fill="var(--muted)" font-size="17">1개뿐</text></a>
+      <g class="arrow"><line x1="314" y1="132" x2="314" y2="96" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#m-arr)"/><text x="306" y="118" text-anchor="end" fill="var(--muted)" font-size="17">지식</text></g>
+    </svg>
+    <div class="legend"><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>사람</span><span><i style="background:var(--surface);border-color:var(--ink-2)"></i>우리 시스템 (하네스는 옅은 바탕 안)</span><span><i style="background:var(--surface-2);border-color:var(--muted)"></i>외부</span></div>
+    <p class="map-cap">상자를 누르면 해당 설명으로 가요</p>
+  </div>
+  <p class="taglegend">표시는 이렇게 읽어요. <span class="tag ok">확인</span> 원천을 직접 봤어요 <span class="tag inf">추론</span> 확인한 두 사실을 이었어요 <span class="tag est">추정</span> 짐작이에요 <span class="tag no">확인 못 함</span> 아직 못 봤어요</p>
+</header>
+
+<section id="s-analogy" aria-labelledby="h-analogy">
+  <h2 id="h-analogy">작은 식당으로 보면 쉬워요</h2>
+  <div class="box analogy"><b>비유</b>작은 식당을 떠올려 보세요. 사장이 매니저에게 일을 맡기면, 매니저가 주문서를 써서 주방에 넘겨요. 요리사는 요리하고 완성 메모를 남겨요. 메뉴를 바꾸는 큰 결정에는 사장 도장이 있어야 해요. 주문서 양식과 도장 절차는 식당 운영 규칙에 적혀 있어요.</div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>비유에서</th><th>실제로는</th></tr></thead>
+    <tbody>
+      <tr><td>식당 운영 규칙</td><td>하네스예요. 주문서 양식, 메모 양식, 도장 절차를 정한 규칙과 명령 도구예요.</td></tr>
+      <tr><td>사장</td><td>오너(고텍이)예요.</td></tr>
+      <tr><td>매니저</td><td><button class="term" type="button" data-term="lead" aria-expanded="false">리드</button>예요. 주문서를 쓰고 결과를 검사해요.</td></tr>
+      <tr><td>주문서</td><td>작업 명세예요.</td></tr>
+      <tr><td>주방</td><td>워커가 일하는 별도 작업 폴더예요.</td></tr>
+      <tr><td>요리사</td><td><button class="term" type="button" data-term="worker" aria-expanded="false">AI 워커</button>예요.</td></tr>
+      <tr><td>완성 메모</td><td>워커의 보고서 <button class="term" type="button" data-term="handoff" aria-expanded="false">HANDOFF</button>예요.</td></tr>
+      <tr><td>사장 도장</td><td>지문을 거친 서명이에요.</td></tr>
+      <tr><td>레시피 책</td><td>분야별 <button class="term" type="button" data-term="pack" aria-expanded="false">팩</button>이에요. 아직 보고 형식 한 권뿐이에요.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="box limit"><b>이 비유가 안 맞는 곳</b>식당에서는 요리사와 사장이 다른 사람인 게 눈에 보여요. 맥에서는 AI 워커가 오너와 같은 계정으로 돌아, 파일로 둔 도장을 오너처럼 꺼낼 수 있었어요. 그래서 도장을 맥의 보안 칩 안으로 옮기고 지문을 거치게 했어요.</div>
+</section>
+
+<section id="s-flow" aria-labelledby="h-flow">
+  <h2 id="h-flow">실제 한 건: 화면에서 결정하기</h2>
+  <p class="recall">식당으로 치면 완성 메모를 보고 사장이 도장을 찍기까지예요.</p>
+  <p>15일 새벽, 스크립트가 오너 대신 창을 띄우지 않는 크롬으로 결정 화면을 눌러 본 기록이에요. 워커와 서명 도구는 둘 다 테스트용이에요. <span class="tag ok">확인</span> <span class="src">evidence/2026-10-15-night/audit-8.md</span></p>
+  <p>질문 한 건은 <button class="term" type="button" data-term="gate" aria-expanded="false">게이트</button>가 되고, 이 예는 <button class="term" type="button" data-term="serve" aria-expanded="false">화면 서버</button>에서 결정했어요(터미널도 돼요).</p>
+  <p>예는 <button class="term" type="button" data-term="cache" aria-expanded="false">캐시</button>를 얼마나 오래 둘지 정하는 시험 프로젝트의 T-001이에요(아래 작업 카드와 다른 번호예요).</p>
+  <div class="stepper" data-stepper>
+    <svg viewBox="0 0 360 96" role="img" aria-label="화면 결정의 다섯 단계: 맡김, 보고, 화면, 서명, 검증">
+      <text class="fig-title" x="180" y="18" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">화면 결정의 다섯 단계</text>
+      <g class="node" data-step="0"><rect x="2" y="34" width="66" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="35" y="65" text-anchor="middle" fill="var(--ink)" font-size="17">1. 맡김</text></g>
+      <g class="node" data-step="1"><rect x="75" y="34" width="66" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="108" y="65" text-anchor="middle" fill="var(--ink)" font-size="17">2. 보고</text></g>
+      <g class="node" data-step="2"><rect x="148" y="34" width="66" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="181" y="65" text-anchor="middle" fill="var(--ink)" font-size="17">3. 화면</text></g>
+      <g class="node" data-step="3"><rect x="221" y="34" width="66" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="254" y="65" text-anchor="middle" fill="var(--ink)" font-size="17">4. 서명</text></g>
+      <g class="node" data-step="4"><rect x="294" y="34" width="64" height="52" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="326" y="65" text-anchor="middle" fill="var(--ink)" font-size="17">5. 검증</text></g>
+    </svg>
+    <p class="step-text" aria-live="polite"></p>
+    <table class="state"><tbody></tbody></table>
+    <div class="step-nav"><button type="button" data-prev>이전</button><button type="button" data-next>다음</button><span class="step-count"></span></div>
+    <script type="application/json" data-steps>
+    [
+      {"text":"리드가 캐시 설정 작업 T-001을 테스트용 워커에게 맡겼어요.","state":{"작업":"T-001 캐시 설정 (진행 중)","게이트":"(아직 없음)","화면":"(아직 없음)","지문 창 문구":"(아직 없음)","검증":"(아직 없음)"}},
+      {"text":"워커가 보고서에 막는 질문 두 개를 적었어요. 하네스가 게이트 G-001과 G-002를 열고 작업을 멈춰요.","state":{"작업":"T-001 결정 대기","게이트":"G-001 캐시 만료를 얼마로 할까요? (5분, 1분), 결정 전","화면":"(아직 없음)","지문 창 문구":"(아직 없음)","검증":"결정 전"}},
+      {"text":"스크립트가 오너 대신 화면 서버 주소를 열어요. G-001 결정 화면에 확인 코드가 보여요.","state":{"작업":"T-001 결정 대기","게이트":"G-001 결정 전","화면":"결정 화면, 확인 코드 FBA2","지문 창 문구":"(아직 없음)","검증":"결정 전"}},
+      {"text":"5분을 골라 제출해요. 지문 창 문구에 화면과 같은 코드가 들어가요. 이 실행에서는 테스트용 도구가 문구를 남겼어요.","state":{"작업":"T-001 결정 대기","게이트":"G-001 결정 전","화면":"결정 화면, 확인 코드 FBA2","지문 창 문구":"gotechy G-001 T-001: 5분 (확인 FBA2)","검증":"결정 전"}},
+      {"text":"게이트에 결과와 서명이 남고, 검증이 통과해요. 서버 터미널에는 세션, 제출, 결정이 한 줄씩 찍혀요.","state":{"작업":"T-001 결정 대기 (G-002 남음)","게이트":"G-001 결정됨, 5분","화면":"결정했어요","지문 창 문구":"gotechy G-001 T-001: 5분 (확인 FBA2)","검증":"ok (검증 통과)"}}
+    ]
+    </script>
+  </div>
+  <div class="whatif" data-whatif>
+    <b>직접 골라 보기</b>
+    <p>상황을 고르면 기록되는 것이 보여요. 모두 자동 테스트로 확인했어요. <span class="src">tests/e2e/serve.test.ts</span></p>
+    <div class="opts" role="group" aria-label="상황 고르기"><button type="button" data-opt="ok">그대로 제출</button><button type="button" data-opt="cancel">지문 창 취소</button><button type="button" data-opt="stale">보고서가 바뀐 뒤 제출</button><button type="button" data-opt="other">다른 사이트가 제출</button></div>
+    <div class="out" aria-live="polite"></div>
+    <script type="application/json" data-outcomes>
+    {"default":"ok","ok":"서명이 남고 검증은 ok예요. 남은 막는 결정이 없고 자동 실행을 켠 작업이면 다음 실행이 바로 시작돼요. 이 예는 G-002가 남아 시작하지 않아요.","cancel":"아무것도 기록하지 않고, 화면에 이유를 보여 줘요.","stale":"화면을 그린 뒤 보고서가 바뀌었으니 거부해요(응답 번호 409, 충돌). 다시 보고 결정하게 해요.","other":"출처 검사와 위조 방지 값이 맞지 않아 거부해요(응답 번호 403, 허락 안 함). 아무것도 기록하지 않아요."}
+    </script>
+  </div>
+  <div class="box trap"><b>아직 못 본 것</b>진짜 지문으로 서명한 적은 아직 없어요. 실제 오너 키는 오너가 있을 때 만들기로 했어요. <span class="tag no">확인 못 함</span></div>
+</section>
+
+<section id="s-want" aria-labelledby="h-want">
+  <h2 id="h-want">원한 것과 지금</h2>
+  <p class="recall">식당으로 치면 주방과 도장 절차는 갖췄고, 레시피 책은 아직 한 권이에요.</p>
+  <p>처음 원한 10가지(R1~R10)를 같은 <button class="term" type="button" data-term="rubric" aria-expanded="false">판정표</button>로 매겼어요. 0은 없음, 1은 설계, 2는 자동 테스트 통과, 3은 실제 환경 실측, 4는 실사용이에요. 리드의 첫 자체 판정이라 오너 확인 전이에요. <span class="tag ok">확인</span> <span class="src">product-specs/harness-v2-rubric.md</span></p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>원한 것</th><th>지금</th><th>무엇이 있나</th></tr></thead>
+    <tbody>
+      <tr><td>R1 분야별 전문가</td><td>1 설계</td><td>설계만 있어요. 팩은 보고 형식 하나예요.</td></tr>
+      <tr><td>R2 자동 최신화</td><td>1 설계</td><td>설계만 있어요.</td></tr>
+      <tr><td>R3 어디서든 같게</td><td>3 실측</td><td>맥의 새 환경에서 2분 31초에 설치와 진단을 통과했어요.</td></tr>
+      <tr><td>R4 필요한 것만 꺼내 쓰기</td><td>2 동작</td><td>팩을 <button class="term" type="button" data-term="apm" aria-expanded="false">apm</button>으로 골라 깔아요.</td></tr>
+      <tr><td>R5 <button class="term" type="button" data-term="token" aria-expanded="false">토큰</button> 아끼기</td><td>2 동작</td><td>진단이 스킬 크기와 개수를 봐요. 절약량은 안 쟀어요.</td></tr>
+      <tr><td>R6 어떤 AI 도구에서도</td><td>3 실측</td><td>AI 코딩 도구 두 가지가 같은 작업 명세로 실제로 돌았어요.</td></tr>
+      <tr><td>R7 바로 이해하기</td><td>3 실측</td><td>실제 워커의 보고서가 형식 검사를 통과했어요. 읽기 화면도 있어요.</td></tr>
+      <tr><td>R8 맡기고 나눠 하기</td><td>2 동작</td><td><button class="term" type="button" data-term="loop" aria-expanded="false">무인 루프</button>까지 있지만 실제 워커로는 안 돌렸어요.</td></tr>
+      <tr><td>R9 오너가 이해하며 결정</td><td>2 동작</td><td>이해 질문, 지문 서명, 키 고정이 있어요. 진짜 지문은 아직이에요.</td></tr>
+      <tr><td>R10 취업 증거</td><td>2 동작</td><td>공개 커밋 링크와 수치를 모았어요.</td></tr>
+    </tbody>
+  </table></div>
+  <p>처음 원한 핵심인 R1과 R2는 다음 단계예요. 일하는 방식은 지킴 6, 부분 1, 어김 1이에요(어김은 자동 검사 실패를 늦게 고친 것). <span class="tag ok">확인</span> <span class="src">harness-v2-rubric.md 2, 4절</span></p>
+  <h3>지금 할 수 있는 것</h3>
+  <p>설치, 맡기기, 읽기, 결정, 합치기, 무인 실행이 돼요. 결정과 무인 실행은 테스트 도구로만 확인했어요. <span class="tag ok">확인</span> <span class="src">docs/generated/cli.md</span></p>
+  <details class="ref"><summary>명령별 확인 수준 (7줄)</summary>
+    <div class="tablewrap"><table>
+    <thead><tr><th>명령</th><th>하는 일</th><th>확인 수준</th></tr></thead>
+    <tbody>
+      <tr><td><code>bin/gotechy doctor</code></td><td>새 컴퓨터에 도구를 깔고 진단해요.</td><td>맥에서 실측했어요.</td></tr>
+      <tr><td><code>gotechy init</code></td><td>프로젝트에 규칙, 팩, 가드를 깔아요.</td><td>자동 테스트로 확인했어요.</td></tr>
+      <tr><td><code>gotechy task new</code>, <code>run</code></td><td>작업 명세를 만들고 워커에게 맡겨요.</td><td>실제 워커로 실측했어요.</td></tr>
+      <tr><td><code>gotechy inbox</code>, <code>render</code></td><td>보고서를 3단으로 읽게 보여 줘요.</td><td>실제 보고서로 실측했어요.</td></tr>
+      <tr><td><code>gotechy decide</code>, <code>serve</code></td><td>터미널이나 화면에서 지문으로 결정해요.</td><td>테스트 도구로만 확인했어요.</td></tr>
+      <tr><td><code>gotechy accept</code></td><td>승인한 결과를 다시 검사하고 합쳐요.</td><td>자동 테스트로 확인했어요.</td></tr>
+      <tr><td><code>gotechy loop</code></td><td>자리를 비운 동안 작업을 차례로 돌려요.</td><td>테스트 워커로만 확인했어요.</td></tr>
+    </tbody>
+  </table></div>
+  </details>
+</section>
+
+<section id="s-parts" aria-labelledby="h-parts">
+  <h2 id="h-parts">한 단계 확대한 구성</h2>
+  <p>AI 워커는 지금 <button class="term" type="button" data-term="claude" aria-expanded="false">클로드 코드</button>와 <button class="term" type="button" data-term="codex" aria-expanded="false">코덱스</button>예요. 둘 다 같은 작업 명세를 받아요. <span class="tag ok">확인</span> <span class="src">ADR 0003</span></p>
+  <figure class="map2">
+    <svg class="dg" data-diagram viewBox="0 0 360 628" role="img" aria-label="구성 요소 그림: 공개 저장소의 팩을 설치 묶음이 깔고, 설치 묶음이 명령 도구를 깐다. 리드가 명령 도구로 AI 워커에게 지시하고, 워커는 기록 파일에 보고서를 쓴다. 명령 도구는 기록 파일에 작업 명세를 쓰고, 화면 서버는 기록 파일을 읽고 결정을 기록한다. 화면 서버가 오너에게 보고서를 보여 주고, 오너가 결정하면 서명 도구가 보안 칩에 서명을 요청하고, 오너가 지문을 대면 보안 칩이 서명을 돌려준다">
+      <defs><marker id="m-arr2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker><marker id="m-arr2s" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" fill="var(--muted)"/></marker></defs>
+      <text class="fig-title t-title" x="180" y="18" text-anchor="middle" font-size="17">하네스 안의 구성 요소</text>
+      <rect x="210" y="28" width="146" height="592" rx="14" fill="var(--accent)" fill-opacity=".07" stroke="var(--accent)" stroke-opacity=".35"/>
+      <text class="t-sub" x="283" y="612" text-anchor="middle" font-size="16">우리 시스템 경계</text>
+      <g class="node" data-id="repo" data-note="팩의 원본이 있는 깃허브 저장소예요. 설치 묶음은 train에 적힌 커밋으로만 팩을 받아요.">
+        <rect x="8" y="36" width="132" height="76" rx="12" fill="var(--surface-2)" stroke="var(--muted)"/>
+        <text class="t-name" x="74" y="60" text-anchor="middle" font-size="17">공개 저장소</text>
+        <text class="t-tech" x="74" y="82" text-anchor="middle" font-size="16">[외부] 깃허브</text>
+        <text class="t-sub" x="74" y="102" text-anchor="middle" font-size="16">전문가 팩 원본</text>
+      </g>
+      <g class="arrow" data-from="repo" data-to="install"><line x1="142" y1="74" x2="216" y2="74" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="178" y="66" text-anchor="middle" font-size="16">팩</text></g>
+      <g class="node" data-id="install" data-note="처음 실행할 때 도구 관리 프로그램을 받아, 정해진 판의 도구를 깔아요. 팩은 공개 저장소의 커밋에 고정해 깔아요.">
+        <rect x="220" y="36" width="132" height="76" rx="12" fill="var(--surface)" stroke="var(--ink-2)"/>
+        <text class="t-name" x="286" y="60" text-anchor="middle" font-size="17">설치 묶음</text>
+        <text class="t-tech" x="286" y="82" text-anchor="middle" font-size="16">[락 파일] train</text>
+        <text class="t-sub" x="286" y="102" text-anchor="middle" font-size="16">버전 고정</text>
+      </g>
+      <g class="arrow" data-from="install" data-to="cli"><line x1="250" y1="114" x2="250" y2="152" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="258" y="139" text-anchor="start" font-size="16">처음 설치</text></g>
+      <g class="node" data-id="lead" data-note="작업 명세를 쓰고 명령 도구로 워커를 돌린 뒤 결과를 검사하는 AI 대화 세션이에요. 결정은 하지 않고 오너에게 올려요.">
+        <rect x="8" y="156" width="132" height="76" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text class="t-name" x="74" y="180" text-anchor="middle" font-size="17">리드</text>
+        <text class="t-tech" x="74" y="202" text-anchor="middle" font-size="16">[AI 세션] 클로드</text>
+        <text class="t-sub" x="74" y="222" text-anchor="middle" font-size="16">맡기고 검사</text>
+      </g>
+      <g class="arrow" data-from="lead" data-to="cli"><line x1="142" y1="194" x2="216" y2="194" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="178" y="186" text-anchor="middle" font-size="16">명령</text></g>
+      <g class="node" data-id="cli" data-note="오너와 리드가 치는 gotechy 명령이에요. 일을 맡기고, 워커가 쓴 코드를 격리된 곳에서 검사하고, 승인한 결과를 합쳐요. 무인 루프와 부작용 가드도 여기 있어요.">
+        <rect x="220" y="156" width="132" height="76" rx="12" fill="var(--surface)" stroke="var(--ink-2)"/>
+        <text class="t-name" x="286" y="180" text-anchor="middle" font-size="17">명령 도구</text>
+        <text class="t-tech" x="286" y="202" text-anchor="middle" font-size="16">[명령줄] gotechy</text>
+        <text class="t-sub" x="286" y="222" text-anchor="middle" font-size="16">실행과 검사</text>
+      </g>
+      <g class="arrow" data-from="cli" data-to="worker"><line x1="222" y1="234" x2="144" y2="280" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="166" y="250" text-anchor="middle" font-size="16">지시</text></g>
+      <g class="arrow" data-from="cli" data-to="records"><line x1="250" y1="234" x2="250" y2="272" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="258" y="259" text-anchor="start" font-size="16">작업 명세</text></g>
+      <g class="node" data-id="worker" data-note="클로드 코드와 코덱스예요. 별도 작업 폴더에서 깔린 팩을 읽고 일한 뒤 보고서를 남겨요.">
+        <rect x="8" y="276" width="132" height="76" rx="12" fill="var(--surface-2)" stroke="var(--muted)"/>
+        <text class="t-name" x="74" y="300" text-anchor="middle" font-size="17">AI 워커</text>
+        <text class="t-tech" x="74" y="322" text-anchor="middle" font-size="16">[외부 AI]</text>
+        <text class="t-sub" x="74" y="342" text-anchor="middle" font-size="16">클로드, 코덱스</text>
+      </g>
+      <g class="arrow" data-from="worker" data-to="records"><line x1="142" y1="314" x2="216" y2="314" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="178" y="306" text-anchor="middle" font-size="16">보고서</text></g>
+      <g class="node" data-id="records" data-note="작업 명세, 보고서, 게이트, 고정 키는 저장소의 orchestration 폴더에 두고 커밋해요. 결정 장부는 같은 폴더의 private에 두고 커밋하지 않아요.">
+        <rect x="220" y="276" width="132" height="76" rx="12" fill="var(--surface)" stroke="var(--ink-2)"/>
+        <text class="t-name" x="286" y="300" text-anchor="middle" font-size="17">기록 파일</text>
+        <text class="t-tech" x="286" y="322" text-anchor="middle" font-size="16">[저장소 폴더]</text>
+        <text class="t-sub" x="286" y="342" text-anchor="middle" font-size="16">명세, 보고, 결정</text>
+      </g>
+      <g class="arrow" data-from="records" data-to="screen"><line x1="250" y1="356" x2="250" y2="392" stroke="var(--muted)" stroke-width="1.8" marker-start="url(#m-arr2s)" marker-end="url(#m-arr2)"/><text x="258" y="379" text-anchor="start" font-size="16">읽고 기록</text></g>
+      <g class="node" data-id="owner" data-note="오너(고텍이)예요. 화면이나 터미널에서 결정하고, 지문 창의 확인 코드를 본 뒤 지문을 대요.">
+        <rect x="8" y="396" width="132" height="76" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text class="t-name" x="74" y="420" text-anchor="middle" font-size="17">오너</text>
+        <text class="t-tech" x="74" y="442" text-anchor="middle" font-size="16">[사람] 고텍이</text>
+        <text class="t-sub" x="74" y="462" text-anchor="middle" font-size="16">결정과 지문</text>
+      </g>
+      <g class="arrow" data-from="owner" data-to="screen"><line x1="142" y1="452" x2="216" y2="452" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="178" y="471" text-anchor="middle" font-size="16">결정</text></g>
+      <g class="arrow" data-from="screen" data-to="owner"><line x1="218" y1="420" x2="144" y2="420" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="178" y="412" text-anchor="middle" font-size="16">보고서</text></g>
+      <g class="node" data-id="screen" data-note="127.0.0.1에만 여는 결정 화면이에요. 인박스와 보고서를 보여 주고, 한 번만 쓰는 접속 값, 출처 검사, 위조 방지 값을 거쳐 결정을 받아요. 터미널과 같은 경로로 서명해요.">
+        <rect x="220" y="396" width="132" height="76" rx="12" fill="var(--surface)" stroke="var(--ink-2)"/>
+        <text class="t-name" x="286" y="420" text-anchor="middle" font-size="17">화면 서버</text>
+        <text class="t-tech" x="286" y="442" text-anchor="middle" font-size="16">[서버] serve</text>
+        <text class="t-sub" x="286" y="462" text-anchor="middle" font-size="16">결정 화면</text>
+      </g>
+      <g class="arrow key" data-from="screen" data-to="signer"><line x1="250" y1="474" x2="250" y2="512" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="258" y="499" text-anchor="start" font-size="16">서명 요청</text></g>
+      <g class="arrow" data-from="owner" data-to="enclave"><line x1="74" y1="474" x2="74" y2="512" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="82" y="499" text-anchor="start" font-size="16">지문</text></g>
+      <g class="node" data-id="enclave" data-note="맥의 보안 칩(Secure Enclave)이에요. 지문이나 맥 암호를 받은 뒤 키로 서명해요. 키는 칩 밖으로 나오지 않아요.">
+        <rect x="8" y="516" width="132" height="76" rx="12" fill="var(--surface-2)" stroke="var(--muted)"/>
+        <text class="t-name" x="74" y="540" text-anchor="middle" font-size="17">보안 칩</text>
+        <text class="t-tech" x="74" y="562" text-anchor="middle" font-size="16">[하드웨어] 애플</text>
+        <text class="t-sub" x="74" y="582" text-anchor="middle" font-size="16">키와 서명</text>
+      </g>
+      <g class="arrow key" data-from="signer" data-to="enclave"><line x1="218" y1="540" x2="144" y2="540" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="178" y="532" text-anchor="middle" font-size="16">요청</text></g>
+      <g class="arrow key" data-from="enclave" data-to="signer"><line x1="142" y1="572" x2="216" y2="572" stroke="var(--muted)" stroke-width="1.8" marker-end="url(#m-arr2)"/><text x="178" y="592" text-anchor="middle" font-size="16">서명</text></g>
+      <g class="node" data-id="signer" data-note="결정과 그 장부 줄 두 개만 받아, 서로 맞을 때만 확인 한 번으로 서명해요. 지문 창 문구에 작업 번호와 확인 코드를 넣어요.">
+        <rect x="220" y="516" width="132" height="76" rx="12" fill="var(--surface)" stroke="var(--ink-2)"/>
+        <text class="t-name" x="286" y="540" text-anchor="middle" font-size="17">서명 도구</text>
+        <text class="t-tech" x="286" y="562" text-anchor="middle" font-size="16">[도구] ownerkey</text>
+        <text class="t-sub" x="286" y="582" text-anchor="middle" font-size="16">확인 뒤 서명</text>
+      </g>
+    </svg>
+    <div class="legend"><span><i style="background:var(--surface);border-color:var(--ink-2)"></i>우리 시스템 (옅은 바탕 안)</span><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>사람과 리드</span><span><i style="background:var(--surface-2);border-color:var(--muted)"></i>외부</span><span><i style="background:none;border:0;border-top:2px dashed var(--accent);height:0;vertical-align:middle"></i>핵심 흐름 (화면 서버는 15일, 서명 도구는 14일에 만든 결정 경로)</span></div>
+    <figcaption>전체 지도의 하네스 상자를 연 모습이에요. 모두 오너의 맥 한 대에서 돌아요. 계획 단계의 실행 도구 연결은 그리지 않았어요. 상자를 누르면 설명이 보여요.</figcaption>
+  </figure>
+  <p>설치 묶음의 <button class="term" type="button" data-term="train" aria-expanded="false">train</button>은 함께 시험한 도구 버전 목록이에요. 명령 도구 안의 <button class="term" type="button" data-term="guard" aria-expanded="false">부작용 가드</button>는 클로드 코드가 결정, 강제 덮어쓰기, 배포 같은 명령을 실행하기 직전에 막아요. 자동 테스트만 통과했고, 코덱스용은 아직이에요. <span class="tag ok">확인</span> <span class="src">contract.md 12절, handoffs/T-004.md</span></p>
+  <details class="ref"><summary>구성 요소 표 (유형, 하는 일, 기술, 근거)</summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>구성 요소</th><th>유형</th><th>하는 일</th><th>기술</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>설치 묶음</td><td>우리 시스템</td><td>도구와 팩을 정한 판으로 깔아요.</td><td>train, mise, apm</td><td class="src">train.yaml, src/runtime/packs.ts</td></tr>
+        <tr><td>명령 도구</td><td>우리 시스템</td><td>맡기고 검사하고 합쳐요. 무인 루프와 가드도 여기 있어요.</td><td>gotechy 명령줄</td><td class="src">src/cli.ts, src/runtime/loop.ts, src/core/guard.ts</td></tr>
+        <tr><td>기록 파일</td><td>우리 시스템</td><td>작업 명세, 보고서, 게이트, 결정 장부를 저장소 폴더에 둬요.</td><td>orchestration 폴더</td><td class="src">ADR 0003, contract.md 0절</td></tr>
+        <tr><td>화면 서버</td><td>우리 시스템</td><td>결정 화면을 열어요.</td><td>로컬 서버</td><td class="src">src/runtime/serve.ts</td></tr>
+        <tr><td>서명 도구</td><td>우리 시스템</td><td>확인 뒤 서명해요.</td><td>보안 칩용 작은 프로그램</td><td class="src">native/ownerkey.swift</td></tr>
+        <tr><td>리드</td><td>AI 대화 세션</td><td>명령 도구로 일을 맡기고 검사해요.</td><td>클로드 코드</td><td class="src">AGENTS.md</td></tr>
+        <tr><td>AI 워커</td><td>외부</td><td>맡은 일을 하고 보고서를 써요.</td><td>클로드 코드, 코덱스</td><td class="src">src/runtime/adapters/</td></tr>
+        <tr><td>공개 저장소</td><td>외부</td><td>팩의 원본을 커밋으로 내줘요.</td><td>깃허브</td><td class="src">train.yaml packs</td></tr>
+        <tr><td>보안 칩</td><td>외부(맥)</td><td>키를 보관하고 서명해요.</td><td>애플 보안 칩</td><td class="src">contract.md 6.3절</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+</section>
+
+<section id="s-why" aria-labelledby="h-why">
+  <h2 id="h-why">왜 이렇게 정했나</h2>
+  <p class="recall">식당으로 치면 도장을 사장 손가락이 닿아야만 찍히게 바꾼 이유예요.</p>
+  <p>아래 결정은 설계 결정 기록(D1~D14, D3은 미결, D12는 방향만 합의), 다른 AI의 반대 검토, 보안 감사 11번, 실험에서 나왔어요. <span class="tag ok">확인</span> <span class="src">design-docs/2026-10-13-expert-library-v0.md, harness-v2-rubric.md 4절</span></p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>결정</th><th>이유</th><th>버린 대안</th></tr></thead>
+    <tbody>
+      <tr><td>기록은 저장소 파일에 두고, 도구는 실행만 해요.</td><td>도구를 바꿔도 기록이 그대로예요. <span class="tag ok">확인</span> <span class="src">ADR 0003</span></td><td><button class="term" type="button" data-term="orca" aria-expanded="false">Orca</button> 하나에 의존(회사 PC처럼 Orca가 없으면 멈춰요), 다른 실행 도구 추가(유지 비용)</td></tr>
+      <tr><td>결정은 <button class="term" type="button" data-term="enclave" aria-expanded="false">보안 칩</button> 키로 서명해요.</td><td>같은 계정의 AI가 비밀 값 파일을 읽고 오너인 척할 수 있었어요. <span class="tag ok">확인</span> <span class="src">ADR 0006 (오너 확인 전 제안)</span></td><td>파일 비밀 키(1a 방식, 같은 계정 프로그램이 읽어요), 맥 키체인(같은 사용자 앱이 꺼낼 수 있어요), 보안 키 기기(사야 하고 늘 꽂아야 해요)</td></tr>
+      <tr><td>검증은 프로젝트의 <button class="term" type="button" data-term="pin" aria-expanded="false">고정 키</button>로 해요.</td><td>이 맥의 키만 바꿔서는 결정을 만들 수 없고, 고정 파일을 바꾸면 기록에 드러나요. <span class="tag ok">확인</span> <span class="src">contract.md 6.3절</span></td><td>이 맥의 현재 키로 검증(바꿔치기를 못 잡아요)</td></tr>
+      <tr><td>지문 창에 <button class="term" type="button" data-term="confirmcode" aria-expanded="false">확인 코드</button>를 넣어요.</td><td>게이트 번호만으로는 내 결정의 창인지 알기 어려워요. <span class="tag ok">확인</span> <span class="src">감사 8차</span></td><td>번호와 선택만 표시</td></tr>
+      <tr><td>팩은 공개 저장소의 커밋에 고정해요.</td><td>커밋은 바뀌지 않고, 따로 올릴 이름표가 필요 없어요. <span class="tag ok">확인</span> <span class="src">ADR 0002</span></td><td>이름표(태그), 내 컴퓨터 경로, 도구별 복사(변조 검사를 직접 만들어야 해요), 실시간 배포 서버(주요 도구가 아직 지원 안 해요)</td></tr>
+      <tr><td>무인 루프는 시도마다 최소 비용을 미리 잡아 예산을 계산해요.</td><td>비용 한도를 걸 수 없는 워커나 아주 작은 예산 값으로 예산을 피하지 못하게 해요. <span class="tag ok">확인</span> <span class="src">1b 계획 결정 기록</span></td><td>실제 비용만으로 계산</td></tr>
+      <tr><td>가드는 명령을 셸처럼 읽고, 실패하면 막아요.</td><td>대충 읽으면 따옴표 하나에 뒤 명령을 놓쳤어요. <span class="tag ok">확인</span> <span class="src">handoffs/T-004.md</span></td><td>단어 목록만 보기</td></tr>
+    </tbody>
+  </table></div>
+  <div class="box mine"><b>내 코드에서 확인한 곳</b>화면 서버는 <span class="src">serve.ts</span>, 무인 루프는 <span class="src">loop.ts</span>, 가드는 <span class="src">guard.ts</span>, 키 고정은 <span class="src">gates.ts</span>예요(src 아래).</div>
+  <div class="box trap"><b>한계와 실수</b>
+    <ul>
+      <li>실제 지문, 실제 워커로 무인 루프, 실제 클로드 코드에 가드 걸기는 아직이에요. <span class="tag no">확인 못 함</span></li>
+      <li>같은 계정 프로그램이 고정 키 파일과 홈의 기록까지 바꾸면, 저장소 변경 기록에 드러나는 것까지가 방어예요. <span class="tag ok">확인</span> <span class="src">contract.md 6.3절</span></li>
+      <li>테스트 실수로 실행 도구의 캐시 파일 150개가 공개 커밋에 올라갔어요. 비밀 값은 없었어요. <span class="tag ok">확인</span> <span class="src">f4156ca, handoffs/T-004.md</span></li>
+      <li>가드 커밋부터 네 커밋 동안 리눅스 자동 검사가 실패한 채로 두었다가 03:27에 고쳤어요. 그 사이 1단계 앞부분 완료 검사도 통과로 처리했어요. <span class="tag ok">확인</span> <span class="src">CI 기록, harness-v2-rubric.md 4절</span></li>
+    </ul>
+  </div>
+  <details class="ref"><summary>더 적어 둔 한계와 실수 (7줄)</summary><ul>
+    <li>보안 칩이 없는 컴퓨터(리눅스, 일부 인텔 맥)에서는 결정할 수 없고, 화면이 잠기면 서명도 안 돼요. 검증은 결정한 맥과 그 폴더에서만 ok예요. 회사 PC 같은 환경은 아직 답이 없어요. <span class="src">ADR 0006, contract.md 6.3절</span></li>
+    <li>화면 서버 첫 판은 실제 크롬에서 제출이 막혔어요. 자동 테스트가 그걸 못 잡았어요. <span class="src">감사 8차</span></li>
+    <li>가드는 일부러 숨긴 명령(변수로 만든 이름, 별칭, 스크립트 파일)을 잡지 못해요. 최종 방어선은 지문 서명이에요. <span class="src">handoffs/T-004.md</span></li>
+    <li>첫 결정이 키를 처음 고정할 때는 그 순간 이 맥의 키를 믿어요. <span class="src">handoffs/T-006.md</span></li>
+    <li>홈의 기록 위치가 환경 변수 HOME을 따라, 프로젝트 밖의 다른 폴더를 가리키게 하는 것은 막지 못해요(부채 19번). <span class="src">audit-11.md</span></li>
+    <li>밤 계획의 키 고정 작업을 처음에는 건너뛰고 문서로 넘어갔다가 뒤에 알아챘어요. <span class="src">evidence/2026-10-15-night/README.md</span></li>
+    <li>감사 11차 수정은 코드를 먼저 고치고 테스트를 나중에 썼어요. 하나씩 되돌려 보는 점검으로 테스트가 잡는지 확인했어요. <span class="src">harness-v2-rubric.md 4절</span></li>
+  </ul></details>
+</section>
+
+<section id="s-check" aria-labelledby="h-check">
+  <h2 id="h-check">확인할 것과 15일 새벽에 한 일</h2>
+  <h3>확인 필수: 오너가 해야 할 것</h3>
+  <p>답은 리드에게 번호와 선택지로 알려 주세요(원문은 <span class="src">orchestration/handoffs/T-005.md</span>). 막는 결정은 답해야 다음 일이 움직여요. 기본값은 이미 그 값으로 진행했어요.</p>
+  <p>1번이 먼저예요. 화면을 푼 채 터미널 앱의 저장소 폴더에서 치세요.</p>
+  <pre><code>sh scripts/owner-touchid-check.sh</code></pre>
+  <p>이 맥에 실제 오너 키를 만들고, 시험 프로젝트의 같은 질문 두 개를 터미널에서 진짜 지문으로 결정해요. G-001은 지문으로 승인하고, G-002는 지문 창에서 취소해요. 끝의 검증 출력이 G-001 ok, G-002 pending이고 장부 줄 수가 1이면 통과예요. 끝에 안내하는 화면 서버로 화면 결정도 해 봐요(선택). 처음이면 도구를 내려받아요.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>할 일</th><th>선택지</th><th>추천과 이유</th></tr></thead>
+    <tbody>
+      <tr><td>1. 실제 지문 확인 (<button class="term" type="button" data-term="blocking" aria-expanded="false">막는 결정</button>)</td><td>일어나면 바로, 나중에</td><td>바로를 추천해요. 실제 기기로는 아직 한 번도 확인하지 않았어요. 통과하면 보안 칩 결정 기록(0006번)을 승인으로 바꿔요.</td></tr>
+      <tr><td>2. 전역 정책 켜기 (막는 결정)</td><td>자동 업데이트 끄기만 빼고 켜기, 모두 켜기, 아직 켜지 않기</td><td>리드가 화면 서버, 키, 루프 명령을 못 쓰게 하는 줄이 더해졌어요. 첫째를 추천해요. 자동 업데이트 끄기는 지금 쓰는 클로드 코드에 영향이 커서, 리드가 train에서 그 두 줄을 먼저 빼요.</td></tr>
+      <tr><td>3. 공개된 캐시 파일 정리 (막는 결정)</td><td>추적만 해제, 이력에서도 지우기, 그대로 두기</td><td>추적만 해제를 추천해요. 비밀 값과 로컬 경로가 없었고, 이력에서 지우려면 강제 덮어쓰기가 필요해요. 저장소 안전장치가 오너 확인을 요구해 리드는 하지 않았어요.</td></tr>
+      <tr><td>4. 공문서 프로젝트 시작 (기본값)</td><td>확인 뒤 바로, 1b를 더 하고</td><td>D2에서 정한 첫 실전 프로젝트(받은 공문을 처리하는 AI)예요. 하네스 만들기가 일이 되는 함정을 피하려고 바로를 추천해요.</td></tr>
+      <tr><td>5. 이 문서의 해석 (기본값)</td><td>그대로, 다른 뜻으로 다시</td><td>"원했던 과정"을 요구사항부터 지금까지로 읽었어요.</td></tr>
+      <tr><td>6. 기본값 유지 (기본값)</td><td>유지, 하나씩 다시 보기</td><td>클로드 코드와 코덱스의 버전 고정, 팩 커밋 고정, 루프의 코덱스 제외, 첫 결정의 키 고정이에요.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>15일 새벽에 한 일 (01:10~04:39)</h3>
+  <ul>
+    <li>1단계 앞부분(1a, 기본 뼈대)을 마감했어요. 보안 리뷰와 완료 검사를 통과했어요(T-001).</li>
+    <li>화면 결정 서버를 만들고 크롬으로 쟀어요(T-002).</li>
+    <li>무인 루프와 부작용 가드를 만들었어요(T-003, T-004).</li>
+    <li>밤 계획의 키 고정 작업(E5)으로 고정 키와 <button class="term" type="button" data-term="head" aria-expanded="false">장부 끝 기록</button>을 만들어 <button class="term" type="button" data-term="debt" aria-expanded="false">부채</button> 13, 14번을 갚았어요(T-006).</li>
+    <li>보안 감사 7~11차에서 높음은 0건이었어요. <span class="tag ok">확인</span> <span class="src">audit-7.md ~ audit-11.md</span></li>
+    <li>설명 문서, 판정표, 보고서 6건을 썼어요(E8).</li>
+    <li>방어 코드를 하나씩 빼 보는 점검 127종 가운데 114종은 처음부터 잡혔고, 13종은 테스트를 더하거나 코드를 고쳐 처리했어요. <span class="tag ok">확인</span> <span class="src">harness-v2-rubric.md 4절</span></li>
+  </ul>
+  <p>테스트는 1a 완료 검사 때 451개에서 499개로 늘었고 모두 통과했어요. 보안 칩이 필요한 3개는 건너뛰었어요. <span class="tag ok">확인</span> <span class="src">ship-1a.md, handoffs/T-006.md</span></p>
+  <details class="ref"><summary>남은 일 (2줄)</summary>
+  <ul>
+    <li>1단계 뒷부분(1b)에는 클로드 코드 화면의 결정 대기 띠, 코덱스용 가드, Orca 연결, 교차 검증 감사가 남았어요.</li>
+    <li>2단계에는 분야별 팩, 자동 최신화, 하네스 효과 측정이 있어요.</li>
+  </ul></details>
+  <details class="ref"><summary>15일 새벽 커밋 (시각)</summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th>시각</th><th>커밋</th><th>한 일</th></tr></thead>
+      <tbody>
+        <tr><td>01:10</td><td class="src">0911a92</td><td>밤 계획을 세웠어요.</td></tr>
+        <tr><td>01:38</td><td class="src">d6e2b83</td><td>팩 설치를 apm으로 바꿨어요(부채 11번).</td></tr>
+        <tr><td>01:53</td><td class="src">e5f4bfc</td><td>화면 서버를 만들었어요.</td></tr>
+        <tr><td>02:11</td><td class="src">3774690</td><td>1a 전체 보안 리뷰(감사 7차)를 고쳤어요.</td></tr>
+        <tr><td>02:34</td><td class="src">ecaad7c</td><td>감사 8차를 고쳤어요. 실제 크롬 제출, 확인 코드예요.</td></tr>
+        <tr><td>02:45</td><td class="src">c3d9914</td><td>1a 완료 검사를 준비했어요.</td></tr>
+        <tr><td>02:45</td><td class="src">8225ae6</td><td>무인 루프를 만들었어요.</td></tr>
+        <tr><td>02:55</td><td class="src">f4156ca</td><td>부작용 가드와 상태 줄을 만들었어요.</td></tr>
+        <tr><td>03:08</td><td class="src">0d429a1</td><td>감사 9차와 문서 대조 지적을 고쳤어요.</td></tr>
+        <tr><td>03:14</td><td class="src">8bb696e</td><td>1a 완료 검사를 통과했어요.</td></tr>
+        <tr><td>03:24</td><td class="src">b58d6f0</td><td>감사 10차를 고쳤어요.</td></tr>
+        <tr><td>03:27</td><td class="src">90e7598</td><td>자동 검사 실패를 고쳤어요.</td></tr>
+        <tr><td>04:34</td><td class="src">4915fac</td><td>키 고정과 장부 끝 기록(E5, 감사 11차)을 만들었어요. 자동 검사는 시간 초과로 실패했어요.</td></tr>
+        <tr><td>04:36</td><td class="src">09fe656</td><td>키 고정 커밋의 시간 초과를 일부 고쳤어요(이 커밋의 자동 검사도 실패).</td></tr>
+        <tr><td>04:39</td><td class="src">63a0417</td><td>같은 파일의 시간 초과를 마저 고쳤어요. 자동 검사가 통과했어요.</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+  <p>작업 카드는 이렇게 봐요. 첫 줄은 "결정 필요 1건, 완료 5건"이에요.</p>
+  <pre><code>cd docs/references/evidence/2026-10-15-night &amp;&amp; ../../../../bin/gotechy inbox</code></pre>
+</section>
+
+<section id="s-practice" class="practice" aria-labelledby="h-practice">
+  <h2 id="h-practice">내 말로 설명해 보기</h2>
+  <div class="card" data-keywords="맡기|워커,결정|서명|지문,전문가|팩">
+    <p class="q">30초 안에, 하네스 v2가 무엇이고 지금 어디까지 왔는지 설명해 보세요.</p>
+    <textarea aria-label="내 답 적기" placeholder="먼저 내 말로 적어 보세요"></textarea>
+    <button class="reveal" type="button" aria-expanded="false">모범 답과 비교하기</button>
+    <div class="a" hidden><p>AI 워커에게 같은 형식으로 일을 맡기고, 보고서를 읽고, 오너가 지문으로 서명한 결정만 다음 일로 잇는 도구예요. 맡기고 읽는 뼈대는 실제 워커로 돌았어요. 지문 결정은 테스트 도구로만 확인했고, 분야별 전문가 팩과 자동 최신화는 아직 설계뿐이에요.</p><p class="pitfall"><b>흔한 오답</b> "전문가 라이브러리가 완성됐다"는 틀려요. 팩은 보고 형식 하나뿐이에요.</p><p class="kw"></p></div>
+  </div>
+  <div class="card" data-keywords="같은 계정|같은 맥,파일|비밀 값,보안 칩">
+    <p class="q">결정을 지문으로 서명하게 바꾼 이유는 뭘까요?</p>
+    <textarea aria-label="내 답 적기" placeholder="먼저 내 말로 적어 보세요"></textarea>
+    <button class="reveal" type="button" aria-expanded="false">모범 답과 비교하기</button>
+    <div class="a" hidden><p>AI 워커가 오너와 같은 맥 계정에서 돌아서, 서명에 쓰던 비밀 값 파일을 읽고 오너인 척 결정할 수 있었어요. 키를 보안 칩 안에 두고 서명마다 지문을 거치게 하면, 오너 손 없이는 서명이 나오지 않아요. 키를 바꿔치기하는 길은 프로젝트에 고정한 키로 막아요.</p><p class="pitfall"><b>흔한 오답</b> "비밀 값을 더 깊은 폴더에 숨겼다"는 틀려요. 파일로 있는 한 같은 계정 프로그램은 읽을 수 있어요.</p><p class="kw"></p></div>
+  </div>
+  <div class="card" data-keywords="바뀌면|거부,확인 코드,출처|위조">
+    <p class="q">화면에서 결정할 때, 오너가 본 것과 서명하는 것이 같다는 것을 어떻게 지킬까요?</p>
+    <textarea aria-label="내 답 적기" placeholder="먼저 내 말로 적어 보세요"></textarea>
+    <button class="reveal" type="button" aria-expanded="false">모범 답과 비교하기</button>
+    <div class="a" hidden><p>화면을 그릴 때 게이트, 작업 명세, 보고서를 묶은 값을 함께 보내고, 서명 직전에 다시 계산해 다르면 거부해요. 지문 창에는 화면과 같은 확인 코드가 보여요. 다른 사이트의 요청은 출처 검사와 위조 방지 값이 막아요.</p><p class="pitfall"><b>흔한 오답</b> "지문만 대면 안전하다"는 틀려요. 지문은 키를 쓰는 것만 허락할 뿐, 무엇에 서명하는지는 보여 주지 않아요.</p><p class="kw"></p></div>
+  </div>
+  <div class="card" data-keywords="지문|Touch ID,실제 워커|비용,전문가|R1">
+    <p class="q">아직 확인하지 못한 것과 그 이유는?</p>
+    <textarea aria-label="내 답 적기" placeholder="먼저 내 말로 적어 보세요"></textarea>
+    <button class="reveal" type="button" aria-expanded="false">모범 답과 비교하기</button>
+    <div class="a" hidden><p>진짜 지문 서명은 오너가 기기 앞에 있어야 해요. 실제 워커로 무인 루프를 돌리는 일은 유료 실행이라 밤 계획에서 하지 않기로 했어요. 분야별 전문가 팩(R1)은 다음 단계 일이에요.</p><p class="pitfall"><b>흔한 오답</b> "테스트가 다 통과했으니 지문도 된다"는 틀려요. 테스트는 같은 명령을 흉내 내는 가짜 서명 도구로 돌았어요.</p><p class="kw"></p></div>
+  </div>
+</section>
+
+<section id="s-glossary" class="glossary" aria-labelledby="h-glossary">
+  <h2 id="h-glossary">꼭 알아야 할 용어</h2>
+  <dl id="glossary"></dl>
+</section>
+
+<details><summary>근거로 확인한 파일과 출처</summary><ul>
+  <li class="src">docs/design-docs/2026-10-13-expert-library-v0.md (요구사항 R1~R10, 결정 D1~D14)</li>
+  <li class="src">docs/product-specs/harness-v2.md, docs/product-specs/harness-v2-rubric.md (판정표, 2026-10-15)</li>
+  <li class="src">docs/references/contract.md 0, 2, 6.3, 8.3, 10, 11, 12절</li>
+  <li class="src">docs/decisions/0002, 0003, 0006</li>
+  <li class="src">docs/exec-plans/completed/2026-10-13-harness-v2-phase1.md, docs/exec-plans/active/2026-10-14-harness-v2-phase1b.md, 2026-10-15-overnight-loop.md, docs/exec-plans/tech-debt-tracker.md</li>
+  <li class="src">docs/references/evidence/2026-10-15-night/ (apm-real.txt, audit-7.md, audit-8.md, audit-9-10.md, audit-11.md, ship-1a.md, orchestration/handoffs/T-001.md ~ T-006.md)</li>
+  <li class="src">scripts/owner-touchid-check.sh, train.yaml, tests/e2e/serve.test.ts, tests/e2e/pin-ledger.test.ts</li>
+  <li class="src">git log harness-v2 (0911a92 ~ 63a0417, 2026-10-15 01:10 ~ 04:39), CI 기록(gh run list, 2026-10-15 04:41 조회, 63a0417 성공)</li>
+  <li class="src">https://code.claude.com/docs/en/overview, https://learn.chatgpt.com/docs/codex/cli (2026-10-15 조회)</li>
+</ul></details>
+
+</main>
+
+
+<script type="application/json" id="terms">
+{
+ "harness": {
+  "name": "하네스",
+  "en": "harness",
+  "easy": "AI에게 일을 맡기고, 결과를 검사하고, 결정을 기록하는 도구 모음이에요.",
+  "formal": "작업 명세와 보고서 파일 약속으로 AI 워커에게 일을 맡기고, 결과를 검증하며, 오너의 결정을 서명해 남기는 이 저장소의 명령줄 도구(gotechy)예요.",
+  "src": "AGENTS.md, docs/references/contract.md",
+  "status": "추론"
+ },
+ "worker": {
+  "name": "AI 워커",
+  "en": "worker",
+  "easy": "하네스가 일을 맡기는 AI 프로그램이에요. 오너와 같은 맥 계정으로 돌아요.",
+  "formal": "작업 하나를 별도 작업 폴더에서 수행하는 클로드 코드나 코덱스 실행이에요. 결과는 보고서로 남기고 리드가 검증해요.",
+  "src": "docs/references/contract.md 0절, 6.3절",
+  "status": "확인"
+ },
+ "handoff": {
+  "name": "HANDOFF",
+  "en": "handoff",
+  "easy": "워커가 일을 마치고 남기는 보고서예요. 한 일, 증거, 결정할 것을 적어요.",
+  "formal": "워커가 작업을 끝낸 뒤 쓰는 정해진 형식의 보고서예요. 결정 필요, 한 줄 요약, 한 일, 증거 같은 절의 순서와 규칙이 정해져 있어요.",
+  "src": "docs/references/contract.md 4절",
+  "status": "확인"
+ },
+ "gate": {
+  "name": "게이트",
+  "en": "gate",
+  "easy": "오너의 결정을 기다리는 질문 한 건이에요. 결정 전에는 다음 일이 시작되지 않아요.",
+  "formal": "orchestration/gates/G-###.md 파일이에요. 질문, 선택지, 상태(결정 전 또는 결정됨)와 결정의 서명 정보를 담아요.",
+  "src": "docs/references/contract.md 6절",
+  "status": "확인"
+ },
+ "enclave": {
+  "name": "보안 칩",
+  "en": "Secure Enclave",
+  "easy": "맥 안의 따로 떨어진 보안 장치예요. 안에서 만든 키는 그대로 꺼낼 수 없어요.",
+  "formal": "애플 기기의 칩에 들어 있는 전용 보안 하위 시스템이에요. 그 안에서 만든 개인 키는 칩 밖으로 나오지 않아요.",
+  "src": "https://support.apple.com/guide/security/the-secure-enclave-sec59b0b31ff/web",
+  "status": "확인"
+ },
+ "lead": {
+  "name": "리드",
+  "en": "lead",
+  "easy": "워커에게 일을 나눠 주고 결과를 검사하는 쪽이에요. 15일 새벽에는 클로드 대화 세션이 맡았어요.",
+  "formal": "작업 명세를 만들고 워커를 실행하며, 검증과 기록을 맡는 주체예요. 결정은 하지 않고 오너에게 올려요.",
+  "src": "AGENTS.md, docs/references/contract.md 0절",
+  "status": "확인"
+ },
+ "debt": {
+  "name": "부채",
+  "en": "tech debt",
+  "easy": "알면서 미뤄 둔 고칠 일이에요. 번호를 붙여 목록에 적어 둬요.",
+  "formal": "기술 부채 목록의 항목이에요. 언제 생겼는지, 무엇이 위험한지, 언제 갚을지를 함께 적어요.",
+  "src": "docs/exec-plans/tech-debt-tracker.md",
+  "status": "확인"
+ },
+ "blocking": {
+  "name": "막는 결정",
+  "en": "blocking decision",
+  "easy": "답이 있어야 다음 일이 시작되는 결정이에요.",
+  "formal": "보고서 결정 필요 절의 [막는] 표지예요. 게이트가 열리고, 결정 전에는 그 작업의 다음 실행이 멈춰요.",
+  "src": "docs/references/contract.md 4.1절, 6.1절",
+  "status": "확인"
+ },
+ "rubric": {
+  "name": "판정표",
+  "en": "rubric",
+  "easy": "무엇을 얼마나 이뤘는지 단계별 기준으로 매기는 표예요.",
+  "formal": "요구사항마다 0(없음)부터 4(실사용)까지 단계 기준과 현재 판정, 근거 파일, 다시 재는 법을 적은 문서예요.",
+  "src": "docs/product-specs/harness-v2-rubric.md",
+  "status": "확인"
+ },
+ "apm": {
+  "name": "apm",
+  "en": "apm (agent package manager)",
+  "easy": "AI 도구가 쓰는 기술 묶음을 정한 판으로 깔아 주는 프로그램이에요.",
+  "formal": "마이크로소프트의 에이전트 패키지 관리자예요. 하네스는 팩을 공개 저장소의 커밋에 고정해 깔고, 락 파일의 해시로 변조를 검사해요.",
+  "src": "docs/references/contract.md 10.7절, docs/decisions/0002-distribution-files-agents-apm.md, docs/design-docs/2026-10-13-expert-library-v0.md",
+  "status": "확인"
+ },
+ "pack": {
+  "name": "팩",
+  "en": "pack",
+  "easy": "한 분야 전문가처럼 일하는 데 필요한 기술 설명서 묶음이에요.",
+  "formal": "스킬(SKILL.md) 여러 개의 묶음이에요. 지금은 보고 형식을 정한 owner 팩 하나만 있어요.",
+  "src": "docs/design-docs/2026-10-13-expert-library-v0.md 4절, src/runtime/packs.ts",
+  "status": "확인"
+ },
+ "serve": {
+  "name": "화면 서버",
+  "en": "gotechy serve",
+  "easy": "내 컴퓨터 안에서만 열리는 결정 화면이에요. 브라우저에서 누르고 지문으로 확정해요.",
+  "formal": "127.0.0.1에만 여는 로컬 서버예요. 한 번만 쓰는 접속 값, 요청 출처 검사, 위조 방지 값으로 결정을 받고, 터미널 결정과 같은 경로로 서명해요.",
+  "src": "docs/references/contract.md 8.3절",
+  "status": "확인"
+ },
+ "loop": {
+  "name": "무인 루프",
+  "en": "gotechy loop",
+  "easy": "오너가 자리를 비운 동안 맡긴 일을 차례로 돌리고 아침 보고서를 만드는 기능이에요.",
+  "formal": "autonomy L2 이상인 작업을 예산과 멈춤 규칙 안에서 하나씩 돌려요. 결정, 병합, 발행은 하지 않아요.",
+  "src": "docs/references/contract.md 11절",
+  "status": "확인"
+ },
+ "guard": {
+  "name": "부작용 가드",
+  "en": "PreToolUse guard",
+  "easy": "AI 비서가 위험한 명령을 실행하기 직전에 막는 문지기예요.",
+  "formal": "프로젝트에 깔면 클로드 코드가 명령을 실행하기 직전에 부르는 검사예요. 결정, 오너 키, 강제 덮어쓰기, 발행, 배포 명령을 막고, 검사가 실패해도 실행하지 않아요. 코덱스용은 아직 없어요.",
+  "src": "docs/references/contract.md 12절",
+  "status": "확인"
+ },
+ "confirmcode": {
+  "name": "확인 코드",
+  "en": "confirmation code",
+  "easy": "화면과 지문 창에 함께 보이는 네 글자예요. 둘이 같아야 내 결정이에요.",
+  "formal": "결정 화면을 그릴 때 만든 일회용 번호의 앞 4자리예요. 서명 도구가 지문 창 문구에 넣어요.",
+  "src": "docs/references/contract.md 6.3절, 8.3절",
+  "status": "확인"
+ },
+ "cache": {
+  "name": "캐시",
+  "en": "cache",
+  "easy": "자주 쓰는 결과를 잠깐 보관해 두고 다시 꺼내 쓰는 곳이에요.",
+  "formal": "다음 요청을 더 빨리 처리하려고 데이터나 계산 결과를 임시로 저장해 두는 저장 공간이에요.",
+  "src": "https://developer.mozilla.org/ko/docs/Glossary/Cache",
+  "status": "확인"
+ },
+ "token": {
+  "name": "토큰",
+  "en": "token",
+  "easy": "AI가 글을 읽고 쓸 때 세는 글자 조각이에요. 많이 쓸수록 비용이 늘어요.",
+  "formal": "언어 모델이 처리하는 텍스트의 최소 단위예요. 사용량과 요금, 처리 한도는 토큰 수로 계산해요.",
+  "src": "https://platform.claude.com/docs/en/about-claude/glossary",
+  "status": "확인"
+ },
+ "claude": {
+  "name": "클로드 코드",
+  "en": "Claude Code",
+  "easy": "앤트로픽이 만든, 터미널에서 코드를 읽고 고치는 AI 도구예요.",
+  "formal": "앤트로픽의 에이전트형 코딩 도구예요. 터미널에서 코드베이스를 읽고, 명령을 실행하고, 파일을 고쳐요.",
+  "src": "https://code.claude.com/docs/en/overview",
+  "status": "확인"
+ },
+ "codex": {
+  "name": "코덱스",
+  "en": "Codex CLI",
+  "easy": "오픈에이아이가 만든, 터미널에서 코드를 살펴보고 고치는 AI 도구예요.",
+  "formal": "오픈에이아이의 코딩 도구예요. 터미널에서 코드를 살펴보고, 고치고, 명령을 실행해요.",
+  "src": "https://learn.chatgpt.com/docs/codex/cli",
+  "status": "확인"
+ },
+ "train": {
+  "name": "train",
+  "en": "train",
+  "easy": "함께 시험해 본 도구 버전들을 한 장에 적은 목록이에요. 어디서 깔아도 같은 판이 깔려요.",
+  "formal": "하네스가 까는 도구, 팩, 전역 정책의 버전을 고정한 파일(train.yaml)이에요. 부트스트랩과 setup, doctor가 이 파일을 기준으로 삼아요.",
+  "src": "train.yaml, docs/references/contract.md 10절",
+  "status": "확인"
+ },
+ "pin": {
+  "name": "고정 키",
+  "en": "pinned owner key",
+  "easy": "이 프로젝트의 결정은 이 도장으로만 찍는다고 적어 둔 파일이에요.",
+  "formal": "프로젝트에 커밋한 오너 공개 키(orchestration/owner.pub)예요. 결정 검증은 이 키로 하고, 키를 바꾸면 gotechy keys pin으로 다시 고정해요.",
+  "src": "docs/references/contract.md 6.3절",
+  "status": "확인"
+ },
+ "orca": {
+  "name": "Orca",
+  "en": "Orca",
+  "easy": "여러 AI 작업을 한 화면에서 나눠 돌리고 지켜보는 실행 도구예요.",
+  "formal": "여러 코딩 에이전트 작업을 병렬로 돌리고 관리하는 오케스트레이션 도구예요. 하네스는 Orca를 주력 실행 도구로 두되, 없는 환경에서도 돌도록 기록을 파일로 둬요.",
+  "src": "docs/decisions/0003-orchestration-file-contract-adapters.md",
+  "status": "확인"
+ },
+ "head": {
+  "name": "장부 끝 기록",
+  "en": "ledger head",
+  "easy": "결정 장부가 어디까지 적혔는지 홈 폴더에 따로 적어 둔 표시예요.",
+  "formal": "결정 장부 파일 전체의 줄 수와 해시를 폴더별로 $GOTECHY_HOME/owner/heads/에 남긴 기록이에요. 장부의 끝줄, 가운데 줄, 파일 삭제를 잡아요.",
+  "src": "docs/references/contract.md 6.3절",
+  "status": "확인"
+ }
+}</script>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  // 밝기 전환
+  document.getElementById('themeBtn').addEventListener('click',function(){
+    var dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark';
+  });
+
+  // 용어 카드: 본문 버튼을 누르면 바로 아래에 카드가 펼쳐진다. 용어 모음도 같은 데이터로 만든다
+  var terms=JSON.parse(document.getElementById('terms').textContent);
+  function tagFor(s){return '<span class="tag '+(s==='확인'?'ok':s==='추론'?'inf':'est')+'">'+s+'</span>';}
+  function cardHtml(t){
+    return '<span class="easy">'+t.easy+'</span><span class="formal" style="display:block"><b>원래 정의</b>'+t.formal+
+      (t.src?(/^https?:/.test(t.src)?' <a href="'+t.src.split(', ')[0]+'" target="_blank" rel="noopener">출처</a>':' <span class="src">출처 '+t.src+'</span>'):'')+' '+tagFor(t.status||'추정')+'</span>';
+  }
+  document.querySelectorAll('.term').forEach(function(b){
+    var t=terms[b.dataset.term]; if(!t){b.classList.add('term-missing');return;}
+    var card=document.createElement('span'); card.className='termcard'; card.hidden=true; card.id='tc-'+b.dataset.term+'-'+Math.random().toString(36).slice(2,6);
+    card.setAttribute('role','note'); card.innerHTML=cardHtml(t);
+    b.setAttribute('aria-controls',card.id); b.insertAdjacentElement('afterend',card);
+    b.addEventListener('click',function(){var open=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',!open);card.hidden=open;});
+  });
+  var gl=document.getElementById('glossary');
+  if(gl){Object.keys(terms).forEach(function(k){var t=terms[k];var d=document.createElement('div');
+    d.innerHTML='<dt>'+t.name+(t.en?' <span class="src">'+t.en+'</span>':'')+'</dt><dd>'+t.easy+'<div class="formal"><b>원래 정의</b> '+t.formal+
+      (t.src?(/^https?:/.test(t.src)?' <a href="'+t.src.split(', ')[0]+'" target="_blank" rel="noopener">출처</a>':' <span class="src">출처 '+t.src+'</span>'):'')+' '+tagFor(t.status||'추정')+'</div></dd>';gl.appendChild(d);});}
+
+  // 탭: 클릭과 방향키
+  document.querySelectorAll('[role=tablist]').forEach(function(list){
+    var tabs=[].slice.call(list.querySelectorAll('[role=tab]'));
+    function select(t){tabs.forEach(function(o){var on=o===t;o.setAttribute('aria-selected',on);o.tabIndex=on?0:-1;document.getElementById(o.getAttribute('aria-controls')).hidden=!on;});t.focus();}
+    tabs.forEach(function(t,i){
+      t.addEventListener('click',function(){select(t);});
+      t.addEventListener('keydown',function(e){if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();select(tabs[(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length]);}});
+    });
+  });
+
+  // 단계 넘기기: 설명과 실제 값 표가 함께 바뀐다. 바뀐 값은 강조
+  document.querySelectorAll('[data-stepper]').forEach(function(box){
+    var steps=JSON.parse(box.querySelector('[data-steps]').textContent),i=0,
+        nodes=box.querySelectorAll('.node'),text=box.querySelector('.step-text'),tb=box.querySelector('.state tbody'),
+        prev=box.querySelector('[data-prev]'),next=box.querySelector('[data-next]'),count=box.querySelector('.step-count');
+    function render(){
+      nodes.forEach(function(n){var on=Number(n.dataset.step)===i;n.classList.toggle('dim',!on);n.classList.toggle('active',on);});
+      text.textContent=steps[i].text; count.textContent=(i+1)+' / '+steps.length;
+      var before=i>0?steps[i-1].state:{},now=steps[i].state||{};
+      tb.innerHTML=Object.keys(now).map(function(k){var ch=i>0&&before[k]!==now[k];return '<tr><td>'+k+'</td><td'+(ch?' class="changed"':'')+'>'+now[k]+'</td></tr>';}).join('');
+      prev.disabled=i===0; next.disabled=i===steps.length-1;
+    }
+    prev.addEventListener('click',function(){if(i>0){i--;render();}});
+    next.addEventListener('click',function(){if(i<steps.length-1){i++;render();}});
+    render();
+  });
+
+  // 말해 보기: 내 답을 적고 모범 답을 열면 핵심어가 들어갔는지 표시
+  document.querySelectorAll('.practice .card').forEach(function(c){
+    var btn=c.querySelector('.reveal'),a=c.querySelector('.a'),ta=c.querySelector('textarea'),kw=c.querySelector('.kw');
+    btn.addEventListener('click',function(){
+      var open=btn.getAttribute('aria-expanded')==='true'; btn.setAttribute('aria-expanded',!open); a.hidden=open;
+      if(!open&&kw){var words=(c.dataset.keywords||'').split(',').filter(Boolean),mine=ta.value;
+        // 핵심어 a|b 는 동의어: 하나라도 있으면 포함
+        kw.innerHTML='핵심어: '+words.map(function(w){var alts=w.split('|'),hit=alts.some(function(x){return mine.toLowerCase().indexOf(x.toLowerCase())>=0;});return hit?'<span class="hit">'+alts[0]+' 포함</span>':'<span class="miss">'+alts[0]+' 빠짐</span>';}).join(', ');}
+    });
+  });
+
+  // 표: 폰에서 카드처럼 쌓을 때 칸 이름을 보여 주도록 data-label을 붙인다
+  document.querySelectorAll('.tablewrap table').forEach(function(t){
+    var heads=[].map.call(t.querySelectorAll('thead th'),function(th){return th.textContent.trim();});
+    t.querySelectorAll('tbody tr').forEach(function(tr){[].forEach.call(tr.children,function(td,i){if(heads[i])td.setAttribute('data-label',heads[i]);});});
+  });
+
+  // 선택해 보기: 버튼(또는 슬라이더)을 고르면 결과 문장이 바뀐다
+  document.querySelectorAll('[data-whatif]').forEach(function(w){
+    var data=JSON.parse(w.querySelector('[data-outcomes]').textContent),out=w.querySelector('.out'),btns=w.querySelectorAll('[data-opt]');
+    function pick(k){btns.forEach(function(b){b.setAttribute('aria-pressed',b.dataset.opt===k);});out.textContent=data[k]||'';}
+    btns.forEach(function(b){b.addEventListener('click',function(){pick(b.dataset.opt);});});
+    var range=w.querySelector('input[type=range]');
+    if(range){range.addEventListener('input',function(){pick(String(range.value));});}
+    pick(data.default||(btns[0]&&btns[0].dataset.opt));
+  });
+
+  // 그림 키트: svg[data-diagram] 안의 .node[data-id], .arrow[data-from][data-to], .key
+  // 상자에 올리거나 누르면 이어진 선과 상자만 밝아지고, 아래 설명 줄에 data-note가 뜬다
+  document.querySelectorAll('svg[data-diagram]').forEach(function(svg){
+    var nodes=[].slice.call(svg.querySelectorAll('.node[data-id]')),arrows=[].slice.call(svg.querySelectorAll('.arrow[data-from]'));
+    var host=svg.closest('figure,.map,.stepper')||svg.parentNode;
+    var note=host.querySelector('.dg-note');
+    if(!note){note=document.createElement('p');note.className='dg-note';note.setAttribute('aria-live','polite');host.appendChild(note);}
+    var def=svg.getAttribute('data-hint')||'상자를 누르거나 올려 보세요. 이어진 흐름만 밝게 보여요.',pinned=null;
+    note.textContent=def;
+    function nameOf(n){var t=n.querySelector('.t-name')||n.querySelector('text');return t?t.textContent.trim():'';}
+    function focus(id){
+      svg.classList.toggle('is-focus',!!id);
+      nodes.forEach(function(n){n.classList.toggle('on',n.dataset.id===id);});
+      arrows.forEach(function(a){var on=!!id&&(a.dataset.from===id||a.dataset.to===id);a.classList.toggle('on',on);
+        if(on)[a.dataset.from,a.dataset.to].forEach(function(x){var m=svg.querySelector('.node[data-id="'+x+'"]');if(m)m.classList.add('on');});});
+      var n=id&&nodes.filter(function(k){return k.dataset.id===id;})[0];
+      if(n){note.innerHTML='';var b=document.createElement('b');b.textContent=nameOf(n);note.appendChild(b);note.appendChild(document.createTextNode(n.dataset.note||''));}
+      else note.textContent=def;
+    }
+    nodes.forEach(function(n){
+      if(n.tagName.toLowerCase()!=='a'){n.setAttribute('tabindex','0');n.setAttribute('role','button');}
+      n.setAttribute('aria-label',(nameOf(n)+' '+(n.dataset.note||'')).trim());
+      n.addEventListener('mouseenter',function(){if(!pinned)focus(n.dataset.id);});
+      n.addEventListener('mouseleave',function(){if(!pinned)focus(null);});
+      n.addEventListener('focus',function(){focus(n.dataset.id);});
+      n.addEventListener('blur',function(){if(!pinned)focus(null);});
+      n.addEventListener('click',function(e){if(n.tagName.toLowerCase()==='a')return;pinned=pinned===n.dataset.id?null:n.dataset.id;focus(pinned);});
+      n.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();n.click();}});
+    });
+    // 핵심 상자에 "핵심" 딱지
+    svg.querySelectorAll('.node.key').forEach(function(n){var r=n.querySelector('rect');if(!r)return;
+      var x=+r.getAttribute('x')+(+r.getAttribute('width'))-46,y=+r.getAttribute('y')-26,NS='http://www.w3.org/2000/svg';
+      var g=document.createElementNS(NS,'g');g.setAttribute('class','badge');g.setAttribute('aria-hidden','true');
+      var bg=document.createElementNS(NS,'rect');bg.setAttribute('x',x);bg.setAttribute('y',y);bg.setAttribute('width',44);bg.setAttribute('height',24);bg.setAttribute('rx',12);
+      var tx=document.createElementNS(NS,'text');tx.setAttribute('x',x+22);tx.setAttribute('y',y+17);tx.setAttribute('text-anchor','middle');tx.textContent='핵심';
+      g.appendChild(bg);g.appendChild(tx);n.appendChild(g);});
+    // 핵심 흐름만 보기 단추
+    if(svg.querySelector('.arrow.key')){
+      var bar=document.createElement('div');bar.className='dg-bar';var btn=document.createElement('button');btn.type='button';btn.textContent='핵심 흐름만 보기';btn.setAttribute('aria-pressed','false');
+      btn.addEventListener('click',function(){var on=btn.getAttribute('aria-pressed')!=='true';pinned=null;focus(null);btn.setAttribute('aria-pressed',on);svg.classList.toggle('show-key',on);});
+      bar.appendChild(btn);note.parentNode.insertBefore(bar,note);}
+  });
+
+  // 칩 내비: 보이는 섹션 강조
+  var chips=[].slice.call(document.querySelectorAll('.chips a'));
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){chips.forEach(function(c){c.classList.toggle('on',c.getAttribute('href')==='#'+e.target.id);});}});},{rootMargin:'-40% 0px -55% 0px'});
+    chips.forEach(function(c){var s=document.querySelector(c.getAttribute('href'));if(s)io.observe(s);});
+    // 맨 위에서는 첫 칩(한눈에)을 켠다
+    function top(){if(window.scrollY<80)chips.forEach(function(c,i){c.classList.toggle('on',i===0);});}
+    addEventListener('scroll',top,{passive:true});top();
+  }
+})();
+</script>
+</body>
+</html>

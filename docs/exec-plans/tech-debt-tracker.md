@@ -14,7 +14,6 @@
 | TD-005 | 2026-10-14 | 문체 규칙(contract.md 7절) 이전에 쓴 문서에 경고가 약 1,700건 남아 있다. `gotechy text lint` 기준 docs 1,321건(research 제외), .claude 316건, AGENTS.md 71건, ARCHITECTURE.md 8건. 대부분 가운데점, 화살표, em-dash. 이 표의 심각도 칸에 쓰는 색 원 이모지도 걸리는데, 바꾸려면 `/gotechy-ship` 스킬과 이 문서의 규칙을 함께 고쳐야 한다 | docs/, .claude/, AGENTS.md | 🟡 | 에이전트가 기존 문서를 본보기로 삼아 같은 문체를 다시 만든다. 2026-10-21부터 문체 규칙이 오류가 되면 이 문서들을 고칠 때마다 검사가 막는다 | 손대는 문서부터 고친다. 에이전트가 가장 자주 읽는 AGENTS.md와 .claude 규칙, 스킬을 10-20 전에 먼저. 분량은 TD-003(문서 다이어트)으로 먼저 줄인다 |
 | TD-006 | 2026-10-14 | `accept`가 충돌이나 병합 후 verify 실패로 멈춘 작업을 다시 진행할 길이 없다. 작업을 needs-decision으로 바꾸고 사유만 남기는데, 다시 실행하면 옛 기준 커밋의 worktree에서 이어 가서 같은 충돌이 난다 | src/runtime/accept.ts, src/runtime/run.ts | 🟡 | 오너가 손으로 브랜치를 고치거나 작업을 새로 만들어야 한다 | 1b: 작업 브랜치를 새 메인 위로 다시 만드는 `gotechy task rebase` 또는 재실행 옵션 |
 | TD-007 | 2026-10-14 | 허용 범위 검사(`changedFiles`)가 무시 파일(.gitignore 대상)의 변경을 보지 않는다 | src/runtime/git.ts | 🟡 | 워커가 node_modules 같은 무시 경로에 코드를 심을 수 있다. verify 샌드박스로 피해는 작업 폴더 안에 갇힌다 | 1b: 기준 시점의 무시 파일 목록과 비교 |
-| TD-008 | 2026-10-14 | 리드 에이전트 설정에 `gotechy decide`, `script`, `expect` 실행 금지 규칙이 없다. TTY 검사는 실수만 막는다 | templates/project/ | 🟡 | 무인 루프의 리드가 막혔을 때 결정을 대신 내리는 실수를 막지 못한다 | M3 setup이 프로젝트 .claude/settings.json에 deny를 넣는다 |
 | TD-009 | 2026-10-14 | verify 샌드박스가 macOS 전용이다. 다른 OS에서는 기록만 남긴다 | src/runtime/sandbox.ts | 🟡 | 리눅스 CI나 2단계 다른 아키텍처에서 격리 약속이 깨진다 | 2단계: bubblewrap 등 리눅스 샌드박스 |
 | TD-010 | 2026-10-14 | `src/runtime/run.ts` 줄 커버리지 90.7%, 2026-10-14 18:22에 92.1%(핵심 모듈 목록 밖. 타임아웃, 게이트 열기 실패, 샌드박스 없음 분기). 같은 밤에 `usage.ts`(100%)와 `pages.tsx`(95.0%)는 기준을 넘겼다 | src/runtime/run.ts | 🟢 | 드문 실패 경로가 깨져도 모른다 | 1a 완료 게이트 전 |
 | TD-012 | 2026-10-14 | `gotechy accept`가 병합하는 워커 변경에는 gitleaks 검사가 없다. 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 워커에 넘긴 로그인 값 검사(2026-10-14 감사 6차) 말고는 막히지 않는다 | src/runtime/accept.ts | 🟡 | 워커가 만든 토큰 같은 값이 메인에 들어갈 수 있다 | accept에서 병합 diff에 gitleaks를 돌리기 |
@@ -28,6 +27,7 @@
 
 | ID | 내용 | 상환일 | 증거 |
 |---|---|---|---|
+| TD-008 | 리드 에이전트가 `gotechy decide`, `serve`, `keys`, `script`, `expect`와 force push, 발행, 배포를 실행하지 못하게: `gotechy init`이 프로젝트 `.claude/settings.json`에 deny 규칙, `settings.local.json`에 `gotechy guard` hook(fail-closed)을 깐다 | 2026-10-15 | `tests/core/guard.test.ts`, `tests/e2e/guard-cli.test.ts`, contract.md 12절 |
 | TD-011 | `gotechy init`이 팩을 복사로 설치하던 것을 apm(커밋 고정, `targets: [claude, agent-skills]`)으로 바꿨다. doctor가 프로젝트 안에서 `apm audit --ci`로 변조를 잡는다 | 2026-10-15 | `tests/e2e/init-apm.test.ts`, `tests/core/apm.test.ts`, 실측 `docs/references/evidence/2026-10-15-night/apm-real.txt` |
 | TD-002 | `scripts/bootstrap.sh` 신설 + `init.sh --fix` 연결. 스택·테스트·배포를 묻고 src/ 레이어 골격·통과하는 예제 테스트·tsconfig·vitest(커버리지 임계값)·package.json 스크립트 전부·ARCHITECTURE/AGENTS/DEPLOYMENT 교체 자리를 실제로 채운다 | 2026-09-18 | 깨끗한 복사본에서 `--fix` → `init.sh` **첫 실행 통과**. `npm test` 1 passed, `lint`·`build`·`check:boundaries` 전부 exit 0. 레이어 위반 주입 시 `ui-no-repo` 에러로 **exit 1** 확인(제거 시 0 복귀), 커버리지 리포트 100% 동작 |
 

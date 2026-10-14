@@ -26,7 +26,14 @@ export type InitOptions = {
 }
 
 export function initProject(root: string, opts: InitOptions = {}): InitReport {
-  const linked = linkedPaths(root, [...PROJECT_DIRS, 'AGENTS.md', 'CLAUDE.md'])
+  const linked = linkedPaths(root, [
+    ...PROJECT_DIRS,
+    'AGENTS.md',
+    'CLAUDE.md',
+    '.claude',
+    '.claude/settings.json',
+    '.claude/settings.local.json',
+  ])
   if (linked.length > 0)
     throw new Error(
       `심볼릭 링크라서 아무것도 쓰지 않고 멈췄어요: ${linked.join(', ')}. 링크를 지우거나 실제 폴더와 파일로 바꾼 뒤 다시 실행하세요`,
@@ -72,12 +79,21 @@ export function initProject(root: string, opts: InitOptions = {}): InitReport {
     )
   } else {
     const current = existsSync(gi) ? readFileSync(gi, 'utf8') : ''
+    const have = new Set(current.split('\n').map((l) => l.trim()))
+    // 처음이면 조각 전체를, 이미 init한 프로젝트면 새로 생긴 줄만 더한다
+    const missing = fragment
+      .split('\n')
+      .filter((l) => l.trim() && !l.startsWith('#') && !have.has(l.trim()))
     if (!current.includes('.gotechy/')) {
       appendFileSync(gi, `${current && !current.endsWith('\n') ? '\n' : ''}${fragment}`)
       note('.gitignore (gotechy 항목)', true)
+    } else if (missing.length > 0) {
+      appendFileSync(gi, `${current.endsWith('\n') ? '' : '\n'}${missing.join('\n')}\n`)
+      note(`.gitignore (${missing.join(', ')})`, true)
     } else note('.gitignore', false)
   }
 
+  installGuard(root, lib, report, note)
   if (opts.hooks !== false) installHooks(root, lib, opts.gotechyHome ?? gotechyHome(), report, note)
 
   return report
@@ -137,4 +153,50 @@ function installHooks(
     return
   }
   note(`core.hooksPath ${dir}`, existing !== dir)
+}
+
+/** 리드가 오너만 하는 명령을 부르지 못하게 하는 deny 규칙(커밋됨) */
+const CLAUDE_DENY = [
+  'Bash(gotechy decide:*)',
+  'Bash(gotechy serve:*)',
+  'Bash(gotechy keys:*)',
+  'Bash(script:*)',
+  'Bash(expect:*)',
+]
+
+/**
+ * 부작용 가드(contract.md 12절, TD-008). deny 규칙은 경로가 없어 settings.json(커밋)에, 가드 hook은 라이브러리의
+ * 절대 경로라 settings.local.json(개인, gitignore)에 둔다. gotechy가 PATH에 없어도 돌고, 실행 파일이 없으면 막는다
+ */
+function installGuard(
+  root: string,
+  lib: string,
+  report: InitReport,
+  note: (path: string, made: boolean) => void,
+): void {
+  const dir = join(root, '.claude')
+  mkdirSync(dir, { recursive: true })
+  const settings = join(dir, 'settings.json')
+  if (existsSync(settings)) {
+    note('.claude/settings.json', false)
+    report.warnings.push(
+      `.claude/settings.json이 이미 있어 바꾸지 않았어요. permissions.deny에 ${CLAUDE_DENY.join(', ')}를 넣어 주세요.`,
+    )
+  } else {
+    writeFileSync(settings, `${JSON.stringify({ permissions: { deny: CLAUDE_DENY } }, null, 2)}\n`)
+    note('.claude/settings.json (deny 규칙)', true)
+  }
+  const local = join(dir, 'settings.local.json')
+  if (existsSync(local)) {
+    note('.claude/settings.local.json', false)
+    return
+  }
+  const bin = join(lib, 'bin', 'gotechy')
+  const q = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`
+  const command = `sh -c ${q(`[ -x ${q(bin)} ] || { echo "gotechy 가드를 실행할 수 없어 명령을 막았어요: ${bin}" >&2; exit 2; }; exec ${q(bin)} guard`)}`
+  writeFileSync(
+    local,
+    `${JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command }] }] } }, null, 2)}\n`,
+  )
+  note('.claude/settings.local.json (부작용 가드 hook)', true)
 }

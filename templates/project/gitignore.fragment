@@ -2,3 +2,4 @@
 .gotechy/
 orchestration/private/
 orchestration/.seq.lock
+.claude/settings.local.json

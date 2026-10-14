@@ -13,6 +13,7 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
@@ -298,6 +299,8 @@ describe('보안 감사 7차', () => {
       initProject(root, { hooks: false })
       const outside = realpathSync(mkdtempSync(join(base, 'out-')))
       mkdirSync(join(root, rel, '..'), { recursive: true })
+      // init이 만든 폴더(.claude 등)가 있으면 비우고 그 자리에 링크를 둔다
+      rmSync(join(root, rel), { recursive: true, force: true })
       symlinkSync(
         rel.endsWith('.yml') || rel.endsWith('.yaml') ? join(outside, 'x.yml') : outside,
         join(root, rel),

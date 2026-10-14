@@ -9,6 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { Command } from 'commander'
 import { CORE_MIN, judgeCoverage, parseLcov, TOTAL_MIN } from './core/coverage'
 import { parseFrontmatter } from './core/frontmatter'
+import { guardBash } from './core/guard'
 import { formatInbox } from './core/inbox'
 import { formatIssue } from './core/issues'
 import { hasErrors, lintHandoff } from './core/lint-handoff'
@@ -17,7 +18,7 @@ import { lintStyle } from './core/style'
 import { parseTrain } from './core/train'
 import { acceptTask } from './runtime/accept'
 import { formatDoctor, runDoctor } from './runtime/doctor'
-import { decideGate, verifyGates } from './runtime/gates'
+import { decideGate, listGates, verifyGates } from './runtime/gates'
 import { repoRoot } from './runtime/git'
 import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
@@ -396,6 +397,46 @@ program
     for (const x of r.results)
       console.log(`${x.task}: ${x.outcome}${x.reason ? ` (${x.reason})` : ''}`)
     console.log(`아침 보고서: ${r.digest}`)
+  })
+
+program
+  .command('guard')
+  .description(
+    'Claude Code PreToolUse hook: 리드의 부작용 명령을 막는다. 표준 입력의 hook JSON을 읽는다 (contract.md 12절)',
+  )
+  .action(async () => {
+    const deny = (reason: string) =>
+      console.log(
+        JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: reason,
+          },
+        }),
+      )
+    let input: { tool_name?: unknown; tool_input?: { command?: unknown } }
+    try {
+      input = JSON.parse(await Bun.stdin.text())
+    } catch {
+      return deny('gotechy 가드가 hook 입력을 읽지 못해 명령을 막았어요')
+    }
+    if (input?.tool_name !== 'Bash') return
+    const command = input.tool_input?.command
+    if (typeof command !== 'string') return deny('gotechy 가드가 Bash 명령을 읽지 못해 막았어요')
+    const d = guardBash(command)
+    if (d.deny) deny(d.reason)
+  })
+
+program
+  .command('status')
+  .description('열린 결정 수를 보여 준다. --line은 Claude Code 상태 줄용 한 줄 (contract.md 12절)')
+  .option('--line', '한 줄로')
+  .action(() => {
+    const p = findProject(process.cwd())
+    if (!p) return
+    const open = listGates(p).filter((g) => g.status === 'pending').length
+    console.log(open > 0 ? `gotechy 결정 대기 ${open}` : 'gotechy 대기 없음')
   })
 
 program

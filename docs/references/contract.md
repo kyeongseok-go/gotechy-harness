@@ -433,3 +433,20 @@ frontmatter:
 - 상태: `.gotechy/loop/state.json`에 작업마다 시도 수, 마지막 실패 표시, 멈춘 사유를 남긴다. 중단 뒤 다시 실행하면 이어 간다. 멈춘 작업은 `failed`로 남아 다시 시도하지 않는다. 오너가 원인을 고치고 `ready`로 돌리면 시도 수를 비우고 새로 시작한다. `--reset`이면 상태를 비우고, 루프가 멈춘 작업(`failed`)을 `ready`로 돌린 뒤 시작한다.
 - 아침 보고서: 끝나면 `.gotechy/digest/<시각>.md`를 만든다. 작업마다 결과(완료, 결정 필요, 기다림, 멈춤과 사유, 예산으로 시작 안 함), 시도 수, 실제 비용, HANDOFF 경로와 한 줄 요약, 열린 게이트와 결정 방법(`gotechy serve` 또는 `gotechy decide`), 그리고 인박스 카드를 적는다. 보고서가 가리키는 HANDOFF는 `run`이 lint를 통과시킨 것만이다(lint에 실패한 HANDOFF는 `failed`가 된다).
 - 종료 코드: 루프가 정상으로 끝나면 0(돌린 작업이 없어도), 프로젝트나 환경 문제면 2.
+
+## 12. 부작용 가드와 상태 줄 (1b N4)
+
+리드 에이전트가 오너만 하는 일(결정, 오너 키, 화면 서버)과 되돌리기 어려운 외부 동작을 실수로 실행하지 못하게 한다(TD-008). 실수를 막는 장치이고, 일부러 숨긴 명령까지 막지는 못한다. 최종 방어선은 Touch ID다(6.3절).
+
+- `gotechy guard`: Claude Code PreToolUse hook이 Bash 명령마다 부른다. 표준 입력의 hook JSON(`tool_name`, `tool_input.command`)을 읽고, 막을 명령이면 `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}`를 출력한다. 통과면 아무것도 출력하지 않는다. 입력을 읽을 수 없으면 막는다(fail-closed). Bash가 아닌 도구는 보지 않는다.
+- 막는 것:
+  - 오너만 하는 gotechy 명령(`decide`, `serve`, `keys`). `bin/gotechy`, `bun src/cli.ts`, `bun run dev --` 같은 다른 이름으로 불러도 막는다.
+  - 터미널이 있는 척하는 도구(`script`, `expect`, `unbuffer`).
+  - force push(`-f`, `--force`, `--force-with-lease`, `--mirror`, `+` refspec)와 원격 브랜치 삭제(`--delete`, `-d`, `:` refspec).
+  - 패키지 발행(`npm`, `bun`, `pnpm`, `yarn publish`), `gh release`(조회 제외), `gh pr merge`, 배포(`vercel --prod`, `wrangler deploy`, `fly deploy`, `netlify deploy --prod`), 위키 폴더(`Gotechy-Wiki`)에 쓰는 명령.
+- 판정 방법: 셸 연결자(`;`, `&&`, `||`, `|`, `&`, 줄바꿈)로 나누고, `$(...)`와 백틱 안도 따로 본다. 앞의 환경 변수 대입과 감싸는 명령(`env`, `command`, `exec`, `nohup`, `time`, `sudo`, `nice`)을 벗기고, `sh -c`, `bash -c`, `eval`의 문자열은 다시 판정한다. 변수로 만든 명령 이름 같은 것은 잡지 못한다.
+- 설치: `gotechy init`이 프로젝트에 둘을 만든다(이미 있으면 바꾸지 않고 알린다).
+  - `.claude/settings.json`(커밋): `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(gotechy serve:*)`, `Bash(gotechy keys:*)`, `Bash(script:*)`, `Bash(expect:*)`.
+  - `.claude/settings.local.json`(개인, `.gitignore`에 넣음): Bash용 PreToolUse hook. 라이브러리의 `bin/gotechy guard`를 절대 경로로 부른다. 경로가 들어가서 커밋하지 않는다. 그 실행 파일이 없으면 exit 2로 모든 Bash 명령을 막아 오너가 바로 알게 한다.
+- `gotechy status --line`: 프로젝트의 열린 게이트 수를 한 줄로 출력한다(`gotechy 결정 대기 2`, 없으면 `gotechy 대기 없음`). Claude Code 상태 줄(`statusLine`)에 쓴다. 프로젝트 밖이면 아무것도 출력하지 않는다. 오너의 전역 상태 줄 설정은 바꾸지 않는다(오너가 원하면 직접 연결).
+- 하지 않은 것: Codex hook(같은 가드를 Codex에 붙이는 일)과 Claude Code mod(결정 대기 띠, 토스트)는 1b N4의 남은 일이다. 폰 알림 방식은 오너 결정이다.

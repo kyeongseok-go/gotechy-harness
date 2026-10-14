@@ -377,34 +377,46 @@ describe('gotechy init (CLI, 실제 train)', () => {
   })
 })
 
+/** apm과 doctor를 여러 번 부르는 테스트의 시간 제한 */
+const APM_E2E_MS = 30_000
+
 describe('doctor의 프로젝트 팩 검사', () => {
-  test('깔린 팩을 고치면 실패하고, apm install --frozen으로 되돌리면 통과한다', async () => {
-    const root = newProject()
-    expect((await initWithPacks(root)).errors).toEqual([])
-    expect((await checkPacks(root, env, src()))?.status).toBe('ok')
+  test(
+    '깔린 팩을 고치면 실패하고, apm install --frozen으로 되돌리면 통과한다',
+    async () => {
+      const root = newProject()
+      expect((await initWithPacks(root)).errors).toEqual([])
+      expect((await checkPacks(root, env, src()))?.status).toBe('ok')
 
-    writeFileSync(join(root, '.claude', 'skills', 'owner-protocol', 'SKILL.md'), `${SKILL}evil\n`)
-    const bad = await checkPacks(root, env, src())
-    expect(bad?.status).toBe('fail')
-    expect(bad?.fix).toContain('apm install --frozen')
+      writeFileSync(join(root, '.claude', 'skills', 'owner-protocol', 'SKILL.md'), `${SKILL}evil\n`)
+      const bad = await checkPacks(root, env, src())
+      expect(bad?.status).toBe('fail')
+      expect(bad?.fix).toContain('apm install --frozen')
 
-    const fix = Bun.spawnSync({ cmd: [APM as string, 'install', '--frozen'], cwd: root, env })
-    expect(fix.exitCode).toBe(0)
-    expect((await checkPacks(root, env, src()))?.status).toBe('ok')
-  })
+      const fix = Bun.spawnSync({ cmd: [APM as string, 'install', '--frozen'], cwd: root, env })
+      expect(fix.exitCode).toBe(0)
+      expect((await checkPacks(root, env, src()))?.status).toBe('ok')
+      // apm을 여러 번 부르는 e2e라 기본 5초가 CI 리눅스에서 모자랐다(2026-10-15 4915fac CI)
+    },
+    APM_E2E_MS,
+  )
 
-  test('doctor를 프로젝트 안에서 돌리면 팩 검사가 결과에 들어간다', async () => {
-    const root = newProject()
-    expect((await initWithPacks(root)).errors).toEqual([])
-    const opts = { trainFile: join(LIB, 'train.yaml'), libRoot: LIB, home: env.HOME as string }
-    const inProject = await runDoctor({ ...opts, pathEnv: env.PATH, project: root, packs: src() })
-    expect(inProject.checks.find((c) => c.name === '팩')?.status).toBe('ok')
-    // 실제 train과 라이브러리로 재면 이 프로젝트의 팩(테스트 출처)은 train 밖 의존성이다
-    const real = await runDoctor({ ...opts, pathEnv: env.PATH, project: root })
-    expect(real.checks.find((c) => c.name === '팩')?.status).toBe('fail')
-    const outside = await runDoctor({ ...opts, pathEnv: env.PATH })
-    expect(outside.checks.find((c) => c.name === '팩')).toBeUndefined()
-  })
+  test(
+    'doctor를 프로젝트 안에서 돌리면 팩 검사가 결과에 들어간다',
+    async () => {
+      const root = newProject()
+      expect((await initWithPacks(root)).errors).toEqual([])
+      const opts = { trainFile: join(LIB, 'train.yaml'), libRoot: LIB, home: env.HOME as string }
+      const inProject = await runDoctor({ ...opts, pathEnv: env.PATH, project: root, packs: src() })
+      expect(inProject.checks.find((c) => c.name === '팩')?.status).toBe('ok')
+      // 실제 train과 라이브러리로 재면 이 프로젝트의 팩(테스트 출처)은 train 밖 의존성이다
+      const real = await runDoctor({ ...opts, pathEnv: env.PATH, project: root })
+      expect(real.checks.find((c) => c.name === '팩')?.status).toBe('fail')
+      const outside = await runDoctor({ ...opts, pathEnv: env.PATH })
+      expect(outside.checks.find((c) => c.name === '팩')).toBeUndefined()
+    },
+    APM_E2E_MS,
+  )
 
   test('apm.yml만 있고 락이 없으면 실패, 둘 다 없으면 검사하지 않는다', async () => {
     const root = newProject()

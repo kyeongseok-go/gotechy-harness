@@ -6,15 +6,17 @@ import {
   appendFileSync,
   existsSync,
   linkSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmdirSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 import { parseDecisions } from '../core/decisions'
 import { parseFrontmatter, serializeFrontmatter } from '../core/frontmatter'
 import {
@@ -28,6 +30,7 @@ import {
   type LedgerEntry,
   ledgerLinePayload,
   ledgerSigned,
+  parsePinnedKey,
   sha256,
   signingPayload,
   taskSpecDigest,
@@ -92,10 +95,16 @@ function serializeGate(gate: Gate, body: string): string {
 }
 
 /** 결정을 기록할 때: 임시 파일에 쓴 뒤 이름을 바꾼다. 쓰다 멈춰도 반쯤 쓴 게이트가 남지 않는다. */
+/**
+ * 같은 폴더의 임시 파일 이름. 난수를 붙이고 'wx'로 만들어, 미리 심어 둔 링크를 따라 저장소 밖 파일을 쓰지 않는다
+ * (보안 감사 11차 중간 2).
+ */
+const tmpName = (file: string) => `${file}.tmp-${process.pid}-${randomBytes(6).toString('hex')}`
+
 function replaceGate(p: Project, gate: Gate, body: string): void {
   const file = paths.gate(p, gate.id)
-  const tmp = `${file}.tmp-${process.pid}`
-  writeFileSync(tmp, serializeGate(gate, body))
+  const tmp = tmpName(file)
+  writeFileSync(tmp, serializeGate(gate, body), { flag: 'wx' })
   renameSync(tmp, file)
 }
 
@@ -103,8 +112,8 @@ function replaceGate(p: Project, gate: Gate, body: string): void {
 function createGateFile(p: Project, gate: Gate, body: string): void {
   const file = paths.gate(p, gate.id)
   mkdirSync(dirname(file), { recursive: true })
-  const tmp = `${file}.tmp-${process.pid}`
-  writeFileSync(tmp, serializeGate(gate, body))
+  const tmp = tmpName(file)
+  writeFileSync(tmp, serializeGate(gate, body), { flag: 'wx' })
   try {
     linkSync(tmp, file)
   } finally {
@@ -252,10 +261,9 @@ export function openGatesAfterRun(p: Project, task: TaskFrontmatter): Gate[] {
   return ensureGates(p, task).filter((g) => g.class !== 'approval-before' && g.status === 'pending')
 }
 
-type Ledger = { entries: LedgerEntry[]; broken: boolean }
+type Ledger = { entries: LedgerEntry[]; broken: boolean; problem?: string }
 
-function readLedger(p: Project): Ledger {
-  const text = readText(paths.ledger(p))
+function parseLedger(text: string): Ledger {
   if (!text) return { entries: [], broken: false }
   const entries: LedgerEntry[] = []
   let broken = false
@@ -279,24 +287,186 @@ function readLedger(p: Project): Ledger {
   return { entries, broken }
 }
 
-/** 장부를 읽고, 줄마다 그 줄의 키로 서명이 맞는지 본다. 하나라도 어긋나면 장부 전체를 믿지 않는다(contract.md 6.3절). */
-function readSignedLedger(p: Project, home: string): Ledger {
-  const ledger = readLedger(p)
-  const signed = ledgerSigned(ledger.entries, (id) => ownerPub(home, id))
-  return { entries: ledger.entries, broken: ledger.broken || !signed }
+// TD-013: 프로젝트에 고정한 오너 공개 키. 검증은 이 키로 한다. 홈의 키를 사람 확인 없는 키로 바꾸는 것만으로는
+// 결정을 만들 수 없고, 고정 파일까지 바꾸면 커밋된 파일이 바뀌어 git diff에 드러난다.
+type Pin = { pinned?: { id: string; pub: string }; missing: boolean; problem?: string }
+
+const PIN_MISSING =
+  '이 프로젝트에 고정된 오너 키(orchestration/owner.pub)가 없어요. 키를 바꿨거나 파일을 잃었다면 확인한 뒤 터미널에서 gotechy keys pin을 실행하세요'
+
+function readPin(p: Project): Pin {
+  const f = paths.ownerPin(p)
+  const st = lstatSync(f, { throwIfNoEntry: false })
+  if (!st) return { missing: true, problem: PIN_MISSING }
+  if (!st.isFile())
+    return {
+      missing: false,
+      problem: '고정된 오너 키 파일(orchestration/owner.pub)이 일반 파일이 아니에요',
+    }
+  const pinned = parsePinnedKey(readFileSync(f, 'utf8'))
+  return pinned
+    ? { pinned, missing: false }
+    : {
+        missing: false,
+        problem:
+          '고정된 오너 키 파일(orchestration/owner.pub)의 형식이 틀렸어요. P-256 공개 키 한 줄이어야 해요',
+      }
 }
 
-function contextFor(p: Project, gate: Gate, home: string, ledger: Ledger): VerifyContext {
-  const key = loadOwnerKey(home)
+function writePin(p: Project, pub: string): void {
+  const f = paths.ownerPin(p)
+  const tmp = tmpName(f)
+  writeFileSync(tmp, `${pub}\n`, { flag: 'wx' })
+  renameSync(tmp, f)
+}
+
+// TD-014: 장부 끝 기록. 장부 파일 전체의 줄 수와 해시를 이 폴더 몫으로 $GOTECHY_HOME/owner/heads/에 따로 둔다.
+// 프로젝트만 쓸 수 있는 쪽이 장부 줄을 지우거나(끝줄, 가운데 줄) 바꾸면 끝 기록과 달라진다.
+type Head = { lines: number; sha256: string }
+
+const HEAD_MISSING =
+  '이 폴더의 장부 끝 기록이 없어요. 폴더를 옮겼거나 다른 컴퓨터라면 장부를 확인한 뒤 터미널에서 gotechy keys pin으로 다시 기록하세요'
+
+function realRoot(root: string): string {
+  try {
+    return realpathSync(root)
+  } catch {
+    return root
+  }
+}
+
+export function ledgerHeadFile(home: string, root: string): string {
+  return join(home, 'owner', 'heads', `${sha256(realRoot(root)).slice(0, 32)}.json`)
+}
+
+function readHead(home: string, root: string): Head | 'missing' | 'bad' {
+  const f = ledgerHeadFile(home, root)
+  const st = lstatSync(f, { throwIfNoEntry: false })
+  if (!st) return 'missing'
+  if (!st.isFile()) return 'bad'
+  try {
+    const h = JSON.parse(readFileSync(f, 'utf8')) as Record<string, unknown> | null
+    if (
+      h !== null &&
+      typeof h === 'object' &&
+      Number.isInteger(h.lines) &&
+      (h.lines as number) >= 0 &&
+      typeof h.sha256 === 'string' &&
+      /^[0-9a-f]{64}$/.test(h.sha256)
+    )
+      return { lines: h.lines as number, sha256: h.sha256 }
+  } catch {}
+  return 'bad'
+}
+
+const countLines = (text: string) => text.split('\n').filter((l) => l.trim()).length
+
+function headProblem(home: string, root: string, text: string): string | undefined {
+  return headProblemFor(readHead(home, root), text)
+}
+
+function headProblemFor(head: Head | 'missing' | 'bad', text: string): string | undefined {
+  if (head === 'missing') return countLines(text) === 0 ? undefined : HEAD_MISSING
+  if (head === 'bad')
+    return '이 폴더의 장부 끝 기록을 읽을 수 없어요. 장부를 확인한 뒤 터미널에서 gotechy keys pin으로 다시 기록하세요'
+  // 해시가 줄 수까지 덮는다. lines는 사람이 읽으라고 남긴다
+  if (head.sha256 !== sha256(text))
+    return '결정 장부가 이 폴더의 장부 끝 기록과 달라요. 장부 줄이 지워졌거나 바뀌었어요'
+  return undefined
+}
+
+function writeHead(home: string, root: string, text: string): void {
+  const f = ledgerHeadFile(home, root)
+  mkdirSync(dirname(f), { recursive: true, mode: 0o700 })
+  const tmp = `${f}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`
+  writeFileSync(
+    tmp,
+    JSON.stringify({ root: realRoot(root), lines: countLines(text), sha256: sha256(text) }),
+    { mode: 0o600, flag: 'wx' },
+  )
+  renameSync(tmp, f)
+}
+
+/** 장부에 줄을 더하고 끝 기록을 고치는 동안만 잡는 잠금. 오너 확인(Touch ID)을 기다리는 동안에는 잡지 않는다. */
+async function withLedgerLock<T>(p: Project, fn: () => T): Promise<T> {
+  const lock = `${paths.ledger(p)}.lock`
+  mkdirSync(dirname(lock), { recursive: true })
+  for (let i = 0; ; i++) {
+    try {
+      mkdirSync(lock)
+      break
+    } catch {
+      if (i >= 150)
+        throw new Error(
+          `결정 장부를 다른 decide가 쓰는 중이에요. 그 decide가 멈춘 것이라면 ${lock} 폴더를 지우세요. 아무것도 기록하지 않았어요`,
+        )
+      await Bun.sleep(20)
+    }
+  }
+  try {
+    return fn()
+  } finally {
+    // 잠금 폴더를 누가 지웠거나 안에 파일을 넣어도, 이미 끝낸 기록을 실패로 바꾸지 않는다(감사 11차 낮음 3)
+    try {
+      rmdirSync(lock)
+    } catch {}
+  }
+}
+
+/** 장부를 원래 내용으로 되돌린다. 줄을 더한 뒤 끝 기록을 쓰지 못했을 때 쓴다 */
+function restoreLedger(p: Project, text: string): void {
+  const f = paths.ledger(p)
+  const tmp = tmpName(f)
+  writeFileSync(tmp, text, { flag: 'wx' })
+  renameSync(tmp, f)
+}
+
+/**
+ * 끝 기록, 장부, 끝 기록 순서로 읽어 둘이 같은 순간의 값인지 본다. 다른 decide가 그사이에 줄을 더했으면
+ * 다시 읽는다(감사 11차 낮음 4: 따로 읽어 거짓 경보가 났다).
+ */
+function readLedgerAndHead(
+  p: Project,
+  home: string,
+): { text: string; head: Head | 'missing' | 'bad' } {
+  let head = readHead(home, p.root)
+  for (let i = 0; ; i++) {
+    const text = readText(paths.ledger(p)) ?? ''
+    const again = readHead(home, p.root)
+    if (JSON.stringify(again) === JSON.stringify(head) || i >= 3) return { text, head: again }
+    head = again
+  }
+}
+
+/**
+ * 장부를 읽고, 줄마다 그 줄의 키로 서명이 맞는지 본다. 하나라도 어긋나면 장부 전체를 믿지 않는다(contract.md 6.3절).
+ * 고정 키의 줄은 고정 파일의 공개 키로 본다. 장부가 이 폴더의 끝 기록과 다르면 problem(TD-014).
+ */
+function readSignedLedger(p: Project, home: string, pinned?: { id: string; pub: string }): Ledger {
+  const { text, head } = readLedgerAndHead(p, home)
+  const ledger = parseLedger(text)
+  const signed = ledgerSigned(ledger.entries, (id) =>
+    id === pinned?.id ? pinned.pub : ownerPub(home, id),
+  )
+  const problem = headProblemFor(head, text)
+  return {
+    entries: ledger.entries,
+    broken: ledger.broken || !signed,
+    ...(problem ? { problem } : {}),
+  }
+}
+
+function contextFor(p: Project, gate: Gate, ledger: Ledger, pin: Pin): VerifyContext {
   const state = handoffState(p, gate.task)
   return {
     projectId: projectId(p),
     taskText: readText(paths.task(p, gate.task)),
     handoff: state ? { text: state.text, rev: state.rev } : undefined,
-    ownerKey: key.ok ? { id: key.id, pub: key.pub } : undefined,
-    ...(key.ok ? {} : { keyProblem: key.problem }),
+    pinned: pin.pinned,
+    ...(pin.problem ? { pinProblem: pin.problem } : {}),
     ledger: ledger.entries,
     ledgerBroken: ledger.broken,
+    ...(ledger.problem ? { ledgerProblem: ledger.problem } : {}),
   }
 }
 
@@ -304,7 +474,8 @@ type Snapshot = { gates: Gate[]; broken: GateFile[]; verdicts: Map<string, Verdi
 
 /** 게이트 파일을 한 번만 읽고, 판정과 지시문에 같은 값을 쓴다(검증과 사용 사이에 파일이 바뀌는 문제를 줄인다). */
 function snapshot(p: Project, home: string): Snapshot {
-  const ledger = readSignedLedger(p, home)
+  const pin = readPin(p)
+  const ledger = readSignedLedger(p, home, pin.pinned)
   const files = gateFiles(p)
   const gates: Gate[] = []
   const broken: GateFile[] = []
@@ -316,7 +487,7 @@ function snapshot(p: Project, home: string): Snapshot {
       continue
     }
     gates.push(f.gate)
-    verdicts.set(f.id, judgeGate(f.gate, contextFor(p, f.gate, home, ledger)))
+    verdicts.set(f.id, judgeGate(f.gate, contextFor(p, f.gate, ledger, pin)))
   }
   return { gates, broken, verdicts }
 }
@@ -480,6 +651,57 @@ export async function decideGate(
   }
 }
 
+/** 이 nonce의 장부 줄이 있는가. serve가 기록 뒤 오류를 구분할 때 쓴다(감사 11차 낮음 3) */
+export function nonceInLedger(p: Project, nonce: string): boolean {
+  return parseLedger(readText(paths.ledger(p)) ?? '').entries.some((e) => e.nonce === nonce)
+}
+
+/**
+ * `gotechy keys pin`: 이 맥의 오너 키를 프로젝트에 고정하고, 이 폴더의 장부 끝 기록을 지금 장부로 다시 쓴다(TD-013, TD-014).
+ * 키를 바꾼 뒤, 다른 컴퓨터나 옮긴 폴더에서 쓴다. 지금 상태를 보여 주고 오너가 확정해야 바꾼다.
+ */
+export async function pinOwner(
+  p: Project,
+  home: string,
+  opts: { confirm: (summary: string) => Promise<boolean> },
+): Promise<{ keyId: string; previous: string | undefined }> {
+  const key = loadOwnerKey(home)
+  if (!key.ok) throw new Error(key.problem)
+  const pin = readPin(p)
+  const { text, head } = readLedgerAndHead(p, home)
+  const ledger = parseLedger(text)
+  const signed = ledgerSigned(ledger.entries, (id) =>
+    id === pin.pinned?.id ? pin.pinned.pub : ownerPub(home, id),
+  )
+  // 장부에서 온 값은 형식을 본 것만 보여 준다. 줄바꿈을 넣어 가짜 줄을 끼우지 못하게 한다(감사 11차 낮음 2)
+  const last = ledger.entries.at(-1)
+  const lastShown = last
+    ? `${GateId.safeParse(last.gate).success ? last.gate : '(형식이 틀린 게이트)'}, ${/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(String(last.decided_at)) ? last.decided_at : '(형식이 틀린 시각)'}`
+    : ''
+  const summary = [
+    `프로젝트: ${projectId(p) ?? '(아직 없음)'}`,
+    `고정된 오너 키: ${pin.pinned?.id ?? (pin.missing ? '없음' : '읽을 수 없음')}`,
+    `이 맥의 오너 키: ${key.id}`,
+    `결정 장부: ${countLines(text)}줄${last ? ` (마지막 줄: ${lastShown})` : ''}`,
+    `장부 서명: ${ledger.broken || !signed ? '읽을 수 없거나 서명이 맞지 않는 줄이 있어요' : '모든 줄이 맞아요'}`,
+    `장부 끝 기록: ${headProblemFor(head, text) ?? '장부와 맞아요'}`,
+    '이 맥의 키를 이 프로젝트에 고정하고, 장부 끝 기록을 지금 보인 장부로 다시 써요. 고정 키가 바뀌면 이전 키의 결정은 다시 결정해야 해요.',
+    '장부 줄이 지워진 것 같다면 확정하지 말고 원인부터 보세요.',
+  ].join('\n')
+  if (!(await opts.confirm(summary))) throw new Error('취소했어요. 아무것도 바꾸지 않았어요')
+  // 오너가 본 장부와 지금 장부가 같을 때만 믿는다(감사 11차 낮음 1). 끝 기록을 먼저 쓰고 고정 파일을 쓴다
+  await withLedgerLock(p, () => {
+    if (sha256(readText(paths.ledger(p)) ?? '') !== sha256(text))
+      throw new Error(
+        '확인하는 사이에 결정 장부가 바뀌었어요. 아무것도 바꾸지 않았어요. 다시 실행하세요',
+      )
+    writeHead(home, p.root, text)
+    writePin(p, key.pub)
+  })
+  appendEvent(p, { type: 'owner.pinned', key: key.id, previous: pin.pinned?.id ?? null })
+  return { keyId: key.id, previous: pin.pinned?.id }
+}
+
 const heldLocks = new Set<string>()
 function releaseLocksAndExit(): void {
   try {
@@ -501,7 +723,8 @@ async function decideLocked(
   const gf = gateText === undefined ? undefined : parseGateText(file, gateText)
   const gate = gf?.gate
   if (!gate) throw new Error(`${id}를 읽을 수 없어요: ${gf?.problem ?? '파일이 없어요'}`)
-  const ledger = readSignedLedger(p, home)
+  const pin = readPin(p)
+  const ledger = readSignedLedger(p, home, pin.pinned)
   const handoff = handoffState(p, gate.task)
   if (isSuperseded(gate, handoff?.rev))
     throw new Error(
@@ -509,7 +732,7 @@ async function decideLocked(
     )
   if (
     gate.status === 'resolved' &&
-    judgeGate(gate, contextFor(p, gate, home, ledger)).status === 'ok'
+    judgeGate(gate, contextFor(p, gate, ledger, pin)).status === 'ok'
   )
     throw new Error(
       `${id}는 이미 결정됐고(${gate.resolution}) 검증도 통과해서 다시 결정할 수 없어요`,
@@ -518,6 +741,23 @@ async function decideLocked(
     throw new Error(`선택은 다음 중 하나여야 해요: ${gate.options.join(', ')}`)
   const key = loadOwnerKey(home)
   if (!key.ok) throw new Error(key.problem)
+  // TD-013: 고정 키와 이 맥의 키가 같아야 한다. 고정 파일이 없으면 결정 기록이 하나도 없을 때만 처음 고정한다
+  let pinNow = false
+  if (pin.pinned) {
+    if (pin.pinned.id !== key.id)
+      throw new Error(
+        `이 프로젝트에 고정된 오너 키(${pin.pinned.id})와 이 맥의 오너 키(${key.id})가 달라요. 키를 바꿨다면 확인한 뒤 터미널에서 gotechy keys pin으로 다시 고정하세요. 아무것도 기록하지 않았어요`,
+      )
+  } else if (
+    !pin.missing ||
+    ledger.entries.length > 0 ||
+    ledger.broken ||
+    listGates(p).some((g) => g.status === 'resolved')
+  )
+    throw new Error(`${pin.problem}. 아무것도 기록하지 않았어요`)
+  else pinNow = true
+  // TD-014: 장부가 끝 기록과 다르면 결정을 더하지 않는다(지워진 줄 위에 쌓지 않는다)
+  if (ledger.problem) throw new Error(`${ledger.problem}. 아무것도 기록하지 않았어요`)
   const pid = projectId(p, true) as string
   const taskText = readText(paths.task(p, gate.task))
   const task = taskText ? parseTaskText(gate.task, taskText) : undefined
@@ -620,8 +860,31 @@ async function decideLocked(
   decided.sig = gateSig
   entry.sig = lineSig
   // 소비 기록을 먼저 남긴다. 게이트를 쓰기 전에 멈추면 게이트는 pending으로 남아 다시 결정하면 된다.
-  mkdirSync(dirname(paths.ledger(p)), { recursive: true })
-  appendFileSync(paths.ledger(p), `${JSON.stringify(entry)}\n`)
+  // 장부 줄과 끝 기록은 잠금 아래에서 함께 고친다. 오너 확인을 기다리는 사이에 다른 결정이 줄을 더했을 수 있어 다시 대조한다
+  await withLedgerLock(p, () => {
+    const text = readText(paths.ledger(p)) ?? ''
+    const problem = headProblem(home, p.root, text)
+    if (problem) throw new Error(`${problem}. 아무것도 기록하지 않았어요`)
+    if (pinNow) {
+      const now = readPin(p)
+      if (now.pinned?.id !== key.id && !now.missing)
+        throw new Error(
+          `${now.problem ?? '고정된 오너 키가 바뀌었어요'}. 아무것도 기록하지 않았어요`,
+        )
+      if (now.missing) writePin(p, key.pub)
+    }
+    // 끝 기록은 다시 읽은 파일이 아니라 기대하는 내용(읽은 장부 + 이 줄)으로 쓴다. 끝 기록을 쓰지 못하면 장부를 되돌린다
+    const line = `${JSON.stringify(entry)}\n`
+    appendFileSync(paths.ledger(p), line)
+    try {
+      writeHead(home, p.root, text + line)
+    } catch (e) {
+      restoreLedger(p, text)
+      throw new Error(
+        `장부 끝 기록을 쓰지 못해 장부를 되돌렸어요. 아무것도 기록하지 않았어요: ${(e as Error).message}`,
+      )
+    }
+  })
   // 이해 문항의 답과 핵심어는 private에만 남긴다(contract.md 9.1절)
   for (const r of rows) appendFileSync(paths.comprehension(p), `${JSON.stringify(r)}\n`)
   replaceGate(p, decided, gf?.body ?? '')

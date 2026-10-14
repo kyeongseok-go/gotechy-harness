@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseFrontmatter } from '../../src/core/frontmatter'
 import { acceptTask } from '../../src/runtime/accept'
-import { decideGate, listGates, verifyGates } from '../../src/runtime/gates'
+import { decideGate, listGates, pinOwner, verifyGates } from '../../src/runtime/gates'
 import { initProject } from '../../src/runtime/init'
 import { initOwnerKey, rotateOwnerKey } from '../../src/runtime/keys'
 import { runTask } from '../../src/runtime/run'
@@ -256,10 +256,16 @@ describe('gate verify가 거부하는 것 (Validation 8, 11)', () => {
     expect(v.reasons[0]).toContain('nonce')
   })
 
-  test('keys rotate 뒤 이전 키로 서명한 결정은 실패하고, 다시 결정하면 통과한다', async () => {
+  test('keys rotate와 keys pin 뒤 이전 키로 서명한 결정은 실패하고, 다시 결정하면 통과한다', async () => {
     await decidedTask()
     const old = readFileSync(gateFile('G-001'), 'utf8')
     rotateOwnerKey(home, LIB)
+    // 키만 바꾸면 고정 키(TD-013)는 그대로라 이전 결정이 유효하고, 새 결정은 거부한다
+    expect(verdict('G-001').status).toBe('ok')
+    await expect(
+      decideGate({ root }, home, 'G-002', { choice: '넣기', confirm: yes }),
+    ).rejects.toThrow('gotechy keys pin')
+    await pinOwner({ root }, home, { confirm: yes })
     const v = verdict('G-001')
     expect(v.status).toBe('fail')
     expect(v.reasons.join(' ')).toContain('키')

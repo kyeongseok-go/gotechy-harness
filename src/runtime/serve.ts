@@ -1,6 +1,7 @@
 // gotechy serve: 화면에서 게이트를 결정하는 로컬 서버(contract.md 8.3절, 1b N2).
 // 결정은 decide와 같은 decideGate를 지나고 같은 오너 키 서명(Touch ID)을 요구한다. 바뀌는 것은 확인을 받는 방법뿐이다.
 import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import {
   renderGatePage,
   renderHandoffPage,
@@ -8,9 +9,17 @@ import {
   renderMessagePage,
   SERVE_CSP,
 } from '../core/view/pages'
-import { decideGate, gateCheck, gateView, readTask, StaleViewError, verifyGates } from './gates'
+import {
+  decideGate,
+  gateCheck,
+  gateView,
+  nonceInLedger,
+  readTask,
+  StaleViewError,
+  verifyGates,
+} from './gates'
 import { loadCards, recordShown } from './inbox'
-import { appendEvent, type Project } from './project'
+import { appendEvent, type Project, paths } from './project'
 import { loadTermBank } from './terms'
 
 export type ServeOptions = {
@@ -147,6 +156,7 @@ export function startServe(o: ServeOptions): ServeHandle {
     log(`제출: ${gateId} ${choice} (확인 ${nonce.slice(0, 4).toUpperCase()})`)
     const answers = current.questions.map((_, i) => field(`answer_${i}`) ?? '')
     let next = 0
+    const pinnedBefore = existsSync(paths.ownerPin(o.project))
     try {
       const shownAt = s.shown.get(gateId)
       const g = await decideGate(o.project, o.home, gateId, {
@@ -164,6 +174,13 @@ export function startServe(o: ServeOptions): ServeHandle {
       s.shown.delete(gateId)
       log(`결정함: ${g.id} ${g.resolution}`)
       const lines = [`${g.id}: ${g.resolution}로 결정했어요 (오너 키 ${g.key_id}).`]
+      // 첫 결정이 프로젝트에 오너 키를 고정했으면 커밋하라고 알린다. 커밋해야 키가 바뀐 것이 git diff에 드러난다(감사 11차 낮음 5)
+      if (!pinnedBefore && existsSync(paths.ownerPin(o.project))) {
+        const pinNote =
+          '이 프로젝트에 오너 키를 처음 고정했어요(orchestration/owner.pub). 이 파일을 커밋하세요.'
+        lines.push(pinNote)
+        log(pinNote)
+      }
       try {
         const started = startIfAllowed(g.task)
         if (started)
@@ -177,7 +194,16 @@ export function startServe(o: ServeOptions): ServeHandle {
     } catch (e) {
       // 기록 뒤 단계에서 난 오류면 "기록하지 않았다"고 말하지 않는다(감사 8차 낮음 1)
       const recorded = gateView(o.project, gateId)?.gate.nonce === nonce
-      log(`${recorded ? '기록 뒤 오류' : '결정 안 함'}: ${gateId} ${(e as Error).message}`)
+      // 장부 줄만 남고 결정 파일을 못 썼으면 "아무것도 기록하지 않았다"고 하지 않는다(감사 11차 낮음 3)
+      const partial = !recorded && nonceInLedger(o.project, nonce)
+      log(
+        `${recorded ? '기록 뒤 오류' : partial ? '결정 못 끝냄' : '결정 안 함'}: ${gateId} ${(e as Error).message}`,
+      )
+      if (partial)
+        return message(500, '결정을 끝내지 못했어요', [
+          `${gateId}의 서명과 장부 줄은 남았지만 결정 파일을 쓰지 못했어요: ${(e as Error).message}`,
+          '이 게이트는 결정 전으로 남아 있어요. 새로 고침해서 다시 결정하세요.',
+        ])
       if (recorded)
         return message(500, '결정은 기록했어요', [
           `${gateId}의 결정은 서명해 기록했지만, 그 뒤 단계에서 오류가 났어요: ${(e as Error).message}`,

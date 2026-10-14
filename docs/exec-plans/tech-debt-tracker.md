@@ -17,12 +17,13 @@
 | TD-009 | 2026-10-14 | verify 샌드박스가 macOS 전용이다. 다른 OS에서는 기록만 남긴다 | src/runtime/sandbox.ts | 🟡 | 리눅스 CI나 2단계 다른 아키텍처에서 격리 약속이 깨진다 | 2단계: bubblewrap 등 리눅스 샌드박스 |
 | TD-010 | 2026-10-14 | `src/runtime/run.ts` 줄 커버리지 90.7%, 2026-10-14 18:22에 92.1%(핵심 모듈 목록 밖. 타임아웃, 게이트 열기 실패, 샌드박스 없음 분기). 같은 밤에 `usage.ts`(100%)와 `pages.tsx`(95.0%)는 기준을 넘겼다 | src/runtime/run.ts | 🟢 | 드문 실패 경로가 깨져도 모른다 | 1a 완료 게이트 전 |
 | TD-012 | 2026-10-14 | `gotechy accept`가 병합하는 워커 변경에는 gitleaks 검사가 없다. 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 워커에 넘긴 로그인 값 검사(2026-10-14 감사 6차) 말고는 막히지 않는다 | src/runtime/accept.ts | 🟡 | 워커가 만든 토큰 같은 값이 메인에 들어갈 수 있다 | accept에서 병합 diff에 gitleaks를 돌리기 |
-| TD-013 | 2026-10-14 | 오너 공개 키의 지문을 프로젝트에 고정하지 않는다. 같은 OS 사용자 프로세스가 `$GOTECHY_HOME/owner`의 공개 키와 blob을 사람 확인 없는 자기 키로 바꾸면 그 뒤의 결정을 위조할 수 있다 | src/runtime/keys.ts, src/runtime/gates.ts | 🟡 | 키를 바꾼 사실이 검증에서 드러나지 않는다 | 1b: 프로젝트 `orchestration/owner.pub` 지문 고정과 키 교체 절차 |
-| TD-014 | 2026-10-14 | 결정 장부의 마지막 줄을 지우면 알아채지 못한다. 다시 결정한 뒤 끝줄을 지우고 옛 결정 파일과 명세를 되돌리면 옛 결정이 다시 ok가 된다(같은 OS 사용자 쓰기 권한 필요, 보안 감사 6차 낮음 2) | src/runtime/gates.ts, src/core/gate.ts | 🟡 | 철회한 결정이 되살아날 수 있다 | 1b: 장부 줄에 seq와 앞 줄 해시를 넣어 서명하고, 마지막 줄을 `$GOTECHY_HOME/owner/heads/`에 따로 두고 대조 |
 | TD-015 | 2026-10-15 | Codex 워커에는 비용 상한(`budget_usd`)이 걸리지 않는다. codex CLI에 옵션이 없고 시간 상한만 있다(보안 감사 7차 낮음 7) | src/runtime/adapters/codex.ts | 🟡 | 오염된 입력이 Codex를 시간 상한까지 돌게 하면 비용이 쌓인다 | 지금은 무인 루프가 Codex 작업을 돌리지 않는다(2026-10-15). 갚을 때: `--json` 이벤트의 사용량을 실시간으로 더해 상한에서 중단 |
 | TD-016 | 2026-10-15 | 스펙(harness-v2.md)의 "HANDOFF lint 실패 시 워커가 재작성(최대 2회)"이 구현되지 않았다. 지금은 lint에 실패하면 바로 `failed`다(doc-gardener) | src/runtime/run.ts | 🟢 | 형식만 틀린 결과도 다시 돌려야 한다. 무인 루프는 다시 시도로 일부 메움 | 1b 안에서: lint 오류를 워커에게 돌려주는 재작성 한 차례 |
 | TD-017 | 2026-10-15 | (하네스 개선, 1a 회고) 외부 경계(브라우저, OS, 외부 CLI)를 건드리는 기능을 실험 증거 없이 커밋했다(1b N2의 Origin: null). `.claude/rules/testing.md`의 예외 규칙을 "커밋 전에 실험 증거"로 못박는다 | .claude/rules/testing.md | 🟢 | 자동 테스트가 실제 환경과 다른 가정(fetch에 Origin 직접 넣기)으로 통과한다 | 2단계 시작 전 |
 | TD-018 | 2026-10-15 | (출시 후 측정) 스펙 성공 기준 "오너가 HANDOFF 한 건을 이해하고 결정하는 데 3분 이내, 이해 게이트 핵심어 적중률 60% 이상"을 공문서 프로젝트 실사용 10건으로 잰다 | docs/product-specs/harness-v2.md | 🟢 | 재지 않으면 1a의 목적(이해하고 결정)이 이뤄졌는지 모른다 | 1a 완료 2주 뒤(2026-10-29) 또는 결정 10건 |
+| TD-019 | 2026-10-15 | 끝 기록과 오너 키의 위치(`GOTECHY_HOME`, 없으면 `HOME/.gotechy`)와 verify 샌드박스의 비밀 폴더 목록이 환경 변수 HOME을 따른다. 프로젝트 안을 가리키면 멈추지만, `/tmp` 같은 다른 폴더를 가리키게 해서 실행하면 끝 기록 검사를 피하고, 샌드박스가 진짜 홈의 비밀 폴더를 막지 않는다. Bun의 `os.userInfo().homedir`도 HOME을 따른다(실험) | src/runtime/keys.ts, src/runtime/sandbox.ts | 🟡 | 명령의 환경을 바꿀 수 있는 쪽이 신뢰 기준을 옮긴다(보안 감사 11차 중간 1) | 계정 정보에서 홈 읽기(getpwuid FFI나 dscl), 기본값이 아닌 홈이면 출력에 표시 |
+| TD-020 | 2026-10-15 | 보호 경로를 대소문자 구분으로 비교한다. macOS 기본 파일 시스템은 구분하지 않아 `orchestration/OWNER.PUB`가 같은 파일일 수 있다 | src/core/paths.ts | 🟢 | ownership 검사를 대소문자로 피할 수 있다(보안 감사 11차 낮음 6, 실험 필요) | 새 클론에서 대소문자 다른 경로의 git 표시를 실험한 뒤 darwin에서 소문자와 NFC로 비교 |
+| TD-021 | 2026-10-15 | `gotechy keys pin`은 Touch ID 없이 TTY와 y만으로 고정 키와 끝 기록을 다시 쓴다 | src/runtime/gates.ts | 🟢 | TTY 검사를 우회한 쪽이 신뢰 기준을 바꿀 수 있다(보안 감사 11차 낮음 1 보강 제안) | 서명 도구에 고정용 하위 명령을 더해 {project_id, pub, 장부 sha}에 오너 서명 |
 
 심각도: 🔴 구조적(레이어 위반·보안) / 🟡 기능적(엣지케이스·성능) / 🟢 표면적(네이밍·중복)
 
@@ -32,6 +33,8 @@
 |---|---|---|---|
 | TD-008 | 리드 에이전트가 `gotechy decide`, `serve`, `keys`, `script`, `expect`와 force push, 발행, 배포를 실행하지 못하게: `gotechy init`이 프로젝트 `.claude/settings.json`에 deny 규칙, `settings.local.json`에 `gotechy guard` hook(fail-closed)을 깐다 | 2026-10-15 | `tests/core/guard.test.ts`, `tests/e2e/guard-cli.test.ts`, contract.md 12절 |
 | TD-011 | `gotechy init`이 팩을 복사로 설치하던 것을 apm(커밋 고정, `targets: [claude, agent-skills]`)으로 바꿨다. doctor가 프로젝트 안에서 `apm audit --ci`로 변조를 잡는다 | 2026-10-15 | `tests/e2e/init-apm.test.ts`, `tests/core/apm.test.ts`, 실측 `docs/references/evidence/2026-10-15-night/apm-real.txt` |
+| TD-013 | 프로젝트 고정 키 `orchestration/owner.pub`(커밋, 보호 경로). 검증은 고정 키로 하고, decide는 이 맥의 키가 고정 키와 다르면 거부한다. 첫 decide가 처음 고정하고, 키를 바꾸면 `gotechy keys pin`으로 다시 고정한다. 같은 사용자 프로세스가 고정 파일까지 바꾸면 git diff에 드러나는 것까지가 방어다 | 2026-10-15 | `tests/e2e/pin-ledger.test.ts`, contract.md 6.3절 |
+| TD-014 | 장부 끝 기록 `$GOTECHY_HOME/owner/heads/`(장부 파일 전체의 줄 수와 sha256, 폴더별). 끝줄, 가운데 줄, 파일 삭제를 잡고, 끝 기록이 없으면 `keys pin`으로 다시 쓴다. 설계 초안의 줄 잇기 해시는 두지 않았다(장부가 맥 밖으로 나가지 않고, 서명에 순번을 넣으면 Touch ID 동안 잠금이 필요) | 2026-10-15 | `tests/e2e/pin-ledger.test.ts`, contract.md 6.3절 |
 | TD-002 | `scripts/bootstrap.sh` 신설 + `init.sh --fix` 연결. 스택·테스트·배포를 묻고 src/ 레이어 골격·통과하는 예제 테스트·tsconfig·vitest(커버리지 임계값)·package.json 스크립트 전부·ARCHITECTURE/AGENTS/DEPLOYMENT 교체 자리를 실제로 채운다 | 2026-09-18 | 깨끗한 복사본에서 `--fix` → `init.sh` **첫 실행 통과**. `npm test` 1 passed, `lint`·`build`·`check:boundaries` 전부 exit 0. 레이어 위반 주입 시 `ui-no-repo` 에러로 **exit 1** 확인(제거 시 0 복귀), 커버리지 리포트 100% 동작 |
 
 ## 규칙

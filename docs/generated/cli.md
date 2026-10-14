@@ -155,6 +155,17 @@ Options:
   -h, --help  display help for command
 ```
 
+## gotechy keys pin
+
+```text
+Usage: gotechy keys pin [options]
+
+이 맥의 오너 키를 프로젝트에 고정하고(orchestration/owner.pub), 이 폴더의 장부 끝 기록을 다시 쓴다
+
+Options:
+  -h, --help  display help for command
+```
+
 ## gotechy decide
 
 ```text

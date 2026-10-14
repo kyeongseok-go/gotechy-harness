@@ -15,7 +15,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { TaskFrontmatter } from '../../src/core/schema'
-import { gateCheck, verifyGates } from '../../src/runtime/gates'
+import { gateCheck, pinOwner, verifyGates } from '../../src/runtime/gates'
 import { rotateOwnerKey } from '../../src/runtime/keys'
 import { runTask } from '../../src/runtime/run'
 import { type ServeHandle, startServe } from '../../src/runtime/serve'
@@ -97,6 +97,39 @@ async function decisionProject() {
   await runFake(root, home, id, 'needs-decision')
   return id
 }
+
+describe('보안 감사 11차 (serve)', () => {
+  test('낮음 5: 화면의 첫 결정이 오너 키를 고정하면 커밋하라고 알린다', async () => {
+    await decisionProject()
+    const s = serve()
+    const cookie = await login(s)
+    const f = await formOf(s, cookie, 'G-001')
+    const r = await submit(s, cookie, 'G-001', { choice: '5분', csrf: f.csrf, view: f.view })
+    expect(r.status).toBe(200)
+    expect(await r.text()).toContain('처음 고정했어요')
+  })
+
+  test('낮음 3: 장부 줄은 남고 결정 파일을 못 쓰면 "기록하지 않았다"고 하지 않는다', async () => {
+    await decisionProject()
+    const s = serve()
+    const cookie = await login(s)
+    const f = await formOf(s, cookie, 'G-001')
+    writeFileSync(`${ownerBlob(home)}.delay`, '300')
+    const pending = submit(s, cookie, 'G-001', { choice: '5분', csrf: f.csrf, view: f.view })
+    await Bun.sleep(100)
+    const gates = join(root, 'orchestration', 'gates')
+    chmodSync(gates, 0o500)
+    try {
+      const r = await pending
+      expect(r.status).toBe(500)
+      const html = await r.text()
+      expect(html).toContain('결정을 끝내지 못했어요')
+      expect(html).not.toContain('아무것도 기록하지 않았어요')
+    } finally {
+      chmodSync(gates, 0o700)
+    }
+  })
+})
 
 describe('세션과 요청 검사 (Validation 5)', () => {
   test('토큰이나 세션 쿠키 없이 부르면 403', async () => {
@@ -602,6 +635,7 @@ describe('보안 감사 8차', () => {
       (await submit(s, cookie, 'G-001', { choice: '5분', csrf: f.csrf, view: f.view })).status,
     ).toBe(200)
     rotateOwnerKey(home, LIB)
+    await pinOwner({ root }, home, { confirm: async () => true })
     const again = await formOf(s, cookie, 'G-001')
     expect(again.html).toContain('검증에 실패해서 다시 결정해요')
     // 두 결정을 모두 닫고 다시 돌리면 HANDOFF 판본이 올라 G-001은 지난 판본이 된다
@@ -785,6 +819,7 @@ describe('중간 3: 같은 작업은 한 번에 하나의 run만', () => {
     ).toBe(200)
     // 키를 바꾸면 G-001이 검증에 실패해 다시 결정할 수 있다. 그동안 첫 run은 아직 돌고 있다
     rotateOwnerKey(home, LIB)
+    await pinOwner({ root }, home, { confirm: async () => true })
     const f2 = await formOf(s, cookie, 'G-001')
     expect(
       (await submit(s, cookie, 'G-001', { choice: '진행', csrf: f2.csrf, view: f2.view })).status,

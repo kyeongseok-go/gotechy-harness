@@ -94,6 +94,23 @@ export function signingPayload(f: SignedFields): string {
 
 /** 오너 키 id: 공개 키(SPKI DER)의 sha256 앞 16자리. 공개 키 파일이 바뀌면 id와 맞지 않아 드러난다. */
 export const OWNER_KEY_ID = /^o-[0-9a-f]{16}$/
+/**
+ * 프로젝트 고정 파일(orchestration/owner.pub)의 내용. 한 줄짜리 P-256 공개 키(SPKI DER base64)만 받는다.
+ * 형식이 틀리면 undefined(검증은 실패 쪽으로 간다).
+ */
+export function parsePinnedKey(text: string): { id: string; pub: string } | undefined {
+  const pub = text.trim()
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(pub)) return undefined
+  try {
+    const key = createPublicKey({ key: Buffer.from(pub, 'base64'), format: 'der', type: 'spki' })
+    if (key.asymmetricKeyType !== 'ec' || key.asymmetricKeyDetails?.namedCurve !== 'prime256v1')
+      return undefined
+  } catch {
+    return undefined
+  }
+  return { id: ownerKeyId(pub), pub }
+}
+
 export function ownerKeyId(pubBase64: string): string {
   return `o-${createHash('sha256').update(Buffer.from(pubBase64, 'base64')).digest('hex').slice(0, 16)}`
 }
@@ -160,13 +177,15 @@ export type VerifyContext = {
   taskText: string | undefined
   /** 현재 HANDOFF 파일 내용과 판본 */
   handoff: { text: string; rev: number | undefined } | undefined
-  /** 현재 오너 키의 id와 공개 키(SPKI DER base64) */
-  ownerKey: { id: string; pub: string } | undefined
-  /** 키를 못 읽은 사유 (권한, 없음) */
-  keyProblem?: string
+  /** 프로젝트에 고정한 오너 키(orchestration/owner.pub)의 id와 공개 키(SPKI DER base64). TD-013 */
+  pinned: { id: string; pub: string } | undefined
+  /** 고정 키를 못 읽은 사유 (없음, 형식, 링크) */
+  pinProblem?: string
   ledger: LedgerEntry[]
   /** 장부에 읽을 수 없거나 서명이 맞지 않는 줄이 있다 */
   ledgerBroken?: boolean
+  /** 장부가 이 폴더의 장부 끝 기록과 맞지 않는 사유. TD-014 */
+  ledgerProblem?: string
 }
 
 /** 지난 판본의 게이트인가. 기록으로만 남고 검증 대상이 아니다. */
@@ -187,13 +206,13 @@ export function judgeGate(g: Gate, ctx: VerifyContext): Verdict {
   if (!ctx.projectId || g.project_id !== ctx.projectId)
     reasons.push(`다른 프로젝트(${g.project_id ?? '없음'})의 결정이에요`)
   let payload: string | undefined
-  if (!ctx.ownerKey) {
-    reasons.push(ctx.keyProblem ?? '오너 키가 없어요. gotechy keys init을 실행하세요')
-  } else if (g.key_id !== ctx.ownerKey.id) {
+  if (!ctx.pinned) {
+    reasons.push(ctx.pinProblem ?? '이 프로젝트에 고정된 오너 키(orchestration/owner.pub)가 없어요')
+  } else if (g.key_id !== ctx.pinned.id) {
     reasons.push(
       g.key_id?.startsWith('k-')
         ? `1a의 HMAC 키(${g.key_id})로 서명한 결정이에요. 오너 키로 다시 결정하세요`
-        : `이전 키(${g.key_id ?? '없음'})로 서명한 결정이에요. 다시 결정하세요`,
+        : `고정된 오너 키(${ctx.pinned.id})가 아닌 키(${g.key_id ?? '없음'})로 서명한 결정이에요. 다시 결정하세요`,
     )
   } else if (ctx.projectId && g.resolution && g.task_spec_sha256 && g.nonce && g.decided_at) {
     payload = signingPayload({
@@ -213,7 +232,7 @@ export function judgeGate(g: Gate, ctx: VerifyContext): Verdict {
       nonce: g.nonce,
       decided_at: g.decided_at,
     })
-    if (!g.sig || !verifySignature(ctx.ownerKey.pub, payload, g.sig))
+    if (!g.sig || !verifySignature(ctx.pinned.pub, payload, g.sig))
       reasons.push('서명이 맞지 않아요. 결정 파일이 결정 뒤에 바뀌었어요')
   } else {
     reasons.push('서명 정보가 비어 있어요')
@@ -222,6 +241,7 @@ export function judgeGate(g: Gate, ctx: VerifyContext): Verdict {
     reasons.push(
       '결정 장부(orchestration/private/decisions.jsonl)에 읽을 수 없거나 서명이 맞지 않는 줄이 있어요',
     )
+  if (ctx.ledgerProblem) reasons.push(ctx.ledgerProblem)
   const mine = ctx.ledger.filter((e) => e.gate === g.id)
   const last = mine.at(-1)
   if (last?.nonce !== g.nonce)

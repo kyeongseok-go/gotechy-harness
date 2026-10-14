@@ -18,8 +18,8 @@ import { lintStyle } from './core/style'
 import { parseTrain } from './core/train'
 import { acceptTask } from './runtime/accept'
 import { formatDoctor, runDoctor } from './runtime/doctor'
-import { decideGate, listGates, verifyGates } from './runtime/gates'
-import { repoRoot } from './runtime/git'
+import { decideGate, listGates, pinOwner, verifyGates } from './runtime/gates'
+import { gitProc, repoRoot } from './runtime/git'
 import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
 import { gotechyHome, initOwnerKey, rotateOwnerKey } from './runtime/keys'
@@ -88,6 +88,31 @@ function requireOwnerTerminal(): void {
   }
 }
 
+function insideProject(root: string, dir: string): boolean {
+  const real = (x: string) => {
+    try {
+      return realpathSync(x)
+    } catch {
+      return x
+    }
+  }
+  const r = real(root)
+  const d = real(dir)
+  return d === r || d.startsWith(`${r}/`)
+}
+
+/** orchestration/owner.pub가 커밋되지 않았거나 커밋과 다르면 경고 문장 */
+async function pinCommitWarning(root: string): Promise<string | undefined> {
+  if (!existsSync(join(root, 'orchestration', 'owner.pub'))) return undefined
+  const tracked = await gitProc(['ls-files', '--error-unmatch', 'orchestration/owner.pub'], root)
+  if (tracked.exitCode !== 0)
+    return '주의: orchestration/owner.pub가 커밋되지 않았어요. 커밋해야 오너 키가 바뀐 것이 git diff에 드러나요.'
+  const same = await gitProc(['diff', '--quiet', 'HEAD', '--', 'orchestration/owner.pub'], root)
+  if (same.exitCode !== 0)
+    return '주의: orchestration/owner.pub가 마지막 커밋과 달라요. 오너가 keys pin으로 바꾼 것이 아니라면 원인부터 보세요.'
+  return undefined
+}
+
 function requireProject() {
   const p = findProject(process.cwd())
   if (!p) {
@@ -104,6 +129,13 @@ function requireProject() {
   if (linked.length > 0) {
     console.error(
       `심볼릭 링크라서 멈췄어요: ${linked.join(', ')}. 링크를 지우거나 실제 폴더로 바꾼 뒤 다시 실행하세요.`,
+    )
+    process.exit(2)
+  }
+  // 오너 키와 장부 끝 기록이 있는 폴더를 프로젝트 안으로 돌려 검증을 속이지 못하게 한다(보안 감사 11차 중간 1)
+  if (insideProject(p.root, gotechyHome())) {
+    console.error(
+      'GOTECHY_HOME(없으면 HOME/.gotechy)이 프로젝트 안을 가리켜서 멈췄어요. 오너 키와 장부 끝 기록은 프로젝트 밖에 있어야 해요.',
     )
     process.exit(2)
   }
@@ -310,12 +342,39 @@ keys
       const r = rotateOwnerKey(gotechyHome(), libraryRoot(), { rebuildTool: true })
       console.log(`새 키: ${r.id}${r.previous ? ` (지운 키: ${r.previous})` : ''}`)
       console.log(
-        '이전 키로 서명한 결정은 gotechy gate verify에서 실패해요. 해당 게이트를 다시 결정하세요.',
+        '프로젝트마다 그 폴더에서 gotechy keys pin으로 새 키를 고정하세요. 고정하면 이전 키로 서명한 결정은 gotechy gate verify에서 실패하니 다시 결정하세요.',
       )
     } catch (e) {
       console.error((e as Error).message)
       process.exit(2)
     }
+  })
+
+keys
+  .command('pin')
+  .description(
+    '이 맥의 오너 키를 프로젝트에 고정하고(orchestration/owner.pub), 이 폴더의 장부 끝 기록을 다시 쓴다',
+  )
+  .action(async () => {
+    requireOwnerTerminal()
+    const p = requireProject()
+    const rl = createInterface({ input: process.stdin, output: process.stdout })
+    try {
+      const r = await pinOwner(p, gotechyHome(), {
+        confirm: async (summary) => {
+          console.log(summary)
+          return (await rl.question('고정할까요? [y/N] ')).trim().toLowerCase() === 'y'
+        },
+      })
+      console.log(
+        `오너 키 ${r.keyId}를 고정했어요${r.previous && r.previous !== r.keyId ? ` (이전 ${r.previous})` : ''}. orchestration/owner.pub를 커밋하세요.`,
+      )
+    } catch (e) {
+      rl.close()
+      console.error((e as Error).message)
+      process.exit(1)
+    }
+    rl.close()
   })
 
 program
@@ -338,6 +397,7 @@ program
     // 확인 코드(nonce 앞 4자리)를 Touch ID 창 문구에도 넣는다. 같은 코드가 보이는 창만 승인하게 한다(감사 8차 중간 5)
     const nonce = randomBytes(16).toString('hex')
     const code = nonce.slice(0, 4).toUpperCase()
+    const pinnedBefore = existsSync(join(p.root, 'orchestration', 'owner.pub'))
     try {
       let introduced = false
       const g = await decideGate(p, gotechyHome(), gateId, {
@@ -363,6 +423,10 @@ program
         },
       })
       console.log(`${g.id}: ${g.resolution}로 결정했어요 (오너 키 ${g.key_id}).`)
+      if (!pinnedBefore && existsSync(join(p.root, 'orchestration', 'owner.pub')))
+        console.log(
+          '이 프로젝트에 오너 키를 처음 고정했어요(orchestration/owner.pub). 이 파일을 커밋하세요.',
+        )
     } catch (e) {
       rl.close()
       console.error((e as Error).message)
@@ -534,9 +598,13 @@ program
   .command('verify')
   .description('결정 서명과 판본을 검증한다 (contract.md 6.5절)')
   .argument('[gateIds...]')
-  .action((ids: string[]) => {
-    const verdicts = verifyGates(requireProject(), gotechyHome(), ids.length > 0 ? ids : undefined)
+  .action(async (ids: string[]) => {
+    const p = requireProject()
+    const verdicts = verifyGates(p, gotechyHome(), ids.length > 0 ? ids : undefined)
     if (verdicts.length === 0) console.log('게이트가 없어요')
+    // 고정 키는 커밋돼 있어야 바뀐 것이 git diff에 드러난다(보안 감사 11차 낮음 5)
+    const pinWarning = await pinCommitWarning(p.root)
+    if (pinWarning) console.error(pinWarning)
     for (const v of verdicts)
       console.log(`${v.id} ${v.status}${v.reasons.length > 0 ? `: ${v.reasons.join(' / ')}` : ''}`)
     process.exit(verdicts.some((v) => v.status === 'fail') ? 1 : 0)

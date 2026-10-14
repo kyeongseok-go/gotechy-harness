@@ -25,6 +25,8 @@ export const paths = {
   gates: (p: Project) => join(p.root, 'orchestration', 'gates'),
   gate: (p: Project, id: string) => join(p.root, 'orchestration', 'gates', `${id}.md`),
   projectFile: (p: Project) => join(p.root, 'orchestration', 'project.yaml'),
+  /** 프로젝트에 고정한 오너 공개 키(TD-013). 커밋해서 키가 바뀌면 git diff에 드러나게 한다 */
+  ownerPin: (p: Project) => join(p.root, 'orchestration', 'owner.pub'),
   ledger: (p: Project) => join(p.root, 'orchestration', 'private', 'decisions.jsonl'),
   comprehension: (p: Project) => join(p.root, 'orchestration', 'private', 'comprehension.jsonl'),
   worktree: (p: Project, id: string) => join(p.root, '.gotechy', 'worktrees', id),

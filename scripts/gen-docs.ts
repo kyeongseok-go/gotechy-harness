@@ -20,10 +20,17 @@ const top = help([])
 const commands = [...top.matchAll(/^ {2}([a-z]+)(?: \[[^\]]+\]| <[^>]+>)*(?:[ \t]{2,}|$)/gm)].map(
   (m) => m[1] as string,
 )
-const groups: Record<string, string[]> = { task: ['new', 'lint'], handoff: ['lint'], text: ['lint'], keys: ['init', 'rotate'], gate: ['verify'] }
+// 하위 명령은 각 명령 도움말의 Commands 절에서 읽는다. 손으로 적은 목록은 새 하위 명령을 빠뜨렸다(keys pin, 2026-10-15)
+const subcommands = (c: string) => {
+  const block = help([c]).split(/^Commands:$/m)[1] ?? ''
+  const subs = [...block.matchAll(/^ {2}([a-z]+)(?: \[[^\]]+\]| <[^>]+>)*(?:[ \t]{2,}|$)/gm)]
+    .map((m) => m[1] as string)
+    .filter((x) => x !== 'help')
+  return subs.length > 0 ? subs : ['']
+}
 const sections = [`## gotechy\n\n\`\`\`text\n${top}\n\`\`\``]
 for (const c of commands.filter((x) => x !== 'help')) {
-  for (const sub of groups[c] ?? [''])
+  for (const sub of subcommands(c))
     sections.push(`## gotechy ${c}${sub ? ` ${sub}` : ''}\n\n\`\`\`text\n${help(sub ? [c, sub] : [c])}\n\`\`\``)
 }
 writeFileSync(

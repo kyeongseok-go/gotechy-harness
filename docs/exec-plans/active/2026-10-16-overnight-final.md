@@ -59,6 +59,17 @@ mode: night
 
 시작 때 상태(00:07): `~/.claude/settings.json` sha256 앞 8자리 `d5a1327f`, `~/.codex/config.toml` `9028eee7`, `~/.gotechy` 파일 전체 해시 `ac4c41f4`(`find ~/.gotechy -type f -exec shasum -a 256 {} + | shasum -a 256`). 셋 다 어제 오후와 같다.
 
+## Validation and Acceptance
+
+1. 스킬 15개가 `skills/`에 있고, 스킬마다 `SKILL.md`(본문 150줄 이하, description 400자 이하), `references/bar.md`, `references/lens.md`(40줄 이하), `radar/sources/<스킬>.yaml`, `evals/<스킬>/` 케이스 3개 이상이 있다(구조 테스트).
+2. 스킬 파일 어디에도 하네스 저장소 문서(`docs/WIZARD.md` 같은 경로)를 가리키는 곳이 없다(구조 테스트).
+3. 스킬 파일의 문체 lint 경고가 0건이다.
+4. `gotechy init --packs <팩>`이 팩마다 스킬을 깔고 AGENTS.md 팩 색인 표를 채운다(수용 테스트). 실제 apm으로 모든 팩을 공개 저장소에서 깔아 대조가 통과한다(실측 기록).
+5. HANDOFF 화면에서 결정 카드가 한 일보다 먼저 나오고, 감사 지적이 짝지은 한 일 항목 아래에 보인다(렌더 테스트, 스크린샷).
+6. 실제 claude 감사관이 요약과 실제가 다른 작업에서 근거(file:line)가 확인된 지적을 1건 이상 낸다. 비용은 0.5달러 이하다.
+7. `bun run check`가 통과하고, 커밋마다 CI가 성공한다.
+8. 보안 감사 15차의 높음 지적이 0건 남는다.
+
 ## 결과 (진행하며 채운다)
 
 | 순서 | 결과 | 커밋 |

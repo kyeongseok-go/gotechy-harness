@@ -1,5 +1,5 @@
 // contract.md 6절 게이트와 결정 서명의 수용 테스트(Validation 8, 9, 11). 임시 저장소와 임시 GOTECHY_HOME에서 돈다.
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import {
   chmodSync,
   copyFileSync,
@@ -19,6 +19,9 @@ import { initOwnerKey, rotateOwnerKey } from '../../src/runtime/keys'
 import { runTask } from '../../src/runtime/run'
 import { createTask, type NewTaskInput } from '../../src/runtime/task-new'
 import { installFakeOwnerTool, LIB } from './helpers'
+
+// accept가 병합 전에 gitleaks를 부른다(TD-012). CI 리눅스에서 기본 5초를 넘을 수 있어 늘린다
+setDefaultTimeout(30_000)
 
 const FIX = join(import.meta.dir, '..', 'fixtures', 'fake')
 const CLI = join(import.meta.dir, '..', '..', 'src', 'cli.ts')

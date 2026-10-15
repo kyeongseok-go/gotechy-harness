@@ -40,14 +40,81 @@ export async function runProc(
         killTimer = setTimeout(() => proc.kill('SIGKILL'), 10_000)
       }, opts.timeoutMs)
     : undefined
-  const out = new Response(proc.stdout).text()
-  const err = new Response(proc.stderr).text()
+  if (opts.group) trackGroup(proc.pid)
+  const out = drain(proc.stdout)
+  const err = drain(proc.stderr)
   const exitCode = await proc.exited
-  if (opts.group) killGroup(proc.pid)
-  const [stdout, stderr] = await Promise.all([out, err])
+  if (opts.group) {
+    killGroup(proc.pid)
+    untrackGroup(proc.pid)
+    // setsid로 그룹을 벗어난 자손이 출력을 쥐고 있으면 스트림이 닫히지 않는다. 잠깐만 기다리고 끊는다(보안 감사 15차 낮음 8)
+    await Promise.race([Promise.all([out.done, err.done]), Bun.sleep(DRAIN_GRACE_MS)])
+    out.cancel()
+    err.cancel()
+  } else await Promise.all([out.done, err.done])
   if (timer) clearTimeout(timer)
   if (killTimer) clearTimeout(killTimer)
-  return { exitCode, stdout, stderr, timedOut }
+  return { exitCode, stdout: out.text(), stderr: err.text(), timedOut }
+}
+
+const DRAIN_GRACE_MS = 2_000
+
+/** 스트림을 끝까지(또는 끊을 때까지) 모은다 */
+function drain(stream: ReadableStream<Uint8Array>) {
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  const done = (async () => {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) return
+      chunks.push(value)
+    }
+  })().catch(() => {
+    // 끊은 스트림의 읽기 오류는 무시한다(이미 모은 것을 돌려준다)
+  })
+  return {
+    done,
+    cancel: () => {
+      reader.cancel().catch(() => {})
+    },
+    text: () => Buffer.concat(chunks).toString('utf8'),
+  }
+}
+
+// 리드가 신호로 끝나도 살아 있는 워커 그룹을 남기지 않는다(보안 감사 15차 중간 1). 새 그룹은 터미널의 Ctrl-C를 받지 못한다.
+// 그룹이 있을 때만 처리기를 달아, 다른 명령의 신호 처리(decide의 잠금 풀기 등)를 바꾸지 않는다
+const liveGroups = new Set<number>()
+const SIGNALS = [
+  ['SIGINT', 130],
+  ['SIGTERM', 143],
+  ['SIGHUP', 129],
+] as const
+const onSignal = {
+  SIGINT: () => exitAfterKill(130),
+  SIGTERM: () => exitAfterKill(143),
+  SIGHUP: () => exitAfterKill(129),
+}
+function killAllGroups(): void {
+  for (const g of liveGroups) killGroup(g)
+  liveGroups.clear()
+}
+function exitAfterKill(code: number): void {
+  killAllGroups()
+  process.exit(code)
+}
+function trackGroup(pgid: number): void {
+  if (liveGroups.size === 0) {
+    process.on('exit', killAllGroups)
+    for (const [sig] of SIGNALS) process.on(sig, onSignal[sig])
+  }
+  liveGroups.add(pgid)
+}
+function untrackGroup(pgid: number): void {
+  liveGroups.delete(pgid)
+  if (liveGroups.size === 0) {
+    process.off('exit', killAllGroups)
+    for (const [sig] of SIGNALS) process.off(sig, onSignal[sig])
+  }
 }
 
 /** 프로세스 그룹 전체를 끝낸다. 이미 없으면 조용히 넘어간다 */

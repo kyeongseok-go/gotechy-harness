@@ -1,5 +1,5 @@
 // 보안 감사 2차(2026-10-14 밤) 지적의 재현 테스트. 1차 수정에서 생긴 빈틈을 공격해 본다.
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import {
   existsSync,
   mkdirSync,
@@ -14,6 +14,9 @@ import { acceptTask } from '../../src/runtime/accept'
 import { listGates } from '../../src/runtime/gates'
 import { runTask } from '../../src/runtime/run'
 import { FAKE, fm, handoffFile, makeHome, makeProject, newTask, sh } from './helpers'
+
+// accept가 병합 전에 gitleaks를 부른다(TD-012). CI 리눅스에서 기본 5초를 넘을 수 있어 늘린다
+setDefaultTimeout(30_000)
 
 let root: string
 let home: string

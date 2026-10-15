@@ -1,5 +1,5 @@
 // 보안 감사 13차(2026-10-15 오후 변경 재검토) 지적의 수용 테스트.
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, setDefaultTimeout, test } from 'bun:test'
 import {
   existsSync,
   lstatSync,
@@ -18,6 +18,9 @@ import { codexAdapter } from '../../src/runtime/adapters/codex'
 import { initProject } from '../../src/runtime/init'
 import { runTask } from '../../src/runtime/run'
 import { FAKE, LIB, makeHome, makeProject, newTask, sh } from './helpers'
+
+// accept가 병합 전에 gitleaks를 부른다(TD-012). CI 리눅스에서 기본 5초를 넘을 수 있어 늘린다
+setDefaultTimeout(30_000)
 
 const tmp = (p: string) => realpathSync(mkdtempSync(join(tmpdir(), p)))
 const cli = (args: string[], cwd: string, env: Record<string, string | undefined>) => {

@@ -1,5 +1,5 @@
 // 보안 감사(2026-10-14 밤) 지적의 재현 테스트. 공격을 실제로 시도하고 막혔는지 본다.
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import {
   chmodSync,
   existsSync,
@@ -30,6 +30,9 @@ import {
   taskFile,
   yes,
 } from './helpers'
+
+// accept가 병합 전에 gitleaks를 부른다(TD-012). CI 리눅스에서 기본 5초를 넘을 수 있어 늘린다
+setDefaultTimeout(30_000)
 
 let root: string
 let home: string

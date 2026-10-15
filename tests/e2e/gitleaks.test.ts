@@ -1,12 +1,15 @@
 // contract.md 10.4절 gitleaks hook과 doctor --history의 수용 테스트(Validation 16).
-// gitleaks가 없는 환경(CI)에서는 건너뛴다. 가짜 토큰과 주민번호는 실행할 때 만들어 저장소에 남기지 않는다.
-import { beforeEach, describe, expect, test } from 'bun:test'
+// gitleaks가 없는 환경에서는 건너뛴다(2026-10-16부터 CI에도 gitleaks를 깐다). 가짜 토큰과 주민번호는 실행할 때 만들어 저장소에 남기지 않는다.
+import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { randomBytes } from 'node:crypto'
 import { mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runDoctor } from '../../src/runtime/doctor'
 import { initProject } from '../../src/runtime/init'
+
+// doctor --history는 이력 전체를 gitleaks로 훑어 CI 리눅스에서 5초를 넘었다(2026-10-16 768aa94)
+setDefaultTimeout(30_000)
 
 const GITLEAKS = process.env.GOTECHY_GITLEAKS ?? Bun.which('gitleaks') ?? undefined
 const LIB = join(import.meta.dir, '..', '..')

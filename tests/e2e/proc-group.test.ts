@@ -1,7 +1,7 @@
 // TD-029: 워커와 verify가 남긴 백그라운드 프로세스는 실행이 끝날 때 함께 끝낸다(contract.md 6.6절).
 // 2026-10-16 실험: Bun.spawn의 detached는 새 프로세스 그룹을 만들고, 그룹에 보낸 SIGKILL은 남은 자식까지 끝낸다.
 import { describe, expect, test } from 'bun:test'
-import { existsSync, mkdtempSync, realpathSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runProc } from '../../src/runtime/proc'
@@ -10,7 +10,53 @@ import { FAKE, makeHome, makeProject, newTask } from './helpers'
 
 const later = (file: string) => `(sleep 1; touch '${file}') >/dev/null 2>&1 &`
 
+const PROC = join(import.meta.dir, '..', '..', 'src', 'runtime', 'proc.ts')
+const alive = (pgid: number) => {
+  try {
+    process.kill(-pgid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
 describe('프로세스 그룹 정리 (TD-029)', () => {
+  test('리드가 Ctrl-C(SIGINT)로 끝나도 워커 그룹을 함께 끝낸다(보안 감사 15차 중간 1)', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-pg-int-')))
+    const pidFile = join(dir, 'pgid')
+    writeFileSync(
+      join(dir, 'lead.ts'),
+      `import { runProc } from '${PROC}'\nawait runProc(['sh', '-c', 'echo $$ > ${pidFile}; sleep 30 & sleep 30'], { cwd: '${dir}', group: true })\n`,
+    )
+    const lead = Bun.spawn({
+      cmd: [process.execPath, join(dir, 'lead.ts')],
+      stdout: 'ignore',
+      stderr: 'ignore',
+    })
+    for (let i = 0; i < 50 && !existsSync(pidFile); i++) await Bun.sleep(100)
+    const pgid = Number(readFileSync(pidFile, 'utf8').trim())
+    expect(alive(pgid)).toBe(true)
+    lead.kill('SIGINT')
+    await lead.exited
+    await Bun.sleep(300)
+    expect(alive(pgid)).toBe(false)
+  })
+
+  test('그룹을 벗어나 출력을 쥔 자손이 있어도 2초 남짓 뒤에는 돌아온다(보안 감사 15차 낮음 8)', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-pg-')))
+    const started = Date.now()
+    const r = await runProc(
+      [
+        'sh',
+        '-c',
+        `perl -MPOSIX -e 'fork and exit; POSIX::setsid(); sleep 15' & sleep 0.5; echo done`,
+      ],
+      { cwd: dir, group: true },
+    )
+    expect(r.stdout).toContain('done')
+    expect(Date.now() - started).toBeLessThan(6_000)
+  })
+
   test('group이면 끝난 뒤 남은 백그라운드 자식도 끝낸다', async () => {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-pg-')))
     const r = await runProc(['sh', '-c', `${later(join(dir, 'left'))} echo done`], {

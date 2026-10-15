@@ -1,10 +1,13 @@
 // TD-006: accept가 충돌이나 verify 실패로 멈춘 작업을 새 메인 위에서 처음부터 다시 하게 한다(contract.md 3절, 9.6절).
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { acceptTask } from '../../src/runtime/accept'
 import { restartTask } from '../../src/runtime/restart'
 import { fm, handoffFile, makeHome, makeProject, newTask, runFake, sh, taskFile } from './helpers'
+
+// accept가 병합 전에 gitleaks를 부른다(TD-012). CI 리눅스에서 기본 5초를 넘을 수 있어 늘린다
+setDefaultTimeout(30_000)
 
 let root: string
 let home: string

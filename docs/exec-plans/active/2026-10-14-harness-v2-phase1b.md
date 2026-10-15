@@ -40,6 +40,11 @@
 
 ## Surprises & Discoveries
 
+**N5 Orca 어댑터 사전 조사 (2026-10-15 오후 루프, `orca --help`만 읽음, 워커 실행 없음)**
+- Orca 1.4.209의 `orchestration`에는 Run(`run-create`), 감독되는 워커(`worker-start`, `worker-show`, `worker-read`, `worker-stop`), 메시지(`send`, `check`), 작업(`task-create`), 게이트(`gate-create`, `gate-resolve`)가 있다. `worker-start`는 `--agent`(대화형 에이전트)나 `--terminal`로 띄우고, 작업 폴더는 Orca가 고르거나 만든 worktree(`--worktree path:<경로>` 등)다. [확인, 도움말]
+- 그래서 Orca로 띄운 워커에는 gotechy가 워커에 거는 격리(claude `--restricted`와 거부 규칙, codex `workspace-write`, 허용 목록 환경 변수)를 그대로 걸 수 없다. worktree는 `path:`로 gotechy의 것을 줄 수 있어 보호 경로 검사와 verify 샌드박스는 그대로 쓸 수 있을 것으로 본다. [추론]
+- 결정이 필요하다(D7 보강): Orca 워커를 쓸 때 격리 수준을 낮추는 것을 받아들일지, Orca는 화면과 알림에만 쓰고 실행은 native로 둘지. 실제 에이전트를 띄우는 실험(유료)이 먼저라 오후 루프에서는 하지 않았다. [확인]
+
 **오너 Touch ID 확인 (2026-10-15 12:11~12:12, 오너가 `scripts/owner-touchid-check.sh` 실행. 결과는 리드가 임시 프로젝트와 macOS 통합 로그(`/usr/bin/log show`, LocalAuthentication)를 읽어 확인)**
 - 실제 오너 키(`o-944e58dc073f6f1d`)가 생겼고, `keys init`의 `probe`를 통과했다(키 활성화는 probe 통과 뒤에만 한다). 설치된 서명 도구에는 실제 빌드 문구("오너 확인을 받지 못했어요")가 있고 테스트 빌드 문구("확인 문구")는 없다. 바이트로 찾았다. 처음에 `strings`로 본 확인은 한글을 못 찾아 근거가 되지 않았다. [확인]
 - **이 맥(맥 미니)에는 지문 장치와 Apple Watch가 없어 확인 창이 맥 로그인 암호 창이었다.** 로그에 `MechanismPasscode`만 있고, 지문 장치는 "No paired accessory", 시계는 "No AppleWatch was discovered"다. 스크립트와 문서는 지문만 말하고 있었다. 스크립트 안내문을 고쳤다. [확인]

@@ -156,6 +156,8 @@ frontmatter:
     AGENTS.md              CLAUDE.md              apm.yml   apm.lock.yaml
     mise.toml              mise.lock              policy/
 
+보호 경로는 대소문자와 유니코드 접기(ſ, Kelvin 기호)를 무시하고 비교한다(NFC 정규화 뒤 대문자로 갔다가 소문자로). macOS(APFS)는 `.CLAUDE/`, `.agentſ/`를 `.claude/`, `.agents/`로 읽지만, 아직 없는 폴더를 그 이름으로 만들면 git은 다른 경로로 보여 준다(TD-020, 2026-10-15 실험). 전각 글자는 APFS도 접지 않아 다른 경로로 본다.
+
 `irreversible`을 자동으로 참으로 만드는 경로(되돌리기 어려운 결정, 이해 게이트 대상, M2): 파일명에 `schema`, `migration`, `auth`, `security`, `deploy`, `.github/workflows/`가 들어간 경로.
 
 ## 6. 게이트 `gates/G-###.md` (M2c)

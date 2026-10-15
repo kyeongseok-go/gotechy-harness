@@ -22,7 +22,6 @@
 | TD-017 | 2026-10-15 | (하네스 개선, 1a 회고) 외부 경계(브라우저, OS, 외부 CLI)를 건드리는 기능을 실험 증거 없이 커밋했다(1b N2의 Origin: null). `.claude/rules/testing.md`의 예외 규칙을 "커밋 전에 실험 증거"로 못박는다 | .claude/rules/testing.md | 🟢 | 자동 테스트가 실제 환경과 다른 가정(fetch에 Origin 직접 넣기)으로 통과한다 | 2단계 시작 전 |
 | TD-018 | 2026-10-15 | (출시 후 측정) 스펙 성공 기준 "오너가 HANDOFF 한 건을 이해하고 결정하는 데 3분 이내, 이해 게이트 핵심어 적중률 60% 이상"을 공문서 프로젝트 실사용 10건으로 잰다 | docs/product-specs/harness-v2.md | 🟢 | 재지 않으면 1a의 목적(이해하고 결정)이 이뤄졌는지 모른다 | 1a 완료 2주 뒤(2026-10-29) 또는 결정 10건 |
 | TD-019 | 2026-10-15 | 끝 기록과 오너 키의 위치(`GOTECHY_HOME`, 없으면 `HOME/.gotechy`)와 verify 샌드박스의 비밀 폴더 목록이 환경 변수 HOME을 따른다. 프로젝트 안을 가리키면 멈추지만, `/tmp` 같은 다른 폴더를 가리키게 해서 실행하면 끝 기록 검사를 피하고, 샌드박스가 진짜 홈의 비밀 폴더를 막지 않는다. Bun의 `os.userInfo().homedir`도 HOME을 따른다(실험) | src/runtime/keys.ts, src/runtime/sandbox.ts | 🟡 | 명령의 환경을 바꿀 수 있는 쪽이 신뢰 기준을 옮긴다(보안 감사 11차 중간 1) | 계정 정보에서 홈 읽기(getpwuid FFI나 dscl), 기본값이 아닌 홈이면 출력에 표시 |
-| TD-020 | 2026-10-15 | 보호 경로를 대소문자 구분으로 비교한다. macOS 기본 파일 시스템은 구분하지 않아 `orchestration/OWNER.PUB`가 같은 파일일 수 있다 | src/core/paths.ts | 🟢 | ownership 검사를 대소문자로 피할 수 있다(보안 감사 11차 낮음 6, 실험 필요) | 새 클론에서 대소문자 다른 경로의 git 표시를 실험한 뒤 darwin에서 소문자와 NFC로 비교 |
 | TD-021 | 2026-10-15 | `gotechy keys pin`은 Touch ID 없이 TTY와 y만으로 고정 키와 끝 기록을 다시 쓴다 | src/runtime/gates.ts | 🟢 | TTY 검사를 우회한 쪽이 신뢰 기준을 바꿀 수 있다(보안 감사 11차 낮음 1 보강 제안) | 서명 도구에 고정용 하위 명령을 더해 {project_id, pub, 장부 sha}에 오너 서명 |
 | TD-023 | 2026-10-15 | 오너 확인은 지문 장치가 없는 맥(오너의 맥 미니)에서 맥 로그인 암호다. 로그인 암호를 아는 사람은 누구나 결정할 수 있고, 암호 창은 다른 시스템 창과 생김새가 같아 습관처럼 승인하기 쉽다(실측: 확인 시험에서 취소 대신 승인이 두 번 들어감) | native/ownerkey.swift, ADR 0006 | 🟡 | "오너만 결정한다"의 강도가 지문보다 약하다 | ADR 0006 승인 때 오너가 정한다: 그대로(암호), Touch ID 달린 키보드, 또는 결정 창 문구 강화 |
 
@@ -32,6 +31,7 @@
 
 | ID | 내용 | 상환일 | 증거 |
 |---|---|---|---|
+| TD-020 | 보호 경로를 대소문자와 유니코드 접기를 무시하고 비교한다(`foldPath`). 실험: 아직 없는 `.CLAUDE/`를 만들면 git은 `.CLAUDE/settings.json`으로 보여 주고 맥은 `.claude/settings.json`으로 읽는다. `.agentſ/`도 `.agents/`로 읽힌다. 허용 범위에 `.Agents/`를 넣은 작업은 run이 거부한다 | 2026-10-15 | `tests/core/paths-case.test.ts`(6개, mutation 3종 모두 잡음) |
 | TD-022 | 게이트를 모두 결정한 `needs-decision` 작업을 인박스와 화면에서 "다시 실행 대기" 묶음으로 따로 보여 주고, 카드 끝에 `다음: gotechy run T-###`를 쓴다(contract.md 8.1절) | 2026-10-15 | `tests/core/inbox-resume.test.ts`(8개, 조건 3개를 빼는 mutation 모두 잡음) |
 | TD-008 | 리드 에이전트가 `gotechy decide`, `serve`, `keys`, `script`, `expect`와 force push, 발행, 배포를 실행하지 못하게: `gotechy init`이 프로젝트 `.claude/settings.json`에 deny 규칙, `settings.local.json`에 `gotechy guard` hook(fail-closed)을 깐다 | 2026-10-15 | `tests/core/guard.test.ts`, `tests/e2e/guard-cli.test.ts`, contract.md 12절 |
 | TD-011 | `gotechy init`이 팩을 복사로 설치하던 것을 apm(커밋 고정, `targets: [claude, agent-skills]`)으로 바꿨다. doctor가 프로젝트 안에서 `apm audit --ci`로 변조를 잡는다 | 2026-10-15 | `tests/e2e/init-apm.test.ts`, `tests/core/apm.test.ts`, 실측 `docs/references/evidence/2026-10-15-night/apm-real.txt` |

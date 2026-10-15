@@ -38,10 +38,22 @@ export function normalizeRel(p: string): string {
   return p.replace(/\\/g, '/').replace(/^\.\//, '')
 }
 
+/**
+ * 보호 경로 비교용 접기. macOS(APFS)는 대소문자와 유니코드 접기(ſ, Kelvin 기호)를 무시하고 같은 파일로 읽는다.
+ * 아직 없는 보호 폴더를 `.CLAUDE/`로 만들면 git은 다른 경로로 보여 줘서, 그대로 비교하면 보호를 피한다(TD-020 실험).
+ * 대문자로 갔다가 소문자로 오면 ſ는 s, Kelvin 기호는 k가 된다. 전각 글자는 APFS도 접지 않아 그대로 둔다
+ */
+export function foldPath(p: string): string {
+  return normalizeRel(p).normalize('NFC').toUpperCase().toLowerCase()
+}
+
+const FOLDED_FILES = PROTECTED_FILES.map(foldPath)
+const FOLDED_PREFIXES = PROTECTED_PREFIXES.map(foldPath)
+
 export function isProtected(path: string): boolean {
-  const p = normalizeRel(path)
-  if ((PROTECTED_FILES as readonly string[]).includes(p)) return true
-  return PROTECTED_PREFIXES.some((pre) => p === pre.replace(/\/$/, '') || p.startsWith(pre))
+  const p = foldPath(path)
+  if (FOLDED_FILES.includes(p)) return true
+  return FOLDED_PREFIXES.some((pre) => p === pre.replace(/\/$/, '') || p.startsWith(pre))
 }
 
 /** ownership 항목 하나의 문제를 설명한다. 문제가 없으면 undefined. */
@@ -53,13 +65,12 @@ export function ownershipProblem(entry: string): string | undefined {
     return '글롭(*, ?, [], {})은 쓸 수 없습니다 — 파일이나 `/`로 끝나는 폴더를 적으세요'
   if (e === '' || e === '.' || e === '/') return '저장소 전체를 넘길 수 없습니다'
   if (isProtected(e)) return '보호 경로입니다 (contract.md 5절)'
-  for (const pre of PROTECTED_PREFIXES) {
-    if (e.endsWith('/') && pre.startsWith(e)) return `보호 경로 ${pre}를 포함하는 폴더입니다`
+  const folded = foldPath(e)
+  for (const [i, pre] of FOLDED_PREFIXES.entries()) {
+    if (e.endsWith('/') && pre.startsWith(folded))
+      return `보호 경로 ${PROTECTED_PREFIXES[i]}를 포함하는 폴더입니다`
   }
-  if (
-    e.endsWith('/') &&
-    (PROTECTED_FILES as readonly string[]).some((f) => f.startsWith(e) || e === '')
-  ) {
+  if (e.endsWith('/') && FOLDED_FILES.some((f) => f.startsWith(folded) || e === '')) {
     return '보호 파일을 포함하는 폴더입니다'
   }
   return undefined

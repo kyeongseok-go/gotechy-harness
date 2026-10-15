@@ -29,7 +29,7 @@ related: harness-v2.md, ../design-docs/2026-10-13-expert-library-v0.md
 | R1 분야별 전문가 에이전트(기획부터 마케팅까지) | **2 동작** | 2026-10-16: 팩 12개, 스킬 15개(기존 8개 이관과 새 전문가 7개). 스킬마다 최고 전문가 bar(원천 URL, 측정형 체크리스트, A~D 등급), 렌즈, 평가 케이스, 최신화 출처. 구조와 이음매 테스트(`tests/core/packs-structure.test.ts`), 사실 표본 검증 30건 중 28건 맞음(틀림 1건 고침), 위임 작업의 워커 지시문에 팩 본문이 들어감(`tests/e2e/worker-skills.test.ts`) | 실제 프로젝트에서 스킬을 쓴 기록과, `claude plugin eval`로 잰 스킬별 기여도(2단계, 유료) |
 | R2 최신 정보로 자동 갱신 | **3 실측(감지까지)** | `gotechy radar`가 출처 129개를 주기에 맞춰 읽고 새 판과 바뀐 곳을 보고서로 남김(`tests/core/radar.test.ts`). 2026-10-16 실제 실행: 16초, 새 판 1, 못 읽음 1(`docs/references/evidence/2026-10-16-night/radar/`). 반영(delta PR, eval 게이트)은 아직 없음 | 바뀐 사실을 references에 반영하는 PR 초안과 eval 게이트(2단계) |
 | R3 어디서든 같은 환경 | **3 실측(macOS)** | train과 부트스트랩, 새 클론과 빈 HOME에서 2분 31초에 doctor 13개 통과(`2026-10-14-fresh-install/`), 팩의 커밋 고정 설치 실측(`2026-10-15-night/apm-real.txt`) | 다른 컴퓨터나 리눅스에서 같은 실측, 회사 모드(Windows) |
-| R4 필요한 전문가만 꺼내 쓰기 | **2 동작**(리허설 뒤 갱신) | `gotechy init --packs`와 apm 커밋 고정, 라이브러리 커밋 대조(`tests/e2e/init-apm.test.ts`) | 팩이 둘 이상이 된 뒤 프로젝트마다 다른 팩 조합을 실측 |
+| R4 필요한 전문가만 꺼내 쓰기 | **3 실측** | 2026-10-16 리허설: 빈 폴더에서 `init --packs all`이 공개 저장소의 train 커밋에서 실제 apm으로 스킬 15개를 10초에 설치, doctor가 락과 커밋 대조 통과(`docs/references/evidence/2026-10-16-night/rehearsal.md`). 팩 조합 테스트(`tests/e2e/init-apm.test.ts`, owner 다음 learn을 더하면 색인 표가 쌓임) | 실제 프로젝트 둘 이상에서 서로 다른 팩 조합으로 쓴 기록 |
 | R5 토큰과 용량 최적화 | **2 동작** | doctor가 스킬 수 15개 이하, 설명 400자 이하, 본문 150줄 이하를 검사(`src/core/doctor.ts`) | 하네스 켬과 끔의 토큰 비교 실측(harness-bench, 2단계) |
 | R6 어떤 LLM 도구에서도 | **3 실측(Claude, Codex)** | 같은 작업 명세로 실제 Claude 워커와 Codex 워커 각 1회 성공(1a M1), AGENTS.md 라우터 | Cursor나 Copilot 같은 다른 도구로 같은 작업 실측 |
 | R7 결과를 바로 이해(용어, 인터랙티브 문서, HANDOFF) | **3 실측** | 실제 Claude와 Codex 워커가 쓴 HANDOFF가 lint를 통과(1a M1), 용어 풀이, 인박스 카드, 읽기 전용 HTML, 설명 문서 2건. 화면 결정 서버의 헤드리스 Chrome 실측은 가짜 서명 도구라 3의 근거에서 뺌 | 오너가 실제 프로젝트의 HANDOFF를 화면으로 읽고 결정한 기록 |
@@ -77,4 +77,4 @@ related: harness-v2.md, ../design-docs/2026-10-13-expert-library-v0.md
 | 날짜 | 바뀐 것 | 근거 |
 |---|---|---|
 | 2026-10-15 | 첫 판정 | 밤샘 루프 2 결과(`docs/references/evidence/2026-10-15-night/README.md`) |
-| 2026-10-16 | R1 1에서 2, R2 1에서 3(감지까지), R9 2에서 3, 성공 기준 "서명과 위조 거부" 통과 | 밤샘 마무리 루프(`docs/exec-plans/active/2026-10-16-overnight-final.md`), 리드 자체 판정 |
+| 2026-10-16 | R1 1에서 2, R2 1에서 3(감지까지), R4 2에서 3, R9 2에서 3, 성공 기준 "서명과 위조 거부" 통과 | 밤샘 마무리 루프(`docs/exec-plans/active/2026-10-16-overnight-final.md`), 리드 자체 판정 |

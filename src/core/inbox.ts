@@ -45,7 +45,14 @@ export type Card = {
   /** 용어 은행에 없는 새 용어 */
   newTerms: string[]
   /** 감사 기록(contract.md 13절). current: 지금 HANDOFF 판본을 감사했는가. items: 기록의 지적(화면용) */
-  audit?: { current: boolean; confirmed: number; truncated: boolean; items: AuditItem[] }
+  audit?: {
+    current: boolean
+    confirmed: number
+    /** 기록의 지적 수(근거 확인 여부와 무관) */
+    findings: number
+    truncated: boolean
+    items: AuditItem[]
+  }
 }
 
 /** 감사 지적 하나(contract.md 13절). confirmed: 리드가 작업 브랜치에서 file:line을 확인했는가 */

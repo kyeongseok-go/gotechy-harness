@@ -45,36 +45,24 @@ export async function acceptTask(p: Project, home: string, id: string): Promise<
   if (blockers.length > 0) return reject('병합하기 전에 결정이 필요해요:', ...blockers)
 
   const branch = `gotechy/${id}`
-  if ((await git(['rev-parse', '--verify', '-q', branch], p.root)).exitCode !== 0)
+  // 브랜치를 한 번만 커밋 번호로 풀어 끝까지 그 값을 쓴다. 같은 이름의 태그나 사이에 움직인 ref로
+  // 검사한 커밋과 병합한 커밋이 달라지지 않게(보안 감사 15차 낮음 3)
+  const tipRun = await git(['rev-parse', '--verify', '-q', `refs/heads/${branch}^{commit}`], p.root)
+  const tip = tipRun.stdout.trim()
+  if (tipRun.exitCode !== 0 || !/^[0-9a-f]{40,64}$/.test(tip))
     return reject(`작업 브랜치 ${branch}가 없어요`)
   const head = await headCommit(p.root)
   if (!head) return reject('메인 체크아웃에 커밋이 없어요')
   // run 이후 브랜치가 바뀌었을 수 있다. 병합하기 전에 브랜치 전체 변경을 다시 검사한다(보안 감사 2차 높음 B).
-  const scope = await branchScopeProblems(head, branch, task.data.ownership, id, p.root)
+  const scope = await branchScopeProblems(head, tip, task.data.ownership, id, p.root)
   if (scope.length > 0)
     return reject('작업 브랜치에 허용 밖 변경이 있어 병합하지 않아요:', ...scope)
-  // 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 여기서 막지 않으면 메인에 들어간다(TD-012)
-  const scan = await scanCommits(p.root, `${head}..${branch}`)
-  if (!scan.ok) return reject(scan.error, '메인은 바뀌지 않았어요. 작업 상태도 그대로예요.')
-  if (scan.hits.length > 0)
-    return holdForDecision(
-      p,
-      id,
-      'secret-found',
-      `병합할 변경에 비밀로 보이는 값이 있어 합치지 않았어요: ${scan.hits
-        .slice(0, 5)
-        .map((h) => `${h.file}:${h.line} (${h.rule})`)
-        .join(
-          ', ',
-        )}${scan.hits.length > 5 ? ` 외 ${scan.hits.length - 5}건` : ''}. 값을 빼고 다시 하려면 gotechy task restart ${id}. 이력에 남은 값은 이미 노출됐다고 보고 바꾸세요`,
-    )
-
   const tmp = join(p.root, '.gotechy', 'accept', `${id}-${process.pid}`)
   mkdirSync(join(p.root, '.gotechy', 'accept'), { recursive: true })
   const add = await git(['worktree', 'add', '-q', '--detach', tmp, head], p.root)
   if (add.exitCode !== 0) return reject(`임시 worktree를 만들지 못했어요: ${add.stderr.trim()}`)
   try {
-    const merge = await git([...GIT_IDENTITY, 'merge', '--no-ff', '--no-commit', '-q', branch], tmp)
+    const merge = await git([...GIT_IDENTITY, 'merge', '--no-ff', '--no-commit', '-q', tip], tmp)
     if (merge.exitCode !== 0) {
       const conflicted = (await git(['diff', '--name-only', '--diff-filter=U'], tmp)).stdout
         .trim()
@@ -105,6 +93,28 @@ export async function acceptTask(p: Project, home: string, id: string): Promise<
     )
     if (commit.exitCode !== 0) return reject(`병합 커밋을 만들지 못했어요: ${commit.stderr.trim()}`)
     const merged = await headCommit(tmp)
+    // 메인에 실제로 들어갈 차이(병합 커밋의 첫 부모 대비)를 검사한다. 리드의 git은 hook을 끄고 돌아서,
+    // 여기서 막지 않으면 워커가 넣은 비밀 값이 메인에 들어간다(TD-012, 보안 감사 15차 중간 3)
+    const commonDir = (
+      await git(['rev-parse', '--path-format=absolute', '--git-common-dir'], p.root)
+    ).stdout.trim()
+    const scan = await scanCommits(
+      commonDir,
+      `--first-parent --diff-merges=first-parent --text --no-textconv --no-ext-diff ${head}..${merged}`,
+    )
+    if (!scan.ok) return reject(scan.error, '메인은 바뀌지 않았어요. 작업 상태도 그대로예요.')
+    if (scan.hits.length > 0)
+      return holdForDecision(
+        p,
+        id,
+        'secret-found',
+        `병합할 변경에 비밀로 보이는 값이 있어 합치지 않았어요: ${scan.hits
+          .slice(0, 5)
+          .map((h) => `"${h.file}":${h.line} (${h.rule})`)
+          .join(
+            ', ',
+          )}${scan.hits.length > 5 ? ` 외 ${scan.hits.length - 5}건` : ''}. 값을 빼고 다시 하려면 gotechy task restart ${id}. 작업 브랜치 이력에 남은 값은 이미 노출됐다고 보고 바꾸세요`,
+      )
     const vtmp = join(p.root, '.gotechy', 'tmp', `accept-${id}-${process.pid}-${Date.now()}`)
     mkdirSync(vtmp, { recursive: true })
     const verify = await runSandboxedShell(task.data.verify, tmp, {
@@ -131,7 +141,13 @@ export async function acceptTask(p: Project, home: string, id: string): Promise<
     updateFrontmatter(taskFile, { status: 'accepted' })
     const added = addProjectTerms(p, id, hp.ok ? hp.value.body : '', hp.ok ? hp.value.bodyLine : 1)
     await removeTaskWorktree(p, id)
-    appendEvent(p, { type: 'task.accepted', task: id, commit: merged, terms: added })
+    appendEvent(p, {
+      type: 'task.accepted',
+      task: id,
+      commit: merged,
+      terms: added,
+      gitleaks: scan.version,
+    })
     return {
       status: 'accepted',
       messages: [

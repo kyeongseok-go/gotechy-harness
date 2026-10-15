@@ -254,9 +254,18 @@ export function renderAudit(
 }
 
 /** 기록 frontmatter의 지적 목록(contract.md 13절). 화면에 쓰므로 감사관 출력과 같은 규칙으로 다시 검사한다 */
-export const AuditItems = z
-  .array(AuditFinding.extend({ confirmed: z.boolean() }).strict())
-  .max(MAX_FINDINGS)
+const AuditItemSchema = AuditFinding.extend({ confirmed: z.boolean() }).strict()
+
+/** 지적 목록을 항목마다 따로 검사한다. 한 항목이 깨져도 나머지는 화면에 남는다(보안 감사 15차 낮음 4) */
+export function parseAuditItems(raw: unknown): AuditItem[] {
+  if (!Array.isArray(raw)) return []
+  const out: AuditItem[] = []
+  for (const r of raw.slice(0, MAX_FINDINGS)) {
+    const p = AuditItemSchema.safeParse(r)
+    if (p.success) out.push(p.data)
+  }
+  return out
+}
 
 /** 인박스 카드에 감사 기록을 붙인다. 판본이 다르면 지난 판본 기준이라고만 보여 주고 지적은 붙이지 않는다. */
 export function attachAudit(
@@ -264,6 +273,7 @@ export function attachAudit(
   record: {
     handoff_rev: number | null
     confirmed: number
+    findings?: number
     truncated?: boolean
     items?: AuditItem[]
   },
@@ -275,6 +285,7 @@ export function attachAudit(
     audit: {
       current,
       confirmed: record.confirmed,
+      findings: record.findings ?? record.items?.length ?? 0,
       truncated: record.truncated === true,
       items: current ? (record.items ?? []) : [],
     },

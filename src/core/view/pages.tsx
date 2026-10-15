@@ -262,8 +262,8 @@ function Chips(props: { card: Card }) {
   else if (!a.current) chips.push({ text: '감사: 지난 판본 기준', tone: 'warn' })
   else if (a.confirmed > 0)
     chips.push({ text: `감사 지적 ${a.confirmed}건(근거 확인됨)`, tone: 'bad' })
-  else if (a.items.length > 0)
-    chips.push({ text: `감사 지적 ${a.items.length}건(근거 확인 안 됨)`, tone: 'warn' })
+  else if (a.findings > 0)
+    chips.push({ text: `감사 지적 ${a.findings}건(근거 확인 안 됨)`, tone: 'warn' })
   else chips.push({ text: '감사 지적 없음', tone: 'ok' })
   chips.push(
     c.risks === undefined

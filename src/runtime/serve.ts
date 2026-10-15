@@ -284,7 +284,8 @@ export function startServe(o: ServeOptions): ServeHandle {
         autonomy: v.autonomy,
         budgetUsd: v.budgetUsd,
         failing: verdict?.status === 'fail' ? verdict.reasons : [],
-        preselect,
+        // 같은 사이트의 다른 포트 페이지가 고른 값을 미리 체크하지 않는다(보안 감사 15차 낮음 5)
+        preselect: ownView ? preselect : null,
       }),
     )
   }

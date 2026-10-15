@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { acceptTask } from '../../src/runtime/accept'
 import { runTask } from '../../src/runtime/run'
+import { gitleaksPath, parseReport } from '../../src/runtime/secrets'
 import { FAKE, fm, handoffFile, makeHome, makeProject, newTask, sh, taskFile } from './helpers'
 
 setDefaultTimeout(30_000)
@@ -54,7 +55,7 @@ describe('accept의 비밀 값 검사 (TD-012)', () => {
     expect(sh(['git', 'rev-parse', 'HEAD'], root)).toBe(before)
     expect(fm(taskFile(root, id)).status).toBe('needs-decision')
     const note = String(fm(handoffFile(root, id)).lead_note)
-    expect(note).toContain('config.txt:1')
+    expect(note).toContain('"config.txt":1')
     expect(note).toContain('gotechy task restart')
     expect(`${note}\n${out.messages.join('\n')}`).not.toContain(KEY)
   })
@@ -111,6 +112,62 @@ describe('accept의 비밀 값 검사 (TD-012)', () => {
       if (saved === undefined) delete process.env.GOTECHY_GITLEAKS
       else process.env.GOTECHY_GITLEAKS = saved
     }
+  })
+
+  test('메인에 먼저 들어간 .gitattributes(-diff)도 비밀 값을 가리지 못한다(보안 감사 15차 중간 3)', async () => {
+    const plant = await ranWith({ 'config.txt': 'ok\n', '.gitattributes': 'config.txt -diff\n' })
+    expect((await acceptTask({ root }, home, plant)).status).toBe('accepted')
+    const leak = await ranWith({ 'config.txt': `token = "${KEY}"\n` })
+    expect((await acceptTask({ root }, home, leak)).status).toBe('secret-found')
+  })
+
+  test('train과 판이 다른 gitleaks, 찾았다면서 보고서가 빈 gitleaks는 믿지 않는다(중간 2, 낮음 2)', async () => {
+    const id = await ranWith({ 'config.txt': 'ok\n' })
+    const bin = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-fakegl-')))
+    const fake = (body: string) => {
+      writeFileSync(join(bin, 'gitleaks'), `#!/bin/sh\n${body}\n`)
+      chmodSync(join(bin, 'gitleaks'), 0o755)
+    }
+    const saved = process.env.GOTECHY_GITLEAKS
+    process.env.GOTECHY_GITLEAKS = join(bin, 'gitleaks')
+    try {
+      fake('echo 8.0.0; exit 0')
+      const old = await acceptTask({ root }, home, id)
+      expect(old.status).toBe('rejected')
+      expect(old.messages.join('\n')).toContain('8.0.0')
+      // version이면 train 판을, git이면 빈 보고서와 함께 "찾았다"(99)를 돌려준다
+      fake(
+        'if [ "$1" = version ]; then echo 8.30.1; exit 0; fi\nfor a; do [ "$prev" = --report-path ] && echo "[]" > "$a"; prev=$a; done\nexit 99',
+      )
+      const empty = await acceptTask({ root }, home, id)
+      expect(empty.status).toBe('rejected')
+    } finally {
+      if (saved === undefined) delete process.env.GOTECHY_GITLEAKS
+      else process.env.GOTECHY_GITLEAKS = saved
+    }
+    expect(fm(taskFile(root, id)).status).toBe('done')
+  })
+
+  test('GOTECHY_GITLEAKS는 테스트에서만 받는다(남의 저장소 설정이 넣은 값으로 검사기를 바꾸지 못하게, 중간 2)', () => {
+    const saved = { env: process.env.NODE_ENV, gl: process.env.GOTECHY_GITLEAKS }
+    process.env.GOTECHY_GITLEAKS = '/usr/bin/true'
+    process.env.NODE_ENV = 'production'
+    try {
+      expect(gitleaksPath()).not.toBe('/usr/bin/true')
+    } finally {
+      process.env.NODE_ENV = saved.env
+      if (saved.gl === undefined) delete process.env.GOTECHY_GITLEAKS
+      else process.env.GOTECHY_GITLEAKS = saved.gl
+    }
+  })
+
+  test('보고서의 파일 이름에 든 제어 문자는 남기지 않는다(낮음 1)', () => {
+    const esc = String.fromCodePoint(0x1b)
+    const hits = parseReport(
+      JSON.stringify([{ File: `a${esc}]52;c;x\nb.txt`, StartLine: 1, RuleID: 'r' }]),
+    )
+    expect(hits[0]?.file).not.toContain(esc)
+    expect(hits[0]?.file).not.toContain('\n')
   })
 
   test('비밀 값이 없으면 그대로 합친다', async () => {

@@ -1,6 +1,11 @@
 // contract.md 10.2절 doctor의 순수 판정: 버전 읽기, 셸 스크립트, 스킬 frontmatter.
 import { describe, expect, test } from 'bun:test'
-import { parseVersion, scriptProblems, skillProblems } from '../../src/core/doctor'
+import {
+  parseVersion,
+  scriptProblems,
+  settingsEnvProblems,
+  skillProblems,
+} from '../../src/core/doctor'
 
 describe('버전 읽기', () => {
   test.each([
@@ -50,5 +55,19 @@ describe('스킬 frontmatter 검사', () => {
   })
   test('본문이 150줄을 넘으면 실패', () => {
     expect(skillProblems(skill('name: a\ndescription: b', 151)).join(' ')).toContain('150')
+  })
+})
+
+describe('프로젝트 설정 env (보안 감사 15차 중간 2)', () => {
+  test('PATH, NODE_ENV, GOTECHY_, GITLEAKS_ 변수를 찾는다', () => {
+    expect(
+      settingsEnvProblems(
+        JSON.stringify({
+          env: { PATH: '/x', NODE_ENV: 'test', GOTECHY_GITLEAKS: '/usr/bin/true', FOO: '1' },
+        }),
+      ),
+    ).toEqual(['PATH', 'NODE_ENV', 'GOTECHY_GITLEAKS'])
+    expect(settingsEnvProblems(JSON.stringify({ permissions: {} }))).toEqual([])
+    expect(settingsEnvProblems('깨짐')).toEqual([])
   })
 })

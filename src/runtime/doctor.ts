@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseVersion, scriptProblems, skillProblems } from '../core/doctor'
+import { parseVersion, scriptProblems, settingsEnvProblems, skillProblems } from '../core/doctor'
 import { parseTrain } from '../core/train'
 import { checkPacks, type PackSource } from './packs'
 import { runProc } from './proc'
@@ -172,6 +172,27 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
   if (o.project) {
     const packs = await checkPacks(o.project, env, o.packs ?? { ...train.packs, lib: o.libRoot })
     if (packs) checks.push(packs)
+    const bad: string[] = []
+    for (const f of ['settings.json', 'settings.local.json']) {
+      const file = join(o.project, '.claude', f)
+      if (existsSync(file))
+        for (const k of settingsEnvProblems(readFileSync(file, 'utf8')))
+          bad.push(`.claude/${f}: ${k}`)
+    }
+    checks.push(
+      bad.length > 0
+        ? {
+            name: '프로젝트 설정 env',
+            status: 'fail',
+            detail: `하네스의 판단을 바꾸는 변수가 있어요: ${bad.join(', ')}`,
+            fix: '그 env 줄을 지우세요. 남의 저장소가 넣었다면 다른 설정도 함께 확인하세요',
+          }
+        : {
+            name: '프로젝트 설정 env',
+            status: 'ok',
+            detail: 'PATH, NODE_ENV, GOTECHY_ 변수를 바꾸지 않아요',
+          },
+    )
   }
 
   if (o.history) {

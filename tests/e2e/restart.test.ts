@@ -1,6 +1,14 @@
 // TD-006: accept가 충돌이나 verify 실패로 멈춘 작업을 새 메인 위에서 처음부터 다시 하게 한다(contract.md 3절, 9.6절).
 import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import { acceptTask } from '../../src/runtime/accept'
 import { restartTask } from '../../src/runtime/restart'
@@ -85,5 +93,37 @@ describe('gotechy task restart (TD-006)', () => {
     const r = await restartTask({ root }, b)
     expect(r.status).toBe('refused')
     expect(readFileSync(join(wt, 'keep.txt'), 'utf8')).toBe('x')
+  })
+
+  test('worktree 자리가 링크면 따라가지 않는다(보안 감사 15차 낮음 6)', async () => {
+    const { a, b } = await conflicted()
+    const wt = join(root, '.gotechy', 'worktrees', b)
+    sh(['git', 'worktree', 'remove', '--force', wt], root)
+    // 다른 작업의 worktree를 하나 살려 두고 그쪽을 가리키는 링크를 심는다
+    const other = join(root, '.gotechy', 'worktrees', 'victim')
+    sh(['git', 'worktree', 'add', '-q', '--detach', other], root)
+    symlinkSync(other, wt)
+    const r = await restartTask({ root }, b)
+    expect(r.status).toBe('refused')
+    expect(existsSync(join(other, 'README.md'))).toBe(true)
+    expect(a).toBeTruthy()
+  })
+
+  test('폴더가 없어진 worktree도 등록 항목만 치우고 다시 하게 한다', async () => {
+    const { b } = await conflicted()
+    const wt = join(root, '.gotechy', 'worktrees', b)
+    renameSync(wt, `${wt}-moved`)
+    expect((await restartTask({ root }, b)).status).toBe('restarted')
+    expect(branches()).toContain(`gotechy/${b}-try1`)
+  })
+
+  test('비밀 값으로 멈춘 작업을 다시 하면 남긴 브랜치를 공개하지 말라고 알린다(낮음 7)', async () => {
+    const { b } = await conflicted()
+    appendFileSync(
+      join(root, 'orchestration', 'private', 'events.jsonl'),
+      `${JSON.stringify({ type: 'task.accept-held', task: b, reason: 'secret-found' })}\n`,
+    )
+    const r = await restartTask({ root }, b)
+    expect(r.messages.join('\n')).toContain('push하지 말고')
   })
 })

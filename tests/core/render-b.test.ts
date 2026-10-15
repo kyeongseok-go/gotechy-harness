@@ -1,6 +1,6 @@
 // HANDOFF 화면 B+C(contract.md 8.2절, 2026-10-16 오너 결정 T-007): 결정 카드를 먼저, 한 일 항목 옆에 감사 지적.
 import { describe, expect, test } from 'bun:test'
-import { attachAudit } from '../../src/core/audit'
+import { attachAudit, parseAuditItems } from '../../src/core/audit'
 import type { Gate } from '../../src/core/gate'
 import { attachGates, buildCard } from '../../src/core/inbox'
 import { pairFindings, renderGatePage, renderHandoffPage } from '../../src/core/view/pages'
@@ -208,6 +208,19 @@ describe('한 일 옆에 감사 지적 (시안 C)', () => {
     // 조각 몇 개만 겹치는 주장(Dice 0.33)은 짝짓지 않는다
     const weak = { ...stray, line: 9, claim: '함수를 고쳤다' }
     expect(pairFindings(['함수를 만들었어요.'], [weak]).unpaired.map((f) => f.line)).toEqual([9])
+  })
+})
+
+describe('깨진 감사 기록 (보안 감사 15차 낮음 4)', () => {
+  test('한 항목이 깨져도 나머지 지적은 남는다', () => {
+    const items = parseAuditItems([finding, { ...stray, claim: '' }, 'x'])
+    expect(items.map((i) => i.line)).toEqual([41])
+  })
+  test('붙일 지적이 없어도 기록의 지적 수로 칩을 보여 준다(초록 "없음"으로 속지 않게)', () => {
+    const c = attachAudit(gated, { handoff_rev: 1, confirmed: 0, findings: 2, items: [] })
+    const html = renderHandoffPage({ card: c, terms: [], mode: 'file' })
+    expect(html).toContain('감사 지적 2건(근거 확인 안 됨)')
+    expect(html).not.toContain('감사 지적 없음')
   })
 })
 

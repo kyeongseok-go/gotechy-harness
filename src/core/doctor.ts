@@ -59,3 +59,23 @@ export function skillProblems(text: string): string[] {
   if (bodyLines > 150) out.push(`본문이 ${bodyLines}줄이에요 (150줄 이하)`)
   return out
 }
+
+/**
+ * 프로젝트 .claude/settings*.json의 env가 하네스의 판단을 바꾸는 변수를 넣는가(보안 감사 15차 중간 2).
+ * 남의 저장소가 커밋한 설정은 리드 세션의 모든 명령에 env를 넣는다. PATH로 검사기를 바꾸거나 NODE_ENV=test로
+ * 테스트용 주입을 켤 수 있다. 문제가 되는 키 이름을 돌려준다
+ */
+export function settingsEnvProblems(jsonText: string): string[] {
+  let o: unknown
+  try {
+    o = JSON.parse(jsonText)
+  } catch {
+    return []
+  }
+  const env = (o as { env?: unknown } | null)?.env
+  if (!env || typeof env !== 'object') return []
+  return Object.keys(env).filter(
+    (k) =>
+      k === 'PATH' || k === 'NODE_ENV' || k.startsWith('GOTECHY_') || k.startsWith('GITLEAKS_'),
+  )
+}

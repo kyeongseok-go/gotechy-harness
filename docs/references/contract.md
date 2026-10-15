@@ -265,7 +265,7 @@ frontmatter:
 - 작업에 필요한 게이트(6.1절)가 모두 `ok`여야 시작한다. `approval-before`는 `진행`이어야 한다. 빠진 게이트는 다시 열고 멈춘다.
 - 선행 작업(`deps`)은 `accepted`여야 하고, 선행 작업에 필요한 게이트도 모두 `ok`이며 승인 계열은 통과 선택(`진행`, `승인`)이어야 한다.
 - 위 이유로 멈추면 exit 1이고, 어떤 게이트를 어떻게 하면 되는지 알려 준다.
-- 워커, 감사관, 리드 verify는 새 프로세스 그룹으로 띄우고, 끝나면 그룹 전체를 끝낸다(TD-029 일부, 2026-10-16). 그래서 이들이 남긴 백그라운드 프로세스가 리드의 검사 뒤에 worktree나 git 설정을 바꾸지 못하고, 출력을 쥔 채 남은 자식 때문에 run이 기다리지도 않는다. `setsid`로 그룹을 벗어난 프로세스는 막지 못한다.
+- 워커, 감사관, 리드 verify는 새 프로세스 그룹으로 띄우고, 끝나면 그룹 전체를 끝낸다(TD-029 일부, 2026-10-16). 리드가 SIGINT, SIGTERM, SIGHUP으로 끝나도 살아 있는 그룹을 끝낸다(새 그룹은 터미널의 Ctrl-C를 받지 못한다, 보안 감사 15차 중간 1). 그래서 이들이 남긴 백그라운드 프로세스가 리드의 검사 뒤에 worktree나 git 설정을 바꾸지 못한다. `setsid`로 그룹을 벗어난 프로세스는 막지 못하고(TD-030), 그런 자손이 출력을 쥐고 있으면 2초만 기다리고 끊는다.
 
 ## 8. 인박스와 읽기 전용 화면 (M2b)
 
@@ -362,7 +362,7 @@ frontmatter:
 ### 9.4 `gotechy accept T-###`
 
 - 조건: 작업 `done`, HANDOFF `verified.exit_code` 0, 필요한 게이트(6.1절)가 모두 `ok`이고 승인 계열은 통과 선택, 읽을 수 없는 게이트 파일 없음. 하나라도 어기면 exit 1과 사유.
-- 비밀 값 검사(TD-012, 2026-10-16): 병합하기 전에 `gitleaks git --log-opts "<메인>..gotechy/T-###"`로 워커 커밋을 검사한다. 설정은 라이브러리의 `templates/project/gitleaks.toml`만 쓰고(`--config`), 무시 목록 자리에는 빈 폴더를 주고(`--gitleaks-ignore-path`), `gitleaks:allow` 주석을 따르지 않는다(`--ignore-gitleaks-allow`). 저장소의 `.gitleaks.toml` 허용 목록이 기본 실행을 끄는 것을 실험으로 확인했고, 워커가 그 파일을 심을 수 있기 때문이다. 찾으면 병합하지 않고 작업을 `needs-decision`으로 바꾸고, `lead_note`에는 값 대신 `파일:줄 (규칙)`과 다시 하는 명령만 남긴다(exit 1, 상태 `secret-found`). gitleaks가 없거나 오류로 끝나면 병합하지 않고 작업 상태도 그대로 둔다(exit 1, fail-closed). gitleaks 경로는 `GOTECHY_GITLEAKS`가 있으면 그것, 없으면 PATH에서 찾는다.
+- 비밀 값 검사(TD-012, 보안 감사 15차, 2026-10-16): 병합 커밋을 만든 뒤, 메인에 실제로 들어갈 차이(병합 커밋의 첫 부모 대비)를 `gitleaks git --log-opts "--first-parent --diff-merges=first-parent --text --no-textconv --no-ext-diff <메인>..<병합 커밋>"`으로 검사한다. 대상은 작업 트리 없는 임시 폴더(`.git` 파일만 두고 저장소의 git 폴더를 가리킴)다. 설정은 라이브러리의 `templates/project/gitleaks.toml`만 쓰고(`--config`), 무시 목록 자리에는 빈 폴더를 주고, `gitleaks:allow` 주석을 따르지 않는다. 저장소의 `.gitleaks.toml`, 작업 트리의 `.gitleaksignore`와 `.gitattributes`(-diff)가 검사를 끄는 것을 실험으로 확인했기 때문이다. gitleaks 판은 train과 같아야 하고, 쓴 판을 `task.accepted` 이벤트에 남긴다. 찾으면 병합하지 않고 작업을 `needs-decision`으로 바꾸고, `lead_note`에는 값 대신 `"파일":줄 (규칙)`과 다시 하는 명령만 남긴다(exit 1, 상태 `secret-found`). gitleaks가 없거나, 판이 다르거나, 오류로 끝나거나, 찾았다면서 보고서가 비면 병합하지 않고 작업 상태도 그대로 둔다(exit 1, fail-closed). 작업 브랜치는 처음에 한 번 커밋 번호로 풀어 범위 검사, 병합에 같은 값을 쓴다. gitleaks 경로는 PATH에서 찾고, `GOTECHY_GITLEAKS`는 테스트(`NODE_ENV=test`)에서만 받는다.
 - 절차: 메인의 현재 커밋에서 임시 worktree를 만들고, 작업 브랜치 `gotechy/T-###`를 `--no-ff --no-commit`으로 병합한다. 병합 결과에서 `orchestration/` 아래 변경은 메인 커밋의 상태로 되돌린다. 작업 명세, HANDOFF, 게이트는 리드의 기록이라 메인 체크아웃에만 두고, 병합하는 것은 워커가 바꾼 파일뿐이다. 커밋한 뒤 그 자리에서 작업의 `verify`를 다시 실행한다.
 - 충돌이나 verify 실패면 임시 worktree를 지우고 작업을 `needs-decision`으로 바꾸고 HANDOFF에 `lead_note`로 사유와 다시 하는 명령(`gotechy task restart T-###`, 9.6절)을 남긴 뒤 exit 1.
 - 성공하면 메인 체크아웃을 그 병합 커밋으로 fast-forward한다. 메인의 커밋하지 않은 변경과 겹쳐 git이 거부하면 exit 1(메인은 그대로). 성공하면 작업을 `accepted`로 바꾸고 작업 worktree와 임시 worktree를 지운다. 작업 브랜치는 기록으로 남긴다.
@@ -375,8 +375,8 @@ frontmatter:
 
 accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메인 위에서 처음부터 다시 하게 한다. 같은 worktree에서 이어 가면 옛 기준 커밋 위라 같은 충돌이 다시 난다.
 
-- 조건: 작업이 `needs-decision`, `failed`, `done`(병합 전), 멈춘 `running` 중 하나. `accepted`, `draft`, `ready`면 exit 1. run과 같은 작업별 잠금을 잡아, 도는 run이 있으면 exit 1.
-- 절차: 작업 worktree가 git에 등록된 worktree면 치운다(같은 자리에 등록되지 않은 폴더가 있으면 손대지 않고 exit 1). 작업 브랜치 `gotechy/T-###`는 지우지 않고 `gotechy/T-###-try<N>`(N은 비어 있는 가장 작은 수)으로 이름만 바꾼다. 기준 커밋 기록(`.base`)을 지우고 작업을 `ready`로 바꾼다. 이벤트 `task.restart`를 남긴다.
+- 조건: 작업이 `needs-decision`, `failed`, `done`(병합 전), 멈춘 `running` 중 하나. worktree 자리가 심볼릭 링크면 거부한다. `accepted`, `draft`, `ready`면 exit 1. run과 같은 작업별 잠금을 잡아, 도는 run이 있으면 exit 1.
+- 절차: 작업 worktree가 git에 등록돼 있으면 그 항목만 치운다(폴더가 없어졌어도. 저장소 전체 prune은 하지 않는다). 같은 자리에 등록되지 않은 폴더가 있으면 손대지 않고 exit 1. 비밀 값으로 멈춘 작업이면 남긴 브랜치를 push하지 말라고 알린다. 작업 브랜치 `gotechy/T-###`는 지우지 않고 `gotechy/T-###-try<N>`(N은 비어 있는 가장 작은 수)으로 이름만 바꾼다. 기준 커밋 기록(`.base`)을 지우고 작업을 `ready`로 바꾼다. 이벤트 `task.restart`를 남긴다.
 - 메인의 HANDOFF, 게이트, 결정 장부는 그대로다. 다음 `run`은 지금 메인에서 새 worktree를 만들고, 그 HANDOFF 판본의 오너 결정을 워커 지시문에 넣으며(6.6절), 새 HANDOFF는 판본을 하나 올린다.
 - 종료코드: 다시 하게 했으면 0, 거부하면 1.
 

@@ -406,6 +406,11 @@ describe('화면과 이동', () => {
     ).text()
     expect(bad).not.toContain('checked')
     expect(bad).not.toContain('<script>')
+    // 같은 사이트의 다른 포트 페이지가 보낸 선택은 미리 고르지 않는다(보안 감사 15차 낮음 5)
+    const cross = await (
+      await fetch(`${s.origin}${href}`, { headers: { cookie, 'sec-fetch-site': 'same-site' } })
+    ).text()
+    expect(cross).not.toContain('checked')
   })
 
   test('시작 승인 게이트(HANDOFF 없음)도 인박스에서 결정 화면으로 이어진다', async () => {

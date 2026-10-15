@@ -24,7 +24,6 @@
 | TD-019 | 2026-10-15 | 끝 기록과 오너 키의 위치(`GOTECHY_HOME`, 없으면 `HOME/.gotechy`)와 verify 샌드박스의 비밀 폴더 목록이 환경 변수 HOME을 따른다. 프로젝트 안을 가리키면 멈추지만, `/tmp` 같은 다른 폴더를 가리키게 해서 실행하면 끝 기록 검사를 피하고, 샌드박스가 진짜 홈의 비밀 폴더를 막지 않는다. Bun의 `os.userInfo().homedir`도 HOME을 따른다(실험) | src/runtime/keys.ts, src/runtime/sandbox.ts | 🟡 | 명령의 환경을 바꿀 수 있는 쪽이 신뢰 기준을 옮긴다(보안 감사 11차 중간 1) | 계정 정보에서 홈 읽기(getpwuid FFI나 dscl), 기본값이 아닌 홈이면 출력에 표시 |
 | TD-020 | 2026-10-15 | 보호 경로를 대소문자 구분으로 비교한다. macOS 기본 파일 시스템은 구분하지 않아 `orchestration/OWNER.PUB`가 같은 파일일 수 있다 | src/core/paths.ts | 🟢 | ownership 검사를 대소문자로 피할 수 있다(보안 감사 11차 낮음 6, 실험 필요) | 새 클론에서 대소문자 다른 경로의 git 표시를 실험한 뒤 darwin에서 소문자와 NFC로 비교 |
 | TD-021 | 2026-10-15 | `gotechy keys pin`은 Touch ID 없이 TTY와 y만으로 고정 키와 끝 기록을 다시 쓴다 | src/runtime/gates.ts | 🟢 | TTY 검사를 우회한 쪽이 신뢰 기준을 바꿀 수 있다(보안 감사 11차 낮음 1 보강 제안) | 서명 도구에 고정용 하위 명령을 더해 {project_id, pub, 장부 sha}에 오너 서명 |
-| TD-022 | 2026-10-15 | 인박스 카드가 게이트를 모두 결정한 작업도 "[결정 필요]"로 보인다. 분류가 HANDOFF 상태(needs-decision)를 따르고, 결정 뒤 다시 실행되기 전까지 그대로라서다. 오너가 결정 버튼 없는 화면에서 무엇을 눌러야 하는지 헤맸다(2026-10-15 Touch ID 확인) | src/core/inbox.ts, src/core/view/pages.tsx | 🟡 | 오너가 남은 결정이 있다고 오해하고, 결정할 것 없는 화면을 연다 | 열린 게이트가 없으면 "결정 끝, 다시 실행 대기"로 따로 묶고 다음 할 일(run 명령)을 보여 준다 |
 | TD-023 | 2026-10-15 | 오너 확인은 지문 장치가 없는 맥(오너의 맥 미니)에서 맥 로그인 암호다. 로그인 암호를 아는 사람은 누구나 결정할 수 있고, 암호 창은 다른 시스템 창과 생김새가 같아 습관처럼 승인하기 쉽다(실측: 확인 시험에서 취소 대신 승인이 두 번 들어감) | native/ownerkey.swift, ADR 0006 | 🟡 | "오너만 결정한다"의 강도가 지문보다 약하다 | ADR 0006 승인 때 오너가 정한다: 그대로(암호), Touch ID 달린 키보드, 또는 결정 창 문구 강화 |
 
 심각도: 🔴 구조적(레이어 위반·보안) / 🟡 기능적(엣지케이스·성능) / 🟢 표면적(네이밍·중복)
@@ -33,6 +32,7 @@
 
 | ID | 내용 | 상환일 | 증거 |
 |---|---|---|---|
+| TD-022 | 게이트를 모두 결정한 `needs-decision` 작업을 인박스와 화면에서 "다시 실행 대기" 묶음으로 따로 보여 주고, 카드 끝에 `다음: gotechy run T-###`를 쓴다(contract.md 8.1절) | 2026-10-15 | `tests/core/inbox-resume.test.ts`(8개, 조건 3개를 빼는 mutation 모두 잡음) |
 | TD-008 | 리드 에이전트가 `gotechy decide`, `serve`, `keys`, `script`, `expect`와 force push, 발행, 배포를 실행하지 못하게: `gotechy init`이 프로젝트 `.claude/settings.json`에 deny 규칙, `settings.local.json`에 `gotechy guard` hook(fail-closed)을 깐다 | 2026-10-15 | `tests/core/guard.test.ts`, `tests/e2e/guard-cli.test.ts`, contract.md 12절 |
 | TD-011 | `gotechy init`이 팩을 복사로 설치하던 것을 apm(커밋 고정, `targets: [claude, agent-skills]`)으로 바꿨다. doctor가 프로젝트 안에서 `apm audit --ci`로 변조를 잡는다 | 2026-10-15 | `tests/e2e/init-apm.test.ts`, `tests/core/apm.test.ts`, 실측 `docs/references/evidence/2026-10-15-night/apm-real.txt` |
 | TD-013 | 프로젝트 고정 키 `orchestration/owner.pub`(커밋, 보호 경로). 검증은 고정 키로 하고, decide는 이 맥의 키가 고정 키와 다르면 거부한다. 첫 decide가 처음 고정하고, 키를 바꾸면 `gotechy keys pin`으로 다시 고정한다. 같은 사용자 프로세스가 고정 파일까지 바꾸면 git diff에 드러나는 것까지가 방어다 | 2026-10-15 | `tests/e2e/pin-ledger.test.ts`, contract.md 6.3절 |

@@ -7,7 +7,8 @@ import { HandoffFrontmatter } from './schema'
 import { schemaIssues } from './schema-issues'
 import { extractSections, isNone, type Section, topItems } from './sections'
 
-export type CardGroup = 'decision' | 'failed' | 'done'
+/** resume: 막는 결정을 모두 결정해 다시 실행을 기다린다(TD-022) */
+export type CardGroup = 'decision' | 'failed' | 'resume' | 'done'
 export type Card = {
   id: string
   /** 화면에 보여 줄 HANDOFF 경로 */
@@ -37,9 +38,10 @@ export type Card = {
 export const GROUP_LABEL: Record<CardGroup, string> = {
   decision: '결정 필요',
   failed: '실패',
+  resume: '다시 실행 대기',
   done: '완료',
 }
-const GROUP_ORDER: CardGroup[] = ['decision', 'failed', 'done']
+const GROUP_ORDER: CardGroup[] = ['decision', 'failed', 'resume', 'done']
 const RISK = '건너뛴 것, 확인 못 한 것, 리스크'
 
 // 터미널 제어 문자(줄바꿈, 탭 제외)와 양방향 제어 문자. 화면을 덮어쓰거나 글자 순서를 속이는 데 쓰인다.
@@ -134,9 +136,18 @@ export function attachGates(c: Card, gates: Gate[]): Card {
       : { ...b, gate: g.id }
   })
   const after = mine.find((g) => g.class === 'approval-after' && g.status === 'pending')
-  return after
-    ? { ...c, blocking, group: 'decision', approval: { id: after.id, options: after.options } }
+  if (after)
+    return { ...c, blocking, group: 'decision', approval: { id: after.id, options: after.options } }
+  // 오너가 할 결정이 남지 않았는데 "결정 필요"로 보이면 결정 버튼 없는 화면에서 헤맨다(TD-022)
+  const allDecided = blocking.length > 0 && blocking.every((b) => b.gate && b.decided)
+  return c.group === 'decision' && allDecided
+    ? { ...c, blocking, group: 'resume' }
     : { ...c, blocking }
+}
+
+/** 다시 실행 대기 카드의 다음 명령 */
+export function resumeCommand(c: Card): string {
+  return `gotechy run ${c.id}`
 }
 
 /** HANDOFF가 아직 없는 작업의 시작 승인 카드 */
@@ -234,6 +245,7 @@ function formatCard(c: Card): string {
   if (c.blocking.some((d) => d.gate && !d.decided))
     lines.push('  결정하려면: gotechy decide <게이트 번호> <선택>')
   if (c.approval) lines.push(`  승인 대기 ${c.approval.id}: ${gateCommand(c.approval)}`)
+  if (c.group === 'resume') lines.push(`  다음: ${resumeCommand(c)}`)
   if (c.newTerms.length > 0) lines.push(`  새 용어: ${c.newTerms.join(', ')}`)
   // 리드 메모는 실패와 결정 필요 카드에 보인다. accept가 충돌로 멈춘 사유도 여기 남는다(contract.md 9.4절)
   if (c.group !== 'done' && c.handoff?.lead_note)

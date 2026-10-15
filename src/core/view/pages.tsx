@@ -10,6 +10,7 @@ import {
   decisionLine,
   gateCommand,
   MAX_DECISION_LINES,
+  resumeCommand,
   signalLine,
   sortCards,
   displayText as t,
@@ -35,9 +36,9 @@ const FOOTER: Record<ViewMode, string> = {
 
 const CSS = `
 :root { color-scheme: light dark; --fg: #1d1d1f; --muted: #5f6368; --line: #d9dce1; --bg: #fff;
-  --card: #f7f8fa; --decision: #b26a00; --failed: #c5221f; --done: #188038; }
+  --card: #f7f8fa; --decision: #b26a00; --failed: #c5221f; --resume: #1a73e8; --done: #188038; }
 @media (prefers-color-scheme: dark) { :root { --fg: #e8eaed; --muted: #9aa0a6; --line: #3c4043;
-  --bg: #202124; --card: #292a2d; --decision: #fdd663; --failed: #f28b82; --done: #81c995; } }
+  --bg: #202124; --card: #292a2d; --decision: #fdd663; --failed: #f28b82; --resume: #8ab4f8; --done: #81c995; } }
 body { margin: 0 auto; max-width: 46rem; padding: 1.5rem 1rem 4rem; background: var(--bg); color: var(--fg);
   font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
 h1 { font-size: 1.4rem; margin: .2rem 0 .4rem; } h2 { font-size: 1.1rem; margin: 1.6rem 0 .4rem; }
@@ -45,6 +46,7 @@ a { color: inherit; } code, pre { font: .9em ui-monospace, SFMono-Regular, Menlo
 pre { overflow-x: auto; padding: .6rem; background: var(--card); border-radius: 6px; }
 .label { font-weight: 700; margin: 0; } .signal { color: var(--muted); margin: 0; }
 .decision .label { color: var(--decision); } .failed .label { color: var(--failed); } .done .label { color: var(--done); }
+.resume .label { color: var(--resume); } .card.resume { border-left-color: var(--resume); }
 .card { border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
 .card.decision { border-left-color: var(--decision); } .card.failed { border-left-color: var(--failed); }
 .card.done { border-left-color: var(--done); } .card h2 { margin: .2rem 0; }
@@ -302,6 +304,11 @@ function InboxCard(props: { card: Card; mode: ViewMode }) {
                 승인 대기 {c.approval.id}: <code>{t(gateCommand(c.approval))}</code>
               </p>
             )
+          ) : null}
+          {c.group === 'resume' ? (
+            <p>
+              결정을 모두 마쳤어요. 다음: <code>{t(resumeCommand(c))}</code>
+            </p>
           ) : null}
           {c.newTerms.length > 0 ? <p>새 용어: {t(c.newTerms.join(', '))}</p> : null}
           {c.handoff?.lead_note && c.group !== 'done' ? (

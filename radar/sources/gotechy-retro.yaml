@@ -1,0 +1,76 @@
+skill: gotechy-retro
+checked: 2026-10-16
+sources:
+  - id: google-sre-postmortem
+    title: Google SRE 책 15장 포스트모템 문화
+    url: https://sre.google/sre-book/postmortem-culture/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/facilitation.md, references/bar.md]
+  - id: kerth-prime-directive
+    title: Retrospective Prime Directive
+    url: https://www.retrospectivewiki.org/index.php?title=The_Prime_Directive
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/facilitation.md, references/retro-template.md]
+  - id: agile-retrospectives-2e
+    title: Agile Retrospectives 2판
+    version: "2nd edition"
+    url: https://pragprog.com/titles/dlret2/agile-retrospectives-second-edition/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/facilitation.md]
+  - id: nygard-adr
+    title: Nygard, Documenting Architecture Decisions
+    url: https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/adr.md]
+  - id: madr
+    title: MADR 템플릿
+    version: "4.0.0"
+    url: https://adr.github.io/madr/
+    trust: community
+    watch: github-releases
+    feed: adr/madr
+    cadence: quarterly
+    covers: [references/adr.md, references/bar.md]
+  - id: fowler-debt-quadrant
+    title: Fowler, Technical Debt Quadrant
+    url: https://martinfowler.com/bliki/TechnicalDebtQuadrant.html
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/debt.md]
+  - id: uw-star
+    title: 워싱턴 대학교 STAR 면접법
+    url: https://careers.uw.edu/resources/star-method-of-interviewing/
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/evidence-and-seeds.md]
+  - id: amazon-lp-interview
+    title: Amazon 리더십 원칙 면접 안내
+    url: https://www.aboutamazon.com/news/workplace/amazon-leadership-principles-interview
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/evidence-and-seeds.md]
+  - id: diataxis
+    title: Diátaxis
+    url: https://diataxis.fr/map/
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/evidence-and-seeds.md]
+  - id: obsidian-properties
+    title: Obsidian 속성 도움말
+    url: https://obsidian.md/help/properties
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/evidence-and-seeds.md, references/retro-template.md]

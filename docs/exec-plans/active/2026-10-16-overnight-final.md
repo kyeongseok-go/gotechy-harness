@@ -74,3 +74,11 @@ mode: night
 
 | 순서 | 결과 | 커밋 |
 |---|---|---|
+| K0 | 계획, 메모리(공문서 보류), ADR 0006 승인, ADR 0007(Orca는 화면과 알림에만). 첫 커밋은 계획에 Validation 절이 없어 CI가 실패했고 다음 커밋에서 고침 | 0dcf3ae, 5bd23f2 |
+| K3 | HANDOFF 화면 B+C. mutation 9종 중 8종을 잡음(1종은 이중 방어) | 2478ee7, 5fdbc47 |
+| K4 | 감사관 실제 실행 1회: claude(claude-opus-5-5), 0.128달러, 20초, 심은 불일치 3건 모두와 추가 3건, 6건 모두 근거 확인 | 4e5b509 |
+| K6 | TD-006 `gotechy task restart`, TD-012 병합 전 gitleaks(실험으로 우회 확인 후 막음), TD-029 일부 프로세스 그룹, 팩 색인 표 | e999f2c |
+| K1 보강 | 위임 작업 지시문에 팩 본문(제한 모드 워커는 스킬을 로드하지 않아 지금까지 전달되지 않았음) | 930df0a |
+| R2 | `gotechy radar` 실측: 출처 129개 16초 | 768aa94, ee1dcf7 |
+| K8 | 보안 감사 15차: 높음 1(추정)은 TD-030, 중간 3과 낮음 8 고침. 중간 1은 오늘 밤 변경의 회귀였음 | e88cacb, f0a5423 |
+| K7 | GETTING_STARTED, README, QUALITY_BAR 분야별 bar 표, 판정표, 1b 완료 판정, 2단계 초안 | 6361bdf, e8d2e07, 39ec5fb |

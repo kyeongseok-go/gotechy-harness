@@ -1,0 +1,79 @@
+skill: gotechy-operate
+checked: 2026-10-16
+sources:
+  - id: sre-workbook-implementing-slos
+    title: SRE Workbook 2장 Implementing SLOs
+    url: https://sre.google/workbook/implementing-slos/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/slo.md]
+  - id: sre-workbook-alerting-on-slos
+    title: SRE Workbook 5장 Alerting on SLOs
+    url: https://sre.google/workbook/alerting-on-slos/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/slo.md]
+  - id: sre-book-managing-incidents
+    title: Google SRE 책 Managing Incidents
+    url: https://sre.google/sre-book/managing-incidents/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/incident.md]
+  - id: sre-workbook-postmortem-culture
+    title: SRE Workbook 10장 Postmortem Culture
+    url: https://sre.google/workbook/postmortem-culture/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/postmortem.md]
+  - id: pagerduty-incident-response
+    title: PagerDuty Incident Response 문서
+    url: https://response.pagerduty.com/
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/incident.md]
+  - id: otel-specification
+    title: OpenTelemetry 명세
+    version: "1.61.0"
+    url: https://opentelemetry.io/docs/specs/status/
+    trust: standard
+    watch: github-releases
+    feed: open-telemetry/opentelemetry-specification
+    cadence: monthly
+    covers: [references/observability.md]
+  - id: otel-semantic-conventions
+    title: OpenTelemetry semantic conventions
+    version: "1.44.0"
+    url: https://opentelemetry.io/docs/specs/semconv/
+    trust: standard
+    watch: github-releases
+    feed: open-telemetry/semantic-conventions
+    cadence: monthly
+    covers: [references/bar.md, references/observability.md]
+  - id: aws-reliability-recovery
+    title: AWS Well-Architected 신뢰성 기둥 REL13-BP01
+    url: https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_planning_for_recovery_objective_defined_recovery.html
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/runbook.md]
+  - id: focus-spec
+    title: FinOps FOCUS 명세
+    version: "1.4"
+    url: https://focus.finops.org/focus-specification/
+    trust: standard
+    watch: github-releases
+    feed: FinOps-Open-Cost-and-Usage-Spec/FOCUS_Spec
+    cadence: quarterly
+    covers: [references/cost.md]
+  - id: gcp-budget-alerts
+    title: Google Cloud 예산과 예산 알림
+    url: https://docs.cloud.google.com/billing/docs/how-to/budgets
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/cost.md]

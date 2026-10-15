@@ -69,20 +69,18 @@
 - 스펙·계획·게이트는 에이전트가 직접 수행한다. **부작용이 있는 것**(배포, 외부 발행, 위키 적재, force push, 전역 설정 바꾸기 `gotechy setup`, 오너 키와 결정 `gotechy keys`·`decide`·`serve`, 무인 루프 `gotechy loop`)은 사용자가 명시적으로 지시했을 때만 실행한다. 결정은 오너만 한다.
 - 계획만 늘어놓고 턴을 끝내지 않는다 — 실행하거나, 막힌 지점을 명확히 보고한다.
 
-## 슬래시 커맨드 (스킬 — Claude Code 전용)
+## 전문가 스킬 (팩, `skills/`가 원본이고 `.claude/skills/`는 같은 사본)
 
-> Codex 등 다른 에이전트로 작업할 때는 스킬이 로드되지 않는다 — 완료 게이트는 `docs/PLANS.md` 완료의 정의 절 + `bash scripts/init.sh`를 수동 수행한다.
+> Codex 등 다른 에이전트로 작업할 때는 `.agents/skills/` 또는 `skills/`의 SKILL.md를 직접 연다. 팩 목록과 구성은 `docs/references/contract.md` 10.8절, 분야별 기준은 각 스킬의 `references/bar.md`.
 
-| 커맨드 | 역할 |
+| 단계 | 스킬 (Claude Code에서는 `/이름`) |
 |---|---|
-| `/gotechy-spec` | 아이디어 → 스펙 (미니/풀/**위저드**: Brief→PRD→기능→유저플로우) |
-| `/gotechy-design` | UI 설계 위저드 (사이트맵→와이어프레임→스타일가이드) |
-| `/gotechy-plan` | 스펙 → ExecPlan 생성·갱신 |
-| `/gotechy-quality` | 품질 목표 수립·검증 (특성→측정항목→목표값→검증, ISO 25010 기반) |
-| `/gotechy-ship` | 완료 게이트 검사 (패치/기능/릴리스 3등급, 부분 점수 보고) |
-| `/gotechy-security` | 보안 리뷰 (docs/SECURITY.md 기준) |
-| `/gotechy-launch` | 런치·SEO/GEO·마케팅 산출물 |
-| `/gotekie-blog-writer` | 고텍이 페르소나 블로그 글 (v2) |
+| 보고 | `owner-protocol` |
+| 발견, 정의, 계획 | `gotechy-discover`, `gotechy-spec`, `gotechy-plan` |
+| 디자인, 구현 | `gotechy-design`, `gotechy-build` |
+| 검증 | `gotechy-quality`, `gotechy-security`, `gotechy-ai-eval`, `gotechy-comply-kr` |
+| 출시, 운영 | `gotechy-ship`, `gotechy-operate` |
+| 알리기, 회고 | `gotechy-launch`, `gotekie-blog-writer`, `gotechy-retro` |
 
 ## 서브에이전트
 

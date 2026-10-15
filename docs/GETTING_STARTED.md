@@ -6,7 +6,7 @@ audience: 오너(고텍이)
 
 # 새 프로젝트를 하네스로 시작하기
 
-새 제품을 만들 때 이 순서대로 하면 돼요. 명령은 모두 오너가 터미널에서 직접 쳐요. `gotechy`는 이 저장소의 `bin/gotechy`예요(PATH에 두거나 `alias gotechy=<저장소>/bin/gotechy`).
+새 제품을 만들 때 이 순서대로 하면 돼요. `gotechy`는 이 저장소의 `bin/gotechy`예요. `~/.zshrc`에 `export PATH="<이 저장소>/bin:$PATH"`를 한 줄 넣어 두세요. alias는 Claude Code의 명령 셸에서 보이지 않고, 링크로 부르면 `bin/gotechy`가 라이브러리 위치를 찾지 못해요.
 
 ## 0. 한 번만 하는 준비
 

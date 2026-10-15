@@ -1,0 +1,83 @@
+skill: gotechy-ship
+checked: 2026-10-16
+sources:
+  - id: sre-book-release-engineering
+    title: Google SRE 책 8장 Release Engineering
+    url: https://sre.google/sre-book/release-engineering/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/release.md]
+  - id: sre-book-launch-checklist
+    title: Google SRE 책 부록 Launch Coordination Checklist
+    url: https://sre.google/sre-book/launch-checklist/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/release.md]
+  - id: sre-workbook-canarying
+    title: SRE Workbook 16장 Canarying Releases
+    url: https://sre.google/workbook/canarying-releases/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/release.md]
+  - id: dora-research
+    title: DORA 지표 가이드와 연례 보고서
+    version: "2025"
+    url: https://dora.dev/guides/dora-metrics/
+    trust: official
+    watch: rss
+    feed: https://dora.dev/index.xml
+    cadence: monthly
+    covers: [references/bar.md, references/release.md]
+  - id: openfeature-spec
+    title: OpenFeature 명세
+    version: "0.9.0"
+    url: https://openfeature.dev/specification/
+    trust: standard
+    watch: github-releases
+    feed: open-feature/spec
+    cadence: monthly
+    covers: [references/bar.md, references/release.md]
+  - id: keep-a-changelog
+    title: Keep a Changelog
+    version: "1.1.0"
+    url: https://keepachangelog.com/en/1.1.0/
+    trust: community
+    watch: github-releases
+    feed: olivierlacan/keep-a-changelog
+    cadence: quarterly
+    covers: [references/release.md]
+  - id: semver
+    title: Semantic Versioning
+    version: "2.0.0"
+    url: https://semver.org/
+    trust: standard
+    watch: github-releases
+    feed: semver/semver
+    cadence: quarterly
+    covers: [references/bar.md, references/release.md]
+  - id: slsa-spec
+    title: SLSA 명세
+    version: "1.2"
+    url: https://slsa.dev/spec/v1.2/
+    trust: standard
+    watch: rss
+    feed: https://slsa.dev/feed.xml
+    cadence: monthly
+    covers: [references/bar.md, references/release.md]
+  - id: owasp-secrets-management
+    title: OWASP 비밀 관리 Cheat Sheet
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/release.md]
+  - id: github-protected-branches
+    title: GitHub 보호 브랜치와 필수 상태 체크
+    url: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/gate-levels.md]

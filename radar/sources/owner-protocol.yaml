@@ -1,0 +1,25 @@
+skill: owner-protocol
+checked: 2026-10-16
+sources:
+  - id: gotechy-contract
+    title: gotechy 파일 계약 (HANDOFF 4절, 문체 7절)
+    version: "1.1"
+    url: https://github.com/kyeongseok-go/gotechy-harness/blob/harness-v2/docs/references/contract.md
+    trust: official
+    watch: page
+    cadence: weekly
+    covers: [SKILL.md, references/bar.md]
+  - id: anthropic-ai-coding-skills
+    title: Anthropic 연구 글, AI 도움이 코딩 실력 형성에 주는 영향
+    url: https://www.anthropic.com/research/AI-assistance-coding-skills
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: plain-language-guidelines
+    title: Federal Plain Language Guidelines
+    url: https://plainlanguage.gov/guidelines/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/lens.md]

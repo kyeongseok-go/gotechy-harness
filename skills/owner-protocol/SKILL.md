@@ -5,7 +5,7 @@ description: Report format and writing style for every delegated gotechy task. U
 
 # owner-protocol: 오너에게 보고하는 법
 
-오너는 HANDOFF만 보고 이해하고 결정한다. 그래서 보고는 결정, 요약, 근거, 리스크 순서로 짧고 정확해야 한다. 형식의 원천은 `docs/references/contract.md` 4절(형식)과 7절(문체)이다. `gotechy handoff lint`가 같은 규칙으로 검사한다.
+오너는 HANDOFF만 보고 이해하고 결정한다. 그래서 보고는 결정, 요약, 근거, 리스크 순서로 짧고 정확해야 한다. 형식의 원천은 gotechy 파일 계약 4절(형식)과 7절(문체)이고(https://github.com/kyeongseok-go/gotechy-harness/blob/harness-v2/docs/references/contract.md), 이 스킬에 필요한 규칙은 아래와 `references/bar.md`에 다 있다. `gotechy handoff lint`가 같은 규칙으로 검사한다.
 
 ## 반드시
 
@@ -30,3 +30,8 @@ description: Report format and writing style for every delegated gotechy task. U
 - 범위를 넓히거나 요청하지 않은 기능과 추상화를 더하지 않는다.
 - 확신 없는 결정을 임의로 내리지 않는다. 결정 필요로 올리고 status를 `needs-decision`으로 둔다.
 - 결정 파일(`orchestration/gates/`)과 작업 명세(`orchestration/tasks/`)를 건드리지 않는다.
+
+## 더 볼 것
+
+- 합격선과 등급(A~D), 흔한 실패: `references/bar.md`
+- 보고를 그림이나 설명 문서로 풀어 줄 때: `references/lens.md`

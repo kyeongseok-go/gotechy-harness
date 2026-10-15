@@ -1,0 +1,64 @@
+skill: gotechy-plan
+checked: 2026-10-16
+sources:
+  - id: openai-codex-execplans
+    title: OpenAI Cookbook ExecPlans (PLANS.md)
+    url: https://developers.openai.com/cookbook/articles/codex_exec_plans
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md, references/execplan.md]
+  - id: dora-research
+    title: DORA 연구와 역량 문서
+    version: "2025 보고서"
+    url: https://dora.dev/
+    trust: paper
+    watch: rss
+    feed: https://dora.dev/index.xml
+    cadence: monthly
+    covers: [references/bar.md, references/risk.md]
+  - id: dora-small-batches
+    title: DORA 작은 단위로 일하기
+    url: https://dora.dev/capabilities/working-in-small-batches/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/risk.md]
+  - id: dora-trunk-based
+    title: DORA 트렁크 기반 개발
+    url: https://dora.dev/capabilities/trunk-based-development/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/risk.md]
+  - id: hbr-premortem
+    title: Performing a Project Premortem (Gary Klein)
+    version: "HBR 2007-09"
+    url: https://hbr.org/2007/09/performing-a-project-premortem
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/risk.md]
+  - id: iso-31000
+    title: ISO 31000 위험 관리 지침
+    version: "2018 (2판), CD 개정 중"
+    url: https://committee.iso.org/standard/65694.html
+    trust: standard
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md, references/risk.md]
+  - id: nygard-adr
+    title: Documenting Architecture Decisions (Nygard)
+    version: "2011-11-15"
+    url: https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/adr-and-debt.md]
+  - id: shape-up
+    title: Shape Up (Basecamp)
+    url: https://basecamp.com/shapeup
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/risk.md, references/bar.md]

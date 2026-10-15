@@ -1,0 +1,70 @@
+skill: gotechy-discover
+checked: 2026-10-16
+sources:
+  - id: product-talk
+    title: Product Talk (Teresa Torres)
+    url: https://www.producttalk.org/
+    trust: community
+    watch: rss
+    feed: https://www.producttalk.org/feed/
+    cadence: monthly
+    covers: [references/bar.md, references/interview.md, references/opportunity-and-assumptions.md]
+  - id: continuous-discovery-habits
+    title: Continuous Discovery Habits 책
+    version: "2021 초판"
+    url: https://www.producttalk.org/continuous-discovery-habits/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: svpg-four-big-risks
+    title: SVPG The Four Big Risks (Marty Cagan)
+    url: https://www.svpg.com/four-big-risks/
+    trust: community
+    watch: rss
+    feed: https://www.svpg.com/feed/
+    cadence: monthly
+    covers: [references/bar.md, references/opportunity-and-assumptions.md]
+  - id: mom-test
+    title: The Mom Test (Rob Fitzpatrick)
+    url: https://www.momtestbook.com/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/interview.md]
+  - id: christensen-jtbd
+    title: Jobs to Be Done 이론 (Christensen Institute)
+    url: https://www.christenseninstitute.org/theory/jobs-to-be-done/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/opportunity-and-assumptions.md]
+  - id: strategyn-odi-opportunity
+    title: Strategyn 기회 공식 (Ulwick)
+    url: https://strategyn.com/outcome-driven-innovation/market-opportunity/
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/opportunity-and-assumptions.md]
+  - id: strategyzer-assumptions-mapping
+    title: Strategyzer 가정 지도 (David J. Bland)
+    url: https://www.strategyzer.com/library/how-assumptions-mapping-can-focus-your-teams-on-running-experiments-that-matter
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/opportunity-and-assumptions.md]
+  - id: testing-business-ideas
+    title: Testing Business Ideas (Wiley)
+    version: "1st edition 2019-11"
+    url: https://www.wiley-vch.de/en/areas-interest/finance-economics-law/testing-business-ideas-978-1-119-55144-7
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: shape-up
+    title: Shape Up (Basecamp)
+    url: https://basecamp.com/shapeup
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/opportunity-and-assumptions.md]

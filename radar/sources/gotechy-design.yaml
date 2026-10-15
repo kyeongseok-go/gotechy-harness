@@ -1,0 +1,56 @@
+skill: gotechy-design
+checked: 2026-10-16
+sources:
+  - id: wcag-22
+    title: W3C WCAG 2.2
+    version: "2.2"
+    url: https://www.w3.org/TR/WCAG22/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/tokens.md]
+  - id: wcag-3
+    title: W3C WCAG 3.0 작업 초안
+    url: https://www.w3.org/TR/wcag-3.0/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/tokens.md]
+  - id: kwcag
+    title: 한국형 웹 콘텐츠 접근성 지침 2.2 안내(기업마당)
+    version: "2.2"
+    url: https://www.bizinfo.go.kr/biz/bizd/selectBIZD130View.do
+    trust: regulator
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: nng-heuristics
+    title: Nielsen Norman Group 10 Usability Heuristics
+    url: https://www.nngroup.com/articles/ten-usability-heuristics/
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: dtcg-format
+    title: Design Tokens Format Module
+    version: "2025.10"
+    url: https://www.w3.org/community/reports/design-tokens/CG-FINAL-format-20251028/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/tokens.md, references/bar.md]
+  - id: web-vitals
+    title: web.dev Core Web Vitals
+    url: https://web.dev/articles/vitals
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md]
+  - id: axe-core
+    title: axe-core 릴리스
+    url: https://github.com/dequelabs/axe-core/releases
+    trust: official
+    watch: github-releases
+    feed: dequelabs/axe-core
+    cadence: monthly
+    covers: [references/bar.md]

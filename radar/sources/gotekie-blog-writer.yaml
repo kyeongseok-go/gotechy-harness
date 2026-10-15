@@ -1,0 +1,72 @@
+skill: gotekie-blog-writer
+checked: 2026-10-16
+sources:
+  - id: google-helpful-content
+    title: Google 사람 중심 콘텐츠 문서
+    version: "2026-10-05"
+    url: https://developers.google.com/search/docs/fundamentals/creating-helpful-content
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md, references/trust-and-search.md]
+  - id: google-spam-policies
+    title: Google 검색 spam policies
+    version: "2026-08-28"
+    url: https://developers.google.com/search/docs/essentials/spam-policies
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/trust-and-search.md]
+  - id: google-search-central-blog
+    title: Google Search Central 블로그
+    url: https://developers.google.com/search/blog
+    trust: official
+    watch: rss
+    feed: https://feeds.feedburner.com/blogspot/amDG
+    cadence: weekly
+    covers: [references/trust-and-search.md, references/bar.md]
+  - id: kr-endorsement-guideline
+    title: 추천보증 표시광고 심사지침
+    version: "공정거래위원회예규 제499호"
+    url: https://www.law.go.kr/행정규칙/추천ㆍ보증등에관한표시ㆍ광고심사지침
+    trust: regulator
+    watch: page
+    cadence: quarterly
+    covers: [references/trust-and-search.md, references/bar.md]
+  - id: govuk-clear-language
+    title: GOV.UK 쉬운 말 글쓰기 지침
+    url: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/plain-korean.md, references/bar.md]
+  - id: digitalgov-plain-language
+    title: digital.gov 쉬운 말 안내서
+    url: https://digital.gov/guides/plain-language
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/plain-korean.md]
+  - id: iso-24495-1
+    title: ISO 24495-1 쉬운 말 1부
+    version: "2023"
+    url: https://committee.iso.org/standard/78907.html
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: nikl-refined-words
+    title: 국립국어원 다듬은 말
+    url: https://www.korean.go.kr/front/imprv/refineList.do?mn_id=158
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/plain-korean.md]
+  - id: w3c-wcag-22
+    title: W3C WCAG 2.2
+    version: "2024-12-12"
+    url: https://www.w3.org/TR/WCAG22/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/plain-korean.md, references/trust-and-search.md]

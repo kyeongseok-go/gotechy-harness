@@ -1,0 +1,88 @@
+skill: gotechy-security
+checked: 2026-10-16
+sources:
+  - id: owasp-asvs
+    title: OWASP ASVS
+    version: "5.0.0"
+    url: https://github.com/OWASP/ASVS/releases
+    trust: standard
+    watch: github-releases
+    feed: OWASP/ASVS
+    cadence: monthly
+    covers: [references/bar.md, references/asvs-map.md]
+  - id: owasp-top10
+    title: OWASP Top 10
+    version: "2025"
+    url: https://top10.owasp.org/2025
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/asvs-map.md]
+  - id: owasp-llm-top10
+    title: OWASP Top 10 for LLM Applications
+    version: "2025"
+    url: https://genai.owasp.org/llm-top-10/
+    trust: standard
+    watch: github-releases
+    feed: OWASP/www-project-top-10-for-large-language-model-applications
+    cadence: quarterly
+    covers: [references/agent-llm.md, references/bar.md]
+  - id: owasp-agentic-top10
+    title: OWASP Top 10 for Agentic Applications
+    version: "2026"
+    url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/agent-llm.md, references/bar.md]
+  - id: cwe-top25
+    title: CWE Top 25
+    version: "2025"
+    url: https://cwe.mitre.org/top25/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/asvs-map.md, references/bar.md]
+  - id: nist-ssdf
+    title: NIST SP 800-218 SSDF
+    version: "1.1 final, 1.2 initial public draft"
+    url: https://csrc.nist.gov/pubs/sp/800/218/r1/ipd
+    trust: standard
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md]
+  - id: slsa-spec
+    title: SLSA specification
+    version: "1.2"
+    url: https://slsa.dev/spec/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: ossf-scorecard
+    title: OpenSSF Scorecard
+    version: "v5.6.0"
+    url: https://github.com/ossf/scorecard/releases
+    trust: official
+    watch: github-releases
+    feed: ossf/scorecard
+    cadence: monthly
+    covers: [references/bar.md]
+  - id: gitleaks
+    title: gitleaks
+    version: "v8.30.1"
+    url: https://github.com/gitleaks/gitleaks/releases
+    trust: official
+    watch: github-releases
+    feed: gitleaks/gitleaks
+    cadence: monthly
+    covers: [references/bar.md, references/review-report.md]
+  - id: osv-scanner
+    title: osv-scanner
+    version: "v2.7.0"
+    url: https://github.com/google/osv-scanner/releases
+    trust: official
+    watch: github-releases
+    feed: google/osv-scanner
+    cadence: monthly
+    covers: [references/bar.md, references/review-report.md]

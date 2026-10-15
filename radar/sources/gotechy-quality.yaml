@@ -1,0 +1,84 @@
+skill: gotechy-quality
+checked: 2026-10-16
+sources:
+  - id: iso-iec-25010
+    title: ISO/IEC 25010 제품 품질 모델
+    version: "2023"
+    url: https://committee.iso.org/standard/78176.html
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/quality-model.md, references/bar.md]
+  - id: iso-iec-25000-23
+    title: ISO/IEC DIS 25000-23 제품 품질 측정 (25023:2016 후속)
+    version: "DIS 40.20"
+    url: https://committee.iso.org/standard/89069.html
+    trust: standard
+    watch: page
+    cadence: monthly
+    covers: [references/quality-model.md, references/bar.md]
+  - id: iso-iec-25030
+    title: ISO/IEC 25030 품질 요구사항 틀
+    version: "2019"
+    url: https://committee.iso.org/standard/72116.html
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/quality-model.md, references/bar.md]
+  - id: google-testing-blog
+    title: Google Testing Blog (테스트 크기, 커버리지, flaky)
+    url: https://testing.googleblog.com/
+    trust: official
+    watch: rss
+    feed: https://testing.googleblog.com/feeds/posts/default
+    cadence: monthly
+    covers: [references/test-strategy.md, references/bar.md]
+  - id: stryker-js
+    title: StrykerJS mutation testing
+    version: "v10.0.0"
+    url: https://stryker-mutator.io/docs/stryker-js/configuration/
+    trust: official
+    watch: github-releases
+    feed: stryker-mutator/stryker-js
+    cadence: monthly
+    covers: [references/test-strategy.md, references/bar.md]
+  - id: k6
+    title: Grafana k6 부하 테스트와 thresholds
+    version: "v2.3.0"
+    url: https://grafana.com/docs/k6/latest/using-k6/thresholds/
+    trust: official
+    watch: github-releases
+    feed: grafana/k6
+    cadence: monthly
+    covers: [references/test-strategy.md]
+  - id: axe-core
+    title: axe-core 접근성 자동 검사
+    version: "v4.14.0"
+    url: https://github.com/dequelabs/axe-core
+    trust: official
+    watch: github-releases
+    feed: dequelabs/axe-core
+    cadence: monthly
+    covers: [references/test-strategy.md, references/bar.md, references/quality-model.md]
+  - id: dora-metrics
+    title: DORA 소프트웨어 전달 성과 지표
+    url: https://dora.dev/guides/dora-metrics/
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/test-strategy.md, references/bar.md, references/quality-model.md]
+  - id: web-vitals
+    title: web.dev Core Web Vitals 기준값
+    url: https://web.dev/articles/vitals
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/quality-model.md, references/bar.md]
+  - id: wcag-22
+    title: W3C WCAG 2.2
+    version: "2.2 (2024-12-12)"
+    url: https://www.w3.org/TR/WCAG22/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/quality-model.md, references/bar.md]

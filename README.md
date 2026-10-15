@@ -24,7 +24,7 @@ bin/gotechy setup --dry-run   # 전역 설정(Claude Code, Codex)에 넣을 정�
 bin/gotechy keys init         # 오너 키를 보안 칩에 만든다(Xcode Command Line Tools 필요)
 ```
 
-프로젝트에서(`gotechy`는 이 저장소의 `bin/gotechy`. PATH에 두거나 별칭을 만든다):
+프로젝트에서(`gotechy`는 이 저장소의 `bin/gotechy`. `~/.zshrc`에 `export PATH="<이 저장소>/bin:$PATH"`를 넣는다. alias는 에이전트 셸에서 안 보이고, 링크는 라이브러리 위치를 못 찾는다):
 
 ```bash
 gotechy init --packs all              # 계약 폴더, 지도, 전문가 팩(apm), 부작용 가드. 일부만: --packs owner,define,build

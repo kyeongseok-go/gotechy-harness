@@ -1,0 +1,80 @@
+skill: gotechy-ai-eval
+checked: 2026-10-16
+sources:
+  - id: anthropic-develop-tests
+    title: Anthropic 문서, 성공 기준 정의와 eval 만들기
+    url: https://platform.claude.com/docs/en/test-and-evaluate/develop-tests
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/graders.md, references/run-and-compare.md, references/bar.md, SKILL.md]
+  - id: anthropic-demystifying-evals
+    title: Anthropic Engineering, Demystifying evals for AI agents
+    version: "2026-01-09"
+    url: https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/golden-set.md, references/graders.md, references/run-and-compare.md, references/bar.md]
+  - id: openai-eval-best-practices
+    title: OpenAI 평가 모범 사례
+    url: https://developers.openai.com/api/docs/guides/evaluation-best-practices
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/graders.md, references/guardrails-and-ops.md, references/bar.md]
+  - id: hamel-evals-faq
+    title: Hamel Husain, Shreya Shankar의 LLM evals FAQ
+    version: "2026-09-21"
+    url: https://hamel.dev/blog/posts/evals-faq/
+    trust: community
+    watch: rss
+    feed: https://hamel.dev/index.xml
+    cadence: monthly
+    covers: [references/golden-set.md, references/graders.md, references/bar.md]
+  - id: nist-ai-rmf
+    title: NIST AI Risk Management Framework (개정 진행 중)
+    version: "1.0"
+    url: https://www.nist.gov/itl/ai-risk-management-framework
+    trust: standard
+    watch: page
+    cadence: monthly
+    covers: [references/guardrails-and-ops.md, references/bar.md]
+  - id: nist-ai-600-1
+    title: NIST AI 600-1 생성형 AI 프로필
+    version: "2024-07-26"
+    url: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-generative-artificial-intelligence
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/guardrails-and-ops.md, references/bar.md, references/templates/criteria.md]
+  - id: owasp-llm-top10
+    title: OWASP Top 10 for LLM Applications
+    version: "2025"
+    url: https://genai.owasp.org/llm-top-10/
+    trust: standard
+    watch: page
+    cadence: monthly
+    covers: [references/guardrails-and-ops.md, references/bar.md, references/templates/criteria.md]
+  - id: owasp-agentic-top10
+    title: OWASP Top 10 for Agentic Applications
+    version: "2026"
+    url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/guardrails-and-ops.md]
+  - id: otel-genai-semconv
+    title: OpenTelemetry GenAI semantic conventions (상태 Development)
+    url: https://github.com/open-telemetry/semantic-conventions-genai
+    trust: standard
+    watch: page
+    cadence: monthly
+    covers: [references/guardrails-and-ops.md, references/bar.md]
+  - id: claude-plugin-evals
+    title: Claude Code 플러그인 eval 문서 (Δ 비교)
+    url: https://code.claude.com/docs/en/plugin-evals.md
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/run-and-compare.md]

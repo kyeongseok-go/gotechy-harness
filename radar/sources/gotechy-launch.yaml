@@ -1,0 +1,81 @@
+skill: gotechy-launch
+checked: 2026-10-16
+sources:
+  - id: google-search-central-blog
+    title: Google Search Central 블로그
+    url: https://developers.google.com/search/blog
+    trust: official
+    watch: rss
+    feed: https://feeds.feedburner.com/blogspot/amDG
+    cadence: weekly
+    covers: [references/bar.md, references/seo-geo.md]
+  - id: google-ai-features
+    title: Google 검색 AI 기능과 웹사이트 문서
+    version: "2025-12-10"
+    url: https://developers.google.com/search/docs/appearance/ai-features
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md, references/seo-geo.md]
+  - id: google-common-crawlers
+    title: Google 크롤러 목록(Google-Extended)
+    version: "2026-07-14"
+    url: https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/seo-geo.md]
+  - id: openai-bots
+    title: OpenAI 크롤러 문서
+    url: https://developers.openai.com/api/docs/bots
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md, references/seo-geo.md]
+  - id: anthropic-bots
+    title: Anthropic 크롤러 도움말
+    version: "2026-04-07"
+    url: https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md, references/seo-geo.md]
+  - id: naver-search-advisor
+    title: 네이버 서치어드바이저 웹마스터 가이드
+    url: https://searchadvisor.naver.com/guide/seo-basic-intro
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/seo-geo.md]
+  - id: llms-txt
+    title: llms.txt 제안
+    version: "0.0.7"
+    url: https://llmstxt.org/
+    trust: community
+    watch: github-releases
+    feed: AnswerDotAI/llms-txt
+    cadence: quarterly
+    covers: [references/seo-geo.md]
+  - id: geeknews-show
+    title: GeekNews Show GN 이용방법
+    url: https://news.hada.io/blog/show
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/channels.md, references/bar.md]
+  - id: kr-ad-act
+    title: 표시광고법과 추천보증 심사지침
+    version: "법률 제20712호, 예규 제499호"
+    url: https://www.law.go.kr/행정규칙/추천ㆍ보증등에관한표시ㆍ광고심사지침
+    trust: regulator
+    watch: page
+    cadence: quarterly
+    covers: [references/claims-and-law.md, references/bar.md]
+  - id: kr-network-act-50
+    title: 정보통신망법 제50조 광고성 정보 전송 제한
+    version: "법률 제21988호"
+    url: https://www.law.go.kr/법령/정보통신망이용촉진및정보보호등에관한법률/제50조
+    trust: regulator
+    watch: page
+    cadence: quarterly
+    covers: [references/claims-and-law.md, references/bar.md]

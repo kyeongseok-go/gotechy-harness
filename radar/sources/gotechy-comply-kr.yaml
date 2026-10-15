@@ -1,0 +1,83 @@
+skill: gotechy-comply-kr
+checked: 2026-10-16
+sources:
+  - id: pipa
+    title: 개인정보 보호법
+    version: "법률 제21445호, 2026-09-11 시행"
+    url: https://www.law.go.kr/법령/개인정보보호법
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/laws.md, references/bar.md, references/triggers.md]
+  - id: pipa-decree
+    title: 개인정보 보호법 시행령
+    version: "대통령령 제36671호, 2026-09-11 시행"
+    url: https://www.law.go.kr/법령/개인정보보호법시행령
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/laws.md, references/bar.md]
+  - id: pipc-safeguards
+    title: 개인정보의 안전성 확보조치 기준
+    version: "고시 제2026-9호, 2026-07-01 시행"
+    url: https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준
+    trust: regulator
+    watch: page
+    cadence: quarterly
+    covers: [references/laws.md, references/bar.md]
+  - id: pipc-guides
+    title: 개인정보보호위원회 안내서 게시판
+    version: "처리방침 작성지침 2026.4. 개정"
+    url: https://www.pipc.go.kr/np/cop/bbs/selectBoardList.do?bbsId=BS217&mCode=D010030000
+    trust: regulator
+    watch: page
+    cadence: monthly
+    covers: [references/laws.md, references/requirements-template.md, references/bar.md]
+  - id: network-act
+    title: 정보통신망법
+    version: "법률 제21988호, 2026-10-02 시행"
+    url: https://www.law.go.kr/법령/정보통신망이용촉진및정보보호등에관한법률
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/laws.md, references/bar.md]
+  - id: ai-basic-act
+    title: AI 기본법
+    version: "법률 제21311호"
+    url: https://www.law.go.kr/법령/인공지능발전과신뢰기반조성등에관한기본법
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/laws.md, references/bar.md, references/triggers.md]
+  - id: ai-basic-act-decree
+    title: AI 기본법 시행령
+    version: "대통령령 제36580호, 2026-08-20 시행"
+    url: https://www.law.go.kr/법령/인공지능발전과신뢰기반조성등에관한기본법시행령
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/laws.md, references/bar.md]
+  - id: ecommerce-act
+    title: 전자상거래법
+    version: "법률 제21312호, 2026-07-21 시행"
+    url: https://www.law.go.kr/법령/전자상거래등에서의소비자보호에관한법률
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/laws.md, references/bar.md]
+  - id: disability-act-decree
+    title: 장애인차별금지법 시행령
+    version: "대통령령 제36728호, 2026-10-02 시행"
+    url: https://www.law.go.kr/법령/장애인차별금지및권리구제등에관한법률시행령
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/laws.md, references/bar.md]
+  - id: endorsement-guideline
+    title: 추천보증 심사지침
+    version: "공정거래위원회 예규 제499호, 2026-06-01"
+    url: https://www.law.go.kr/행정규칙/추천ㆍ보증등에관한표시ㆍ광고심사지침
+    trust: regulator
+    watch: page
+    cadence: quarterly
+    covers: [references/laws.md, references/bar.md]

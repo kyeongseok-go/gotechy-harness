@@ -1,0 +1,80 @@
+skill: gotechy-spec
+checked: 2026-10-16
+sources:
+  - id: iso-iec-ieee-29148
+    title: ISO/IEC/IEEE 29148 요구공학 (다음 판 DIS)
+    version: "2018 현행, DIS 40.20 (2026-09-14)"
+    url: https://committee.iso.org/standard/94091.html
+    trust: standard
+    watch: page
+    cadence: monthly
+    covers: [references/bar.md, references/requirements.md]
+  - id: incose-gtwr
+    title: INCOSE 요구사항 작성 지침 GtWR
+    version: "v4 (2023-06)"
+    url: https://www.jamasoftware.com/requirements-management-guide/writing-requirements/incose-requirements-writing-guide/
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/requirements.md]
+  - id: ears
+    title: EARS (Alistair Mavin)
+    url: https://alistairmavin.com/ears/
+    trust: paper
+    watch: rss
+    feed: https://alistairmavin.com/feed/
+    cadence: quarterly
+    covers: [references/requirements.md, references/templates/20-features.md]
+  - id: github-spec-kit
+    title: GitHub Spec Kit
+    version: "1.2.0"
+    url: https://github.com/github/spec-kit
+    trust: official
+    watch: github-releases
+    feed: github/spec-kit
+    cadence: weekly
+    covers: [references/wizard.md, references/bar.md]
+  - id: kiro-specs
+    title: Kiro specs 문서
+    url: https://kiro.dev/docs/specs/
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/wizard.md]
+  - id: cucumber-gherkin
+    title: Gherkin (Cucumber)
+    version: "v42.0.1"
+    url: https://cucumber.io/docs/gherkin/reference/
+    trust: official
+    watch: github-releases
+    feed: cucumber/gherkin
+    cadence: monthly
+    covers: [references/requirements.md]
+  - id: invest-bill-wake
+    title: INVEST (Bill Wake)
+    url: https://xp123.com/invest-in-good-stories-and-smart-tasks/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/requirements.md]
+  - id: working-backwards-prfaq
+    title: Working Backwards PR/FAQ
+    url: https://www.workingbackwards.com/concepts/working-backwards-pr-faq-process
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/requirements.md, references/templates/00-brief.md]
+  - id: heart-metrics
+    title: HEART 프레임워크 (Google, CHI 2010)
+    url: https://research.google/pubs/measuring-the-user-experience-on-a-large-scale-user-centered-metrics-for-web-applications/
+    trust: paper
+    watch: page
+    cadence: quarterly
+    covers: [references/requirements.md]
+  - id: nngroup-empty-states
+    title: NN/g 빈 상태 설계 지침
+    url: https://www.nngroup.com/articles/empty-state-interface-design/
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/requirements.md]

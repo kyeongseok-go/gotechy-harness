@@ -1,0 +1,88 @@
+skill: gotechy-build
+checked: 2026-10-16
+sources:
+  - id: typescript-releases
+    title: TypeScript 릴리스
+    version: "7.0.2"
+    url: https://github.com/microsoft/TypeScript/releases
+    trust: official
+    watch: github-releases
+    feed: microsoft/TypeScript
+    cadence: monthly
+    covers: [references/stack-typescript.md]
+  - id: nodejs-releases
+    title: Node.js 릴리스 피드
+    version: "24.22.0"
+    url: https://nodejs.org/en/about/previous-releases
+    trust: official
+    watch: rss
+    feed: https://nodejs.org/en/feed/releases.xml
+    cadence: monthly
+    covers: [references/stack-typescript.md, references/stack-react-next.md]
+  - id: nextjs-blog
+    title: Next.js 블로그
+    version: "16.4"
+    url: https://nextjs.org/blog
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/stack-react-next.md]
+  - id: react-versions
+    title: React 버전 목록
+    version: "19.3"
+    url: https://react.dev/versions
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/stack-react-next.md]
+  - id: python-releases
+    title: Python 릴리스 피드
+    version: "3.15.0"
+    url: https://www.python.org/downloads/
+    trust: official
+    watch: rss
+    feed: https://www.python.org/downloads/feed.rss
+    cadence: monthly
+    covers: [references/stack-python.md]
+  - id: astral-uv
+    title: uv 릴리스
+    version: "0.13.1"
+    url: https://github.com/astral-sh/uv/releases
+    trust: official
+    watch: github-releases
+    feed: astral-sh/uv
+    cadence: monthly
+    covers: [references/stack-python.md]
+  - id: go-release-history
+    title: Go 릴리스 기록
+    version: "1.27.2"
+    url: https://go.dev/doc/devel/release
+    trust: official
+    watch: page
+    cadence: monthly
+    covers: [references/stack-go.md]
+  - id: postgresql-news
+    title: PostgreSQL 뉴스 피드
+    version: "18.6"
+    url: https://www.postgresql.org/support/versioning/
+    trust: official
+    watch: rss
+    feed: https://www.postgresql.org/news.rss
+    cadence: monthly
+    covers: [references/stack-postgres.md]
+  - id: ossf-scorecard
+    title: OpenSSF Scorecard
+    version: "5.6.0"
+    url: https://github.com/ossf/scorecard
+    trust: standard
+    watch: github-releases
+    feed: ossf/scorecard
+    cadence: quarterly
+    covers: [references/bar.md]
+  - id: google-eng-practices
+    title: Google 코드 리뷰 지침
+    url: https://google.github.io/eng-practices/review/developer/small-cls.html
+    trust: community
+    watch: page
+    cadence: quarterly
+    covers: [references/bar.md, references/code-review.md]

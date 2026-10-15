@@ -1,0 +1,1 @@
+[{ "path": "orchestration/handoffs/{{TASK}}.md", "target": "/etc/hosts" }]

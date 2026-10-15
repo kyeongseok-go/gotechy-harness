@@ -165,6 +165,12 @@ export async function discardUncommitted(wt: string): Promise<void> {
   await git(['clean', '-ffdxq'], wt)
 }
 
+/** 작업 트리를 커밋 하나로 통째로 되돌린다(추적 파일, 새 파일, 무시 파일, 중첩 저장소까지) */
+export async function resetTo(wt: string, commit: string): Promise<void> {
+  await git(['reset', '-q', '--hard', commit], wt)
+  await git(['clean', '-ffdxq'], wt)
+}
+
 /** 지정한 경로만 커밋한다. */
 export async function commitPaths(wt: string, files: string[], message: string): Promise<boolean> {
   await git(['add', '--', ...files], wt)

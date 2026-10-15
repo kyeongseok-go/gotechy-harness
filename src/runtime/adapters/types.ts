@@ -12,6 +12,8 @@ export type WorkerRequest = {
   timeoutMs: number
   /** fake 어댑터 전용: 재생할 녹화 폴더 */
   fixtureDir?: string
+  /** HANDOFF 다시 쓰기 번호(1부터). 없으면 첫 실행(TD-016) */
+  rewrite?: number
 }
 
 export type WorkerResult = {

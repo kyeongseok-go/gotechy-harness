@@ -83,3 +83,14 @@ export function parseCodexUsage(stdout: string): Usage | undefined {
 export function emptyUsage(): Usage {
   return { ...ZERO }
 }
+
+/** 두 실행의 사용량 합. 한쪽이라도 비용을 모르면 합의 비용도 모른다(다시 쓰기, TD-016) */
+export function addUsage(a: Usage, b: Usage): Usage {
+  return {
+    input_tokens: a.input_tokens + b.input_tokens,
+    cache_read_tokens: a.cache_read_tokens + b.cache_read_tokens,
+    cache_write_tokens: a.cache_write_tokens + b.cache_write_tokens,
+    output_tokens: a.output_tokens + b.output_tokens,
+    cost_usd: a.cost_usd === null || b.cost_usd === null ? null : a.cost_usd + b.cost_usd,
+  }
+}

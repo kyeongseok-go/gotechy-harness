@@ -18,7 +18,10 @@ import type { WorkerAdapter, WorkerRequest, WorkerResult } from './types'
 export const fakeAdapter: WorkerAdapter = {
   name: 'fake',
   async run(req: WorkerRequest): Promise<WorkerResult> {
-    const dir = req.fixtureDir
+    // 다시 쓰기 실행이면 녹화 폴더의 rewrite-<번호>/를 재생한다. 없으면 처음 녹화를 다시 재생한다(TD-016)
+    const again =
+      req.rewrite && req.fixtureDir ? join(req.fixtureDir, `rewrite-${req.rewrite}`) : ''
+    const dir = again && existsSync(again) ? again : req.fixtureDir
     if (!dir || !existsSync(dir)) {
       return {
         exitCode: 2,

@@ -87,3 +87,28 @@ function sectionHint(section: (typeof HANDOFF_SECTIONS)[number]): string {
       return '추천 다음 작업 1~2개.'
   }
 }
+
+/**
+ * HANDOFF가 계약을 어겼을 때 같은 worktree의 워커에게 주는 다시 쓰기 지시(TD-016). 코드는 그대로 두고 HANDOFF만 고치게 한다.
+ * 리드는 다시 쓰기 뒤 HANDOFF 밖 변경을 되돌리고 실패로 처리한다
+ */
+export function buildRewritePrompt(
+  taskId: string,
+  issues: { rule: string; message: string; line?: number; fix?: string }[],
+): string {
+  const handoff = handoffPathFor(taskId)
+  return [
+    `작업 ${taskId}의 보고서 ${handoff}가 HANDOFF 계약을 어겨요. 이 파일만 고쳐 다시 쓰세요.`,
+    '',
+    '## 규칙',
+    `- ${handoff} 말고 다른 파일은 바꾸지 마세요. 다른 파일을 바꾸면 되돌리고 실패로 처리해요.`,
+    '- 코드와 테스트는 이미 검증했어요. 한 일과 증거의 사실은 바꾸지 말고 형식만 고치세요.',
+    '- 절 이름과 순서는 그대로 두세요.',
+    '',
+    '## 고칠 오류',
+    ...issues.map(
+      (i) =>
+        `- ${i.line ? `${i.line}번째 줄 ` : ''}[${i.rule}] ${i.message}${i.fix ? ` 고치는 법: ${i.fix}` : ''}`,
+    ),
+  ].join('\n')
+}

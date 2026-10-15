@@ -32,7 +32,9 @@ describe('disallowedChanges', () => {
   test('보호 판정은 ./ 와 역슬래시를 정규화한다', () => {
     expect(isProtected('./AGENTS.md')).toBe(true)
     expect(isProtected('orchestration\\gates\\G-1.md')).toBe(true)
-    expect(isProtected('docs/AGENTS.md')).toBe(false)
+    // 하위 폴더의 지시 파일도 에이전트가 읽어 보호한다(보안 감사 12차 중간 5, 2026-10-15에 바꿈)
+    expect(isProtected('docs/AGENTS.md')).toBe(true)
+    expect(isProtected('docs/AGENTS-guide.md')).toBe(false)
   })
 })
 

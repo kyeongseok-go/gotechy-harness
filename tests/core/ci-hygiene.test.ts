@@ -39,3 +39,12 @@ test('GitHub 토큰은 CLI나 부트스트랩을 실행하는 단계에 넘기�
       cli: false,
     })
 })
+
+test('테스트 안에서는 claude, codex, orca가 가짜 실행 파일로 잡힌다(실제 유료 실행 방지, 2026-10-15)', () => {
+  const dir = process.env.GOTECHY_TEST_NO_AGENTS
+  expect(dir).toBeDefined()
+  for (const name of ['claude', 'codex', 'orca']) {
+    const r = Bun.spawnSync({ cmd: [name, '--version'], env: process.env, stderr: 'pipe' })
+    expect({ name, exit: r.exitCode }).toEqual({ name, exit: 97 })
+  }
+})

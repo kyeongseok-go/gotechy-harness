@@ -8,11 +8,11 @@ export const PROTECTED_PREFIXES = [
   'orchestration/.gate-seq',
   'orchestration/project.yaml',
   'orchestration/owner.pub',
-  'orchestration/audits/',
   '.gotechy/',
   '.git/',
   '.claude/',
   '.agents/',
+  '.codex/',
   'policy/',
 ] as const
 
@@ -50,9 +50,16 @@ export function foldPath(p: string): string {
 const FOLDED_FILES = PROTECTED_FILES.map(foldPath)
 const FOLDED_PREFIXES = PROTECTED_PREFIXES.map(foldPath)
 
+/**
+ * 에이전트가 자동으로 읽는 지시 파일. 어느 폴더에 있든 보호한다. 워커가 하위 폴더에 두면 감사관과
+ * 병합 뒤 리드 세션이 데이터 블록을 거치지 않고 지시로 읽는다(보안 감사 12차 중간 5)
+ */
+const INSTRUCTION_FILES = ['claude.md', 'claude.local.md', 'agents.md', 'agents.override.md']
+
 export function isProtected(path: string): boolean {
   const p = foldPath(path)
   if (FOLDED_FILES.includes(p)) return true
+  if (INSTRUCTION_FILES.includes(p.split('/').at(-1) ?? '')) return true
   return FOLDED_PREFIXES.some((pre) => p === pre.replace(/\/$/, '') || p.startsWith(pre))
 }
 

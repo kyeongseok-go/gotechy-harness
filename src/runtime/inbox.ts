@@ -112,13 +112,18 @@ export function renderViews(p: Project, cwd = process.cwd(), opts: LoadOptions =
 
 /** 감사 기록(contract.md 13절)이 있으면 카드에 붙인다. 읽을 수 없는 기록은 없는 것으로 본다 */
 function withAudit(p: Project, c: Card): Card {
-  const file = join(paths.orch(p), 'audits', `${c.id}.md`)
+  const file = join(p.root, '.gotechy', 'audits', `${c.id}.md`)
   if (!existsSync(file)) return c
   const parsed = parseFrontmatter(readFileSync(file, 'utf8'), file)
   if (!parsed.ok) return c
   const d = parsed.value.data
   const rev = typeof d.handoff_rev === 'number' ? d.handoff_rev : null
+  const input = d.input as { diff_truncated?: unknown } | undefined
   return typeof d.confirmed === 'number'
-    ? attachAudit(c, { handoff_rev: rev, confirmed: d.confirmed })
+    ? attachAudit(c, {
+        handoff_rev: rev,
+        confirmed: d.confirmed,
+        truncated: input?.diff_truncated === true,
+      })
     : c
 }

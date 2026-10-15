@@ -1,14 +1,25 @@
 // contract.md 13절 교차 검증 감사관의 수용 테스트(1b Validation 12). 워커와 감사관 모두 녹화 재생(fake)으로 돈다.
 import { describe, expect, test } from 'bun:test'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { formatInbox } from '../../src/core/inbox'
 import { auditTask } from '../../src/runtime/audit'
 import { loadCards } from '../../src/runtime/inbox'
-import { fm, makeHome, makeProject, newTask, runFake } from './helpers'
+import { runTask } from '../../src/runtime/run'
+import { FAKE, fm, makeHome, makeProject, newTask, runFake } from './helpers'
 
 const AUD = join(import.meta.dir, '..', 'fixtures', 'auditor')
-const auditFile = (root: string, id: string) => join(root, 'orchestration', 'audits', `${id}.md`)
+// 감사 기록은 커밋하지 않는 .gotechy/audits/에 둔다(보안 감사 12차 높음 1)
+const auditFile = (root: string, id: string) => join(root, '.gotechy', 'audits', `${id}.md`)
 const runLogs = (root: string, pattern: RegExp) =>
   readdirSync(join(root, '.gotechy', 'runs')).filter((f) => pattern.test(f))
 
@@ -83,6 +94,58 @@ describe('교차 검증 감사관 (1b Validation 12)', () => {
     const r = await auditTask({ root }, id, {})
     expect(r.status).toBe('refused')
     expect(r.messages.join('\n')).toContain('--adapter')
+  })
+
+  test('높음 1: 감사 기록은 커밋 대상 폴더(orchestration)에 쓰지 않는다', async () => {
+    const { root, id } = await ranProject()
+    await auditTask({ root }, id, { adapter: 'fake', fixtureDir: join(AUD, 'mismatch') })
+    expect(existsSync(auditFile(root, id))).toBe(true)
+    expect(existsSync(join(root, 'orchestration', 'audits'))).toBe(false)
+  })
+
+  test('높음 1: 감사관 답에 키 모양이 있으면 기록하지 않고 멈춘다', async () => {
+    const { root, id } = await ranProject()
+    const r = await auditTask({ root }, id, { adapter: 'fake', fixtureDir: join(AUD, 'secret') })
+    expect(r.status).toBe('refused')
+    expect(r.messages.join('\n')).toContain('비밀')
+    expect(existsSync(auditFile(root, id))).toBe(false)
+  })
+
+  test('중간 1: codex 감사관에 비용 상한을 주면 걸 수 없다고 거부한다', async () => {
+    const { root, id } = await ranProject()
+    const r = await auditTask({ root }, id, { adapter: 'codex', budgetUsd: 0.1 })
+    expect(r.status).toBe('refused')
+    expect(r.messages.join('\n')).toContain('비용 상한')
+  })
+
+  test('낮음 1: verify 기록의 판본이 HANDOFF와 다르면 검증 기록이 없는 것으로 본다', async () => {
+    const { root, id } = await ranProject()
+    const h = join(root, 'orchestration', 'handoffs', `${id}.md`)
+    writeFileSync(h, readFileSync(h, 'utf8').replace(/^rev: 1$/m, 'rev: 2'))
+    await auditTask({ root }, id, { adapter: 'fake', fixtureDir: join(AUD, 'mismatch') })
+    expect((fm(auditFile(root, id)).input as Record<string, unknown>).verify_log).toBe(false)
+  })
+
+  test('낮음 1: 워커가 git 설정을 바꿔 verify를 건너뛴 실행은 지난 verify 기록을 지운다', async () => {
+    const { root, id } = await ranProject()
+    const log = join(root, '.gotechy', 'runs', `${id}-verify.log`)
+    expect(existsSync(log)).toBe(true)
+    const task = join(root, 'orchestration', 'tasks', `${id}.md`)
+    writeFileSync(task, readFileSync(task, 'utf8').replace(/^status: .*$/m, 'status: ready'))
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-fx-audit-')))
+    mkdirSync(join(dir, 'files'))
+    writeFileSync(join(dir, 'files', 'README.md'), '# Sandbox\n설치: 다시\n')
+    writeFileSync(
+      join(dir, 'handoff.md'),
+      readFileSync(join(FAKE, 'readme-ok', 'handoff.md'), 'utf8'),
+    )
+    writeFileSync(
+      join(dir, 'writes.json'),
+      JSON.stringify([{ path: '{{CWD}}/.git', content: 'gitdir: /tmp/evil-gitdir\n' }]),
+    )
+    const out = await runTask({ root }, id, { adapter: 'fake', fixtureDir: dir, home: makeHome() })
+    expect(out.status).toBe('failed')
+    expect(existsSync(log)).toBe(false)
   })
 
   test('없는 작업 번호는 거부한다', async () => {

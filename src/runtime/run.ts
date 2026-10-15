@@ -15,6 +15,7 @@ import {
   writeSync,
 } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { formatVerifyLog } from '../core/audit'
 import { parseFrontmatter, serializeFrontmatter } from '../core/frontmatter'
 import { formatIssue, type Issue } from '../core/issues'
 import { hasErrors, lintHandoff } from '../core/lint-handoff'
@@ -79,6 +80,22 @@ const processAlive = (pid: number) => {
     return true
   } catch (e) {
     return (e as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+/** run과 같은 작업별 잠금 안에서 fn을 돈다. 잡지 못하면 사유를 돌려준다(감사가 run과 겹치지 않게) */
+export async function withTaskLock<T>(
+  p: Project,
+  taskId: string,
+  fn: () => Promise<T>,
+): Promise<{ ok: true; value: T } | { ok: false; reason: string }> {
+  const lock = join(paths.orch(p), 'private', `run-${taskId}.lock`)
+  const held = acquireRunLock(lock)
+  if (held !== true) return { ok: false, reason: held }
+  try {
+    return { ok: true, value: await fn() }
+  } finally {
+    rmSync(lock, { recursive: true, force: true })
   }
 }
 
@@ -213,12 +230,12 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     secret: [home, paths.privateDir(p)],
   }).finally(() => rmSync(tmp, { recursive: true, force: true }))
   await discardUncommitted(wt)
-  saveVerifyLog(p, task.id, verify.stdout, verify.stderr)
   notes.push(`리드 verify: \`${task.verify}\`: exit ${verify.exitCode}`)
   if (!verify.sandboxed) notes.push(UNSANDBOXED)
 
   const mainHandoff = paths.handoff(p, task.id)
   const prevRev = readRev(mainHandoff)
+  saveVerifyLog(p, task.id, prevRev + 1, (await headCommit(wt)) ?? '', verify.stdout, verify.stderr)
   const fm = finalizeHandoff({
     workerText,
     task,
@@ -370,13 +387,22 @@ function stubBody(reason: string): string {
   return `${HANDOFF_SECTIONS.map((s) => `## ${s}\n${s === '한 줄 요약' ? reason.slice(0, 60) : '없음'}\n`).join('\n')}`
 }
 
-/** 마지막 리드 verify 출력의 끝 20KB. 감사관이 HANDOFF의 검증 주장과 대조한다(contract.md 13절) */
-function saveVerifyLog(p: Project, id: string, out: string, err: string) {
+/** 마지막 리드 verify 출력의 끝 20KB와 판본, 커밋. 감사관이 HANDOFF의 검증 주장과 대조한다(contract.md 13절) */
+function saveVerifyLog(
+  p: Project,
+  id: string,
+  rev: number,
+  commit: string,
+  out: string,
+  err: string,
+) {
   const dir = join(p.root, '.gotechy', 'runs')
   mkdirSync(dir, { recursive: true })
-  const text = `${out}\n--- stderr ---\n${err}`
-  writeFileSync(join(dir, `${id}-verify.log`), text.length > 20_000 ? text.slice(-20_000) : text)
+  writeFileSync(verifyLogFile(p, id), formatVerifyLog(rev, commit, out, err))
 }
+
+export const verifyLogFile = (p: Project, id: string) =>
+  join(p.root, '.gotechy', 'runs', `${id}-verify.log`)
 
 function saveRawLog(p: Project, id: string, adapter: string, out: string, err: string) {
   const dir = join(p.root, '.gotechy', 'runs')
@@ -451,6 +477,8 @@ function finishTampered(
   log: (s: string) => void,
 ): RunOutcome {
   notes.push('verify를 돌리지 않았습니다 (exit_code -1).')
+  // 지난 실행의 verify 기록이 새 판본의 기록처럼 감사에 쓰이지 않게 지운다(보안 감사 12차 낮음 1)
+  rmSync(verifyLogFile(p, task.id), { force: true })
   const mainHandoff = paths.handoff(p, task.id)
   const fm = finalizeHandoff({
     workerText: undefined,

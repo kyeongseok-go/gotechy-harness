@@ -34,7 +34,7 @@ export type Card = {
   /** 용어 은행에 없는 새 용어 */
   newTerms: string[]
   /** 감사 기록(contract.md 13절). current: 지금 HANDOFF 판본을 감사했는가 */
-  audit?: { current: boolean; confirmed: number }
+  audit?: { current: boolean; confirmed: number; truncated: boolean }
 }
 
 export const GROUP_LABEL: Record<CardGroup, string> = {
@@ -150,7 +150,8 @@ export function attachGates(c: Card, gates: Gate[]): Card {
 /** 감사 기록 줄(contract.md 13절). 지난 판본을 감사했으면 수를 보여 주지 않는다 */
 export function auditLine(c: Card): string | undefined {
   if (!c.audit) return undefined
-  return c.audit.current ? `감사: 근거 있는 지적 ${c.audit.confirmed}건` : '감사: 지난 판본 기준'
+  if (!c.audit.current) return '감사: 지난 판본 기준'
+  return `감사: 근거 있는 지적 ${c.audit.confirmed}건${c.audit.truncated ? ' (diff 일부만 감사)' : ''}`
 }
 
 /** 다시 실행 대기 카드의 다음 명령 */

@@ -139,6 +139,7 @@ export const PROJECT_DIRS = [
   '.gotechy/loop',
   '.gotechy/digest',
   '.gotechy/runs',
+  '.gotechy/audits',
   '.gotechy/tmp',
   '.gotechy/accept',
 ] as const

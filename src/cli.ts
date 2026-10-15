@@ -35,6 +35,7 @@ import {
   linkedPaths,
   PROJECT_DIRS,
 } from './runtime/project'
+import { runRadar } from './runtime/radar'
 import { restartTask } from './runtime/restart'
 import { runTask } from './runtime/run'
 import { startServe } from './runtime/serve'
@@ -342,6 +343,28 @@ program
     process.exit(
       out.status === 'refused' ? 2 : out.status === 'failed' || out.status === 'blocked' ? 1 : 0,
     )
+  })
+
+program
+  .command('radar')
+  .description(
+    '전문가 팩의 최신화 출처(radar/sources)를 주기에 맞춰 읽고 새 판과 바뀐 곳을 보고서로 남긴다. 스킬은 고치지 않는다 (contract.md 14절)',
+  )
+  .option('--all', '주기와 상관없이 모두 본다')
+  .option('--skill <name>', '이 스킬의 출처만 본다')
+  .action(async (o: { all?: boolean; skill?: string }) => {
+    const lib = libraryRoot()
+    const r = await runRadar({
+      lib,
+      stateDir: join(lib, '.gotechy', 'radar'),
+      ...(o.all ? { all: true } : {}),
+      ...(o.skill ? { skill: o.skill } : {}),
+    })
+    const c = r.counts
+    console.log(
+      `본 출처 ${c.checked}개: 새 판 ${c.newer}, 바뀜 ${c.changed}, 처음 기록 ${c.baseline}, 같음 ${c.same}, 못 읽음 ${c.failed}, 건너뜀 ${c.skipped}`,
+    )
+    console.log(`보고서: ${r.report}`)
   })
 
 program

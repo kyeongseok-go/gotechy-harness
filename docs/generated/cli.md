@@ -21,6 +21,7 @@ Commands:
   inbox                                   HANDOFF를 결정 필요, 실패, 완료 순의 3초 카드로 보여 준다 (contract.md 8.1절)
   render [taskId]                         읽기 전용 HTML 화면을 .gotechy/view/에 만든다 (contract.md 8.2절)
   run [options] <taskId>                  작업 하나를 워커에게 맡기고 검증한다 (contract.md 2절, 6.6절)
+  radar [options]                         전문가 팩의 최신화 출처(radar/sources)를 주기에 맞춰 읽고 새 판과 바뀐 곳을 보고서로 남긴다. 스킬은 고치지 않는다 (contract.md 14절)
   audit [options] <taskId>                작업의 HANDOFF를 실제 diff와 검증 출력에 대조하는 교차 검증 감사관 (contract.md 13절)
   keys                                    오너 키: Secure Enclave 키와 Touch ID로 결정에 서명한다 (contract.md 6.3절)
   decide <gateId> <choice> [instruction]  게이트를 결정한다. 대화형 터미널에서만 (contract.md 6.4절)
@@ -145,6 +146,20 @@ Options:
   --adapter <name>  claude | codex | fake (작업의 agent보다 우선)
   --fixture <dir>   fake 어댑터가 재생할 녹화 폴더
   -h, --help        display help for command
+```
+
+## gotechy radar
+
+```text
+Usage: gotechy radar [options]
+
+전문가 팩의 최신화 출처(radar/sources)를 주기에 맞춰 읽고 새 판과 바뀐 곳을 보고서로 남긴다. 스킬은 고치지 않는다
+(contract.md 14절)
+
+Options:
+  --all           주기와 상관없이 모두 본다
+  --skill <name>  이 스킬의 출처만 본다
+  -h, --help      display help for command
 ```
 
 ## gotechy audit

@@ -4,7 +4,31 @@
 > 이 문서는 모든 작업의 **상시 하한선**이다. 프로젝트별 수치 합격선(조건+대상+지표+목표값)은 `/gotechy-quality`로 세운다 — `docs/QUALITY_MODEL.md` (ISO 25010 기준, 아래 영역들은 25010 특성의 실용 축약: 테스트·코드→유지보수성, UX→상호작용 능력, 보안→보안성, 신뢰성→신뢰성·성능 효율성).
 > 완료 게이트(`/gotechy-ship`)와 리뷰 에이전트가 이 문서를 기준으로 판정한다.
 
-## 영역별 품질 기준
+## 분야별 최고 전문가 bar (전문가 팩, 2026-10-16)
+
+이 문서의 영역별 기준은 하네스 저장소 자신의 하한선이에요. 다른 프로젝트에서 쓰는 분야별 기준은 전문가 팩의 `references/bar.md`가 원천이고, 프로젝트에 팩을 깔면 그 안에 함께 들어가요(contract.md 10.8절). 각 bar에는 원천 표준과 판, 확인일, `[기계]`와 `[사람]`으로 나눈 측정형 체크리스트, A~D 등급, 최고 전문가가 더 하는 것, 흔한 실패가 있어요.
+
+| 분야 | bar | 주요 원천(판은 bar 안에) |
+|---|---|---|
+| 오너 보고 | `skills/owner-protocol/references/bar.md` | gotechy 계약 4절, 7절, Anthropic 코딩 실력 형성 연구, 쉬운 글 지침 |
+| 발견 | `skills/gotechy-discover/references/bar.md` | Continuous Discovery, Mom Test, JTBD, Testing Business Ideas |
+| 스펙 | `skills/gotechy-spec/references/bar.md` | ISO/IEC/IEEE 29148, EARS, Working Backwards |
+| 계획 | `skills/gotechy-plan/references/bar.md` | ExecPlan, pre-mortem, DORA 작은 배치 |
+| 디자인 | `skills/gotechy-design/references/bar.md` | WCAG 2.2, KWCAG, Core Web Vitals, 사용성 휴리스틱 |
+| 구현 | `skills/gotechy-build/references/bar.md` | Google 코드 리뷰 지침, TDD, Parse don't validate, SLSA, Scorecard |
+| 품질 | `skills/gotechy-quality/references/bar.md` | ISO/IEC 25010:2023, 25023, 29119, mutation testing |
+| AI 평가 | `skills/gotechy-ai-eval/references/bar.md` | Anthropic eval 지침, 오류 분석 먼저, 채점자 정렬, NIST AI RMF, OWASP LLM Top 10 |
+| 보안 | `skills/gotechy-security/references/bar.md` | OWASP ASVS 5.0, Top 10, LLM과 에이전트 Top 10, NIST SSDF, SLSA |
+| 한국 법 | `skills/gotechy-comply-kr/references/bar.md` | 개인정보 보호법, AI 기본법, 정보통신망법, 장애인차별금지법 |
+| 출시 | `skills/gotechy-ship/references/bar.md` | DORA 지표, SRE 출시 공학, OpenFeature, SLSA |
+| 운영 | `skills/gotechy-operate/references/bar.md` | SRE SLO와 오류 예산, OpenTelemetry, FOCUS |
+| 알리기 | `skills/gotechy-launch/references/bar.md` | Google Search Central, 네이버 서치어드바이저, GEO 연구, 표시광고법 |
+| 글쓰기 | `skills/gotekie-blog-writer/references/bar.md` | 사람 중심 콘텐츠, 쉬운 글 |
+| 회고 | `skills/gotechy-retro/references/bar.md` | 회고 시작 선언, 비난 없는 포스트모템, ADR, 기술 부채 사분면 |
+
+bar 안의 수치 중 표준에 없는 값은 "하네스 기본값"이나 "이 bar가 정한 값"으로 표시해 두었어요. 오너가 바꿀 수 있는 값이에요. bar의 원천이 바뀌는지는 `radar/sources/<스킬>.yaml`에 적은 출처로 살펴요(최신화 자동화는 2단계).
+
+## 영역별 품질 기준 (하네스 저장소 자신)
 
 ### 코드
 - [ ] TypeScript strict 통과, `any` 사용 시 사유 주석

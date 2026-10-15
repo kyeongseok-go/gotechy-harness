@@ -13,7 +13,7 @@
 4. **결정하기**: 맥의 보안 칩(Secure Enclave) 키와 Touch ID로 결정에 서명한다. 되돌리기 어려운 결정은 이해 질문에 먼저 답한다. 승인한 결과만 메인에 병합한다(`gotechy accept`).
 5. **어디서든 같게**: 검증한 도구 버전 묶음(train)을 체크섬 그대로 깔고(`bin/gotechy`), 팩(스킬)은 apm으로 커밋에 고정해 깐다.
 
-진행 상태(2026-10-15): 1a 완료(Validation 18개 통과), 1b는 화면 결정(N2), 무인 루프(N3), 부작용 가드(N4)까지. 실제 Touch ID 서명은 오너 확인 전. 자세한 상태는 `docs/exec-plans/active/`.
+진행 상태(2026-10-16): 1a 완료, 1b는 화면 결정, 무인 루프, 부작용 가드, 교차 감사관(실제 claude 감사 1회), HANDOFF 화면(결정 카드 먼저)까지. 전문가 팩 12개(스킬 15개)에 분야별 최고 전문가 기준(bar)을 넣었다. 새 프로젝트를 시작하는 순서는 `docs/GETTING_STARTED.md`.
 
 ## 시작하기 (macOS)
 
@@ -27,12 +27,13 @@ bin/gotechy keys init         # 오너 키를 보안 칩에 만든다(Xcode Comm
 프로젝트에서(`gotechy`는 이 저장소의 `bin/gotechy`. PATH에 두거나 별칭을 만든다):
 
 ```bash
-gotechy init --packs owner            # 계약 폴더, 지도, 팩(apm), 부작용 가드
-gotechy task new "README에 설치 줄" --verify "grep -q 설치 README.md" --ownership README.md
+gotechy init --packs all              # 계약 폴더, 지도, 전문가 팩(apm), 부작용 가드. 일부만: --packs owner,define,build
+gotechy task new "README에 설치 줄" --verify "grep -q 설치 README.md" --ownership README.md --agent claude
 gotechy run T-001                     # 워커 실행, 검증, HANDOFF
 gotechy inbox                         # 3초 카드
 gotechy serve                         # 화면에서 결정(터미널에서 직접)
-gotechy accept T-001                  # 승인한 결과를 메인에 병합
+gotechy accept T-001                  # 승인한 결과를 메인에 병합(병합 전 gitleaks 검사)
+gotechy task restart T-001            # 충돌하면 새 메인 위에서 처음부터
 gotechy loop --budget 5               # 자리를 비운 동안 autonomy L2 작업을 차례로(아침 보고서)
 ```
 
@@ -48,7 +49,9 @@ gotechy loop --budget 5               # 자리를 비운 동안 autonomy L2 작�
 
 | 알고 싶은 것 | 문서 |
 |---|---|
+| 새 프로젝트 시작하기 | `docs/GETTING_STARTED.md` |
 | 지도(에이전트와 사람 공통) | `AGENTS.md` |
+| 전문가 팩과 분야별 bar | `skills/`, `docs/QUALITY_BAR.md`, 계약 10.8절 |
 | 파일 약속과 명령의 원천 | `docs/references/contract.md` |
 | 구조와 레이어 | `ARCHITECTURE.md` |
 | 설계와 결정 | `docs/design-docs/`, `docs/decisions/` |

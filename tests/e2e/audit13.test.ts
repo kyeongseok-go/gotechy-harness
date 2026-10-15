@@ -1,7 +1,6 @@
 // 보안 감사 13차(2026-10-15 오후 변경 재검토) 지적의 수용 테스트.
 import { describe, expect, test } from 'bun:test'
 import {
-  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,

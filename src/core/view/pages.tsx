@@ -104,15 +104,6 @@ function Layout(props: { title: string; mode?: ViewMode; children?: Child }) {
 const page = (node: Child) => `<!doctype html>\n${String(node)}`
 const md = (src: string | undefined) => raw(renderMarkdown(t(src ?? '없음')))
 
-function Section(props: { card: Card; title: string; className?: string }) {
-  return (
-    <section class={props.className}>
-      <h2>{props.title}</h2>
-      {md(props.card.sections.get(props.title)?.content)}
-    </section>
-  )
-}
-
 function Fold(props: { card: Card; title: string; children?: Child }) {
   return (
     <details>
@@ -403,7 +394,7 @@ function GateId(props: { id: string; open: boolean; mode: ViewMode }) {
   return props.mode === 'serve' && props.open ? (
     <a href={`/${props.id}`}>{props.id}</a>
   ) : (
-    <>{props.id}</>
+    <span>{props.id}</span>
   )
 }
 
@@ -578,16 +569,6 @@ function dice(a: Map<string, number>, b: Map<string, number>): number {
   for (const n of b.values()) total += n
   for (const [g, n] of a) shared += Math.min(n, b.get(g) ?? 0)
   return total === 0 ? 0 : (2 * shared) / total
-}
-
-/** 카드에서 아직 결정하지 않은 게이트(막는 결정, 승인, 시작 승인) */
-function openGates(c: Card): { id: string; label: string }[] {
-  const out: { id: string; label: string }[] = []
-  if (c.startGate) out.push({ id: c.startGate.id, label: '시작 승인' })
-  for (const d of c.blocking)
-    if (d.gate && !d.decided) out.push({ id: d.gate, label: decisionLine(d) })
-  if (c.approval) out.push({ id: c.approval.id, label: '결과 승인' })
-  return out
 }
 
 /** serve 화면에서 열린 게이트를 결정 화면으로 잇는다 */

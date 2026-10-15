@@ -1,5 +1,5 @@
 // 워커 격리용 git 조작. 워커는 작업 브랜치의 별도 worktree에서만 일한다(contract.md 0절).
-import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { runProc } from './proc'
 
@@ -32,8 +32,37 @@ function gitEnv(): Record<string, string> {
   return { ...env, ...GIT_ENV }
 }
 
+/**
+ * 워커 실행 전에 고정한 worktree별 git 폴더(TD-030, 보안 감사 15차 높음 1). 고정한 worktree에서 부르는 리드의 git은
+ * worktree의 .git 파일을 읽지 않고 이 폴더를 쓴다. 워커가 남긴 자손이 검사 뒤에 .git 파일을 가짜 저장소로 바꿔
+ * 필터 명령을 리드 권한으로 돌리게 하는 길을 막는다(2026-10-16 실험: 고정 전에는 가짜 저장소의 smudge가 실제로 돌았다)
+ */
+const pinnedGitDir = new Map<string, string>()
+
 export function gitProc(args: string[], cwd: string) {
-  return runProc(['git', ...GIT_SAFE, ...args], { cwd, env: gitEnv(), replaceEnv: true })
+  const pin = pinnedGitDir.get(cwd)
+  const env = pin ? { ...gitEnv(), GIT_DIR: pin, GIT_WORK_TREE: cwd } : gitEnv()
+  return runProc(['git', ...GIT_SAFE, ...args], { cwd, env, replaceEnv: true })
+}
+
+/** 저장소의 공통 git 폴더 아래에서 이 worktree를 가리키는 관리 폴더를 찾는다(worktree의 .git 파일은 믿지 않는다) */
+async function adminDirFor(root: string, wt: string): Promise<string | undefined> {
+  const common = (
+    await runProc(['git', ...GIT_SAFE, 'rev-parse', '--path-format=absolute', '--git-common-dir'], {
+      cwd: root,
+      env: gitEnv(),
+      replaceEnv: true,
+    })
+  ).stdout.trim()
+  const dir = join(common, 'worktrees')
+  if (!common || !existsSync(dir)) return undefined
+  const want = realOrSelf(join(wt, '.git'))
+  for (const name of readdirSync(dir)) {
+    const gitdir = join(dir, name, 'gitdir')
+    if (existsSync(gitdir) && realOrSelf(readFileSync(gitdir, 'utf8').trim()) === want)
+      return join(dir, name)
+  }
+  return undefined
 }
 
 async function git(args: string[], cwd: string): Promise<string> {
@@ -206,6 +235,9 @@ export async function gitSnapshot(root: string, wt: string): Promise<GitSnapshot
     // HEAD도 지킨다. 바뀌면 리드의 reset과 commit이 다른 브랜치(main 등)에 작용한다(보안 감사 14차 낮음 5)
     for (const f of ['gitdir', 'commondir', 'config.worktree', 'HEAD'])
       files.set(join(meta, f), read(join(meta, f)))
+  // 이후 이 worktree에서 부르는 리드의 git은 관리 폴더를 직접 쓴다(TD-030)
+  const admin = await adminDirFor(root, wt)
+  if (admin) pinnedGitDir.set(wt, admin)
   return { files, configList: await configList(wt) }
 }
 

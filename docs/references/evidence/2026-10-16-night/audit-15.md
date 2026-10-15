@@ -11,7 +11,7 @@ target: 2478ee7, 4e5b509, 5fdbc47, e999f2c
 
 | 번호 | 지적 | 처리 |
 |---|---|---|
-| 높음 1 | codex 워커가 setsid로 프로세스 그룹을 벗어난 자손을 남기면, 리드의 검사 뒤에 worktree의 `.git` 파일을 가짜 저장소로 바꿔 리드의 git이 필터 명령을 오너 권한으로 실행하게 할 수 있다(추정, codex 샌드박스가 worktree의 `.git` 파일 쓰기를 허용해야 성립) | **남김(TD-030).** 확인하려면 실제 codex 워커 실험(유료)이 먼저다. claude 워커는 셸이 없어 해당하지 않는다. 고치는 방향: 리드의 git에 실행 전에 확정한 `GIT_DIR`, `GIT_WORK_TREE`를 주기 |
+| 높음 1 | codex 워커가 setsid로 프로세스 그룹을 벗어난 자손을 남기면, 리드의 검사 뒤에 worktree의 `.git` 파일을 가짜 저장소로 바꿔 리드의 git이 필터 명령을 오너 권한으로 실행하게 할 수 있다(추정, codex 샌드박스가 worktree의 `.git` 파일 쓰기를 허용해야 성립) | **일부 고침(TD-030).** 뒷부분은 실험으로 사실을 확인했다: 검사 뒤 `.git` 파일을 바꾸면 리드의 git이 가짜 저장소의 필터 명령을 실제로 돌렸다. 리드의 git에 워커 실행 전에 고정한 `GIT_DIR`, `GIT_WORK_TREE`를 주게 고쳤고 같은 실험에서 돌지 않았다. 앞부분(codex 샌드박스가 그 파일 쓰기를 허용하는지)은 유료 실험이라 남겼다 |
 | 중간 1 | 새 프로세스 그룹은 터미널 Ctrl-C를 받지 못해, run, serve, loop를 끄면 워커와 verify가 고아로 남는다(오늘 밤 변경의 회귀) | 고침. 살아 있는 그룹을 등록하고 SIGINT, SIGTERM, SIGHUP, 종료 때 모두 끝낸다. 그룹이 있을 때만 처리기를 단다 |
 | 중간 2 | 남의 저장소가 커밋한 `.claude/settings.json`의 env로 `GOTECHY_GITLEAKS`를 넣어 검사기를 바꿀 수 있다 | 고침. `GOTECHY_GITLEAKS`는 테스트에서만 받고, gitleaks 판이 train과 같아야 하며, 쓴 판을 이벤트에 남긴다. doctor가 프로젝트 설정 env의 PATH, NODE_ENV, GOTECHY_, GITLEAKS_ 변수를 실패로 잡는다 |
 | 중간 3 | 메인 작업 트리의 `.gitleaksignore`, `.gitattributes`(-diff)가 검사를 끄고, 병합 커밋의 차이는 보지 않는다 | 실험으로 확인한 뒤 고침. 작업 트리 없는 임시 폴더를 대상으로 쓰고 `--text --no-textconv --no-ext-diff`로, 메인에 실제로 들어갈 병합 커밋의 첫 부모 대비 차이를 검사한다 |

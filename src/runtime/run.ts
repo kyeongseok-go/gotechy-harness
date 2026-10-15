@@ -213,6 +213,7 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     secret: [home, paths.privateDir(p)],
   }).finally(() => rmSync(tmp, { recursive: true, force: true }))
   await discardUncommitted(wt)
+  saveVerifyLog(p, task.id, verify.stdout, verify.stderr)
   notes.push(`리드 verify: \`${task.verify}\`: exit ${verify.exitCode}`)
   if (!verify.sandboxed) notes.push(UNSANDBOXED)
 
@@ -367,6 +368,14 @@ function finalizeHandoff(i: FinalizeInput): {
 
 function stubBody(reason: string): string {
   return `${HANDOFF_SECTIONS.map((s) => `## ${s}\n${s === '한 줄 요약' ? reason.slice(0, 60) : '없음'}\n`).join('\n')}`
+}
+
+/** 마지막 리드 verify 출력의 끝 20KB. 감사관이 HANDOFF의 검증 주장과 대조한다(contract.md 13절) */
+function saveVerifyLog(p: Project, id: string, out: string, err: string) {
+  const dir = join(p.root, '.gotechy', 'runs')
+  mkdirSync(dir, { recursive: true })
+  const text = `${out}\n--- stderr ---\n${err}`
+  writeFileSync(join(dir, `${id}-verify.log`), text.length > 20_000 ? text.slice(-20_000) : text)
 }
 
 function saveRawLog(p: Project, id: string, adapter: string, out: string, err: string) {

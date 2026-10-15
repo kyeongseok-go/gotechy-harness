@@ -17,6 +17,7 @@ import { lintTask } from './core/lint-task'
 import { lintStyle } from './core/style'
 import { parseTrain } from './core/train'
 import { acceptTask } from './runtime/accept'
+import { auditTask } from './runtime/audit'
 import { formatDoctor, runDoctor } from './runtime/doctor'
 import { decideGate, listGates, pinOwner, verifyGates } from './runtime/gates'
 import { gitProc, repoRoot } from './runtime/git'
@@ -316,6 +317,43 @@ program
       out.status === 'refused' ? 2 : out.status === 'failed' || out.status === 'blocked' ? 1 : 0,
     )
   })
+
+program
+  .command('audit')
+  .description(
+    '작업의 HANDOFF를 실제 diff와 검증 출력에 대조하는 교차 검증 감사관 (contract.md 13절)',
+  )
+  .argument('<taskId>')
+  .option('--adapter <name>', 'codex | claude | fake (기본은 작성 계열의 반대)')
+  .option('--model <model>', '감사관 모델')
+  .option('--fixture <dir>', 'fake 감사관이 재생할 녹화 폴더')
+  .option('--budget <usd>', 'claude 감사관 비용 상한(달러, 기본 0.5)')
+  .action(
+    async (
+      taskId: string,
+      o: { adapter?: string; model?: string; fixture?: string; budget?: string },
+    ) => {
+      const p = requireProject()
+      if (o.adapter && !['codex', 'claude', 'fake'].includes(o.adapter)) {
+        console.error(`감사관은 codex, claude, fake 중 하나예요: ${o.adapter}`)
+        process.exit(2)
+      }
+      const budget = o.budget === undefined ? undefined : Number(o.budget)
+      if (budget !== undefined && !(Number.isFinite(budget) && budget > 0)) {
+        console.error(`--budget은 0보다 큰 숫자예요: ${o.budget}`)
+        process.exit(2)
+      }
+      const out = await auditTask(p, taskId, {
+        ...(o.adapter ? { adapter: o.adapter as 'codex' } : {}),
+        ...(o.model ? { model: o.model } : {}),
+        ...(o.fixture ? { fixtureDir: o.fixture } : {}),
+        ...(budget !== undefined ? { budgetUsd: budget } : {}),
+        log: (s) => console.log(s),
+      })
+      for (const m of out.messages) console.log(m)
+      process.exit(out.status === 'written' ? 0 : 1)
+    },
+  )
 
 const keys = program
   .command('keys')

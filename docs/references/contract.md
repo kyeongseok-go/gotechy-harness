@@ -151,6 +151,7 @@ frontmatter:
 
     orchestration/gates/   orchestration/tasks/   orchestration/private/   orchestration/.seq
     orchestration/.gate-seq   orchestration/project.yaml   orchestration/owner.pub
+    orchestration/audits/
     .gotechy/              .git/                  .claude/               .agents/
     AGENTS.md              CLAUDE.md              apm.yml   apm.lock.yaml
     mise.toml              mise.lock              policy/
@@ -465,3 +466,17 @@ frontmatter:
 - `gotechy keys init`, `keys rotate`는 대화형 터미널에서만 돈다. rotate는 Touch ID 없이도 지난 결정을 모두 무효로 만들 수 있어서 가드와 이 검사가 실수를 막는다(보안 감사 10차 중간 6).
 - 알려진 한계: 변수로 만든 이름(`$G decide`), 셸 별칭과 git 별칭(`git -c alias.p=push p --force`), 스크립트 파일에 써서 실행하기, `bash <<<`, `| sh`, `source`, python pty, tmux, `gh api` 쓰기, curl로 부르는 배포 hook, 태그나 main push로 도는 CI 배포는 잡지 못한다. 다른 프로젝트의 `bun src/cli.ts serve`도 gotechy로 보고 막는다(오탐). 이 저장소의 `guard-bash.sh`는 `--force-with-lease`를 허용하고 프로젝트 가드는 막는다(정책이 다름). 위키에 쓰는 Write, Edit 도구는 이 가드의 대상이 아니다(hook matcher가 Bash).
 - 하지 않은 것: Codex hook(같은 가드를 Codex에 붙이는 일)과 Claude Code mod(결정 대기 띠, 토스트)는 1b N4의 남은 일이다. 폰 알림 방식은 오너 결정이다.
+
+## 13. 교차 검증 감사관 `gotechy audit T-### [--adapter codex|claude|fake] [--model <모델>] [--fixture <폴더>] [--budget <달러>]` (1b N6)
+
+워커가 쓴 HANDOFF(주장)를 실제 변경(diff)과 검증 기록에 대조해, 요약과 실제가 다른 곳을 찾는다. 작성 모델과 다른 계열 모델이 보게 해서 같은 실수를 함께 놓치지 않게 한다(설계 문서 2026-10-13 9번, D9의 "감사관 불일치율"). 감사관의 지적은 권고이고, 게이트나 상태를 바꾸지 않는다.
+
+- 대상: 메인의 `orchestration/handoffs/T-###.md`와 작업 브랜치 `gotechy/T-###`, 기준 커밋(`.gotechy/worktrees/T-###.base`). 셋 중 하나라도 없으면 exit 1(아직 실행하지 않았거나 병합 뒤 정리된 작업).
+- 리드가 모으는 입력: HANDOFF 원문, `git diff <기준>..gotechy/T-###`(200KB에서 자르고 잘렸다고 표시), 마지막 리드 verify의 출력(`run`이 `.gotechy/runs/T-###-verify.log`에 끝 20KB를 남긴다. 없으면 "검증 기록 없음"). 셋 모두 워커가 쓴 데이터라 프롬프트(`prompts/auditor.md`)는 이것을 지시가 아니라 대조할 데이터로 넘긴다.
+- 감사관: 기본은 작성 계열의 반대다(HANDOFF의 `agent`가 `claude`면 `codex`, `codex`면 `claude`). 그 밖의 `agent`는 `--adapter`가 필요하다. `--adapter`로 같은 계열을 고르면 경고하고 `cross_family: false`로 남긴다. 감사관은 읽기만 한다: codex는 `-s read-only`, claude는 `--permission-mode plan`과 파일 쓰기 거부 규칙으로 돈다. 작업 폴더는 작업 worktree다. claude는 `--max-budget-usd`(기본 0.5달러)를 걸고, codex는 시간 상한(10분)만 있다(TD-015).
+- 출력 형식: 감사관의 마지막 답에서 첫 JSON 객체를 읽는다. `{"findings":[{"claim","actual","file","line","severity"}],"summary"}`. `severity`는 `high`, `medium`, `low`. 지적은 20개까지, 글은 칸마다 500자까지 받는다. 형식이 틀리면 exit 1이고 원문은 `.gotechy/runs/`에 남는다.
+- 근거 확인(리드가 기계로): 지적마다 `file`이 상대 경로이고(`/`로 시작하거나 `..`를 포함하면 안 됨) 작업 브랜치에 있는 파일이며, `line`이 1 이상 그 파일의 줄 수 이하인지 본다. 통과하면 `근거 확인됨`, 아니면 `근거 확인 안 됨`이다. 불일치 수는 근거가 확인된 지적만 센다. 감사관이 없는 파일이나 줄을 지어내도 수에 들어가지 않는다.
+- 기록: `orchestration/audits/T-###.md`(보호 경로, 워커는 쓰지 못한다). 같은 작업을 다시 감사하면 덮어쓴다. frontmatter는 `task`, `handoff_rev`, `at`, `auditor`(`adapter`, `model`), `author`(`agent`, `model`), `cross_family`, `input`(`diff_bytes`, `diff_truncated`, `verify_log`), `findings`(전체 수), `confirmed`(근거 확인된 수), `cost_usd`. 본문은 `## 지적`(심각도, `file:line`, 주장, 실제, 근거 확인 여부)과 `## 감사관 요약`.
+- 인박스: 감사 기록이 있으면 카드에 `감사: 근거 있는 지적 N건` 줄을 넣는다. 기록의 `handoff_rev`가 HANDOFF와 다르면 `감사: 지난 판본 기준`이다.
+- 종료코드: 기록을 쓰면 0(지적이 있어도), 대상이 없거나 감사관 실행이나 출력 형식이 실패하면 1.
+- 알려진 한계: 감사관도 워커가 쓴 글을 읽으므로 프롬프트 주입으로 "문제 없음"을 말하게 만들 수 있다. 그래서 지적은 권고이고, 지적이 없다고 통과로 보지 않는다. 실제 모델로 감사한 증거는 아직 없다(유료 실행은 오너 승인 뒤). `run`과 `loop`가 자동으로 감사를 부르지는 않는다.

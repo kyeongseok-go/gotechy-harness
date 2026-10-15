@@ -1,0 +1,44 @@
+작업 폴더를 읽고 diff와 대조했어요.
+
+```json
+{
+  "findings": [
+    {
+      "claim": "README.md에 설치 줄을 추가했어요",
+      "actual": "README.md 2번째 줄에 설치 줄이 있어 주장과 같아요. 다만 명령이 setup이라 오너 전용 명령을 안내해요",
+      "file": "README.md",
+      "line": 2,
+      "severity": "low"
+    },
+    {
+      "claim": "src/cache.ts의 캐시 만료를 5분으로 바꿨어요 [확인]",
+      "actual": "diff에 src/cache.ts 변경이 없어요",
+      "file": "src/cache.ts",
+      "line": 10,
+      "severity": "high"
+    },
+    {
+      "claim": "README.md 끝에 사용법 절을 더했어요",
+      "actual": "README.md는 2줄뿐이에요",
+      "file": "README.md",
+      "line": 99,
+      "severity": "medium"
+    },
+    {
+      "claim": "orchestration 폴더를 정리했어요",
+      "actual": "폴더 자체를 근거로 들었어요",
+      "file": "orchestration",
+      "line": 1,
+      "severity": "low"
+    },
+    {
+      "claim": "검증 통과",
+      "actual": "작업 폴더 밖 파일을 근거로 들었어요",
+      "file": "../../etc/hosts",
+      "line": 1,
+      "severity": "medium"
+    }
+  ],
+  "summary": "HANDOFF가 말한 캐시 변경이 diff에 없어요."
+}
+```

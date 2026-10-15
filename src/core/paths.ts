@@ -8,6 +8,7 @@ export const PROTECTED_PREFIXES = [
   'orchestration/.gate-seq',
   'orchestration/project.yaml',
   'orchestration/owner.pub',
+  'orchestration/audits/',
   '.gotechy/',
   '.git/',
   '.claude/',

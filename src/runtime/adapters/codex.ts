@@ -5,6 +5,9 @@ import { runProc } from '../proc'
 import { workerEnv } from './env'
 import type { WorkerAdapter, WorkerRequest, WorkerResult } from './types'
 
+/** codex에 넘기는 환경 변수 허용 목록. 감사관도 같은 목록을 쓴다 */
+export const CODEX_ENV = ['OPENAI_API_KEY', 'CODEX_HOME']
+
 export function codexArgs(req: WorkerRequest): string[] {
   const args = [
     'codex',
@@ -32,7 +35,7 @@ export const codexAdapter: WorkerAdapter = {
       cwd: req.cwd,
       timeoutMs: req.timeoutMs,
       // 허용 목록만 넘긴다(contract.md 6.3절). codex는 셸이 있어 받은 환경 변수를 파일에 쓸 수 있다(보안 감사 5차 중간 1)
-      env: workerEnv(['OPENAI_API_KEY', 'CODEX_HOME']),
+      env: workerEnv(CODEX_ENV),
       replaceEnv: true,
     })
     const result: WorkerResult = {

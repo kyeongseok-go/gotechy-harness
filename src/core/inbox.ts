@@ -33,6 +33,8 @@ export type Card = {
   startGate?: { id: string; options: string[] }
   /** 용어 은행에 없는 새 용어 */
   newTerms: string[]
+  /** 감사 기록(contract.md 13절). current: 지금 HANDOFF 판본을 감사했는가 */
+  audit?: { current: boolean; confirmed: number }
 }
 
 export const GROUP_LABEL: Record<CardGroup, string> = {
@@ -145,6 +147,12 @@ export function attachGates(c: Card, gates: Gate[]): Card {
     : { ...c, blocking }
 }
 
+/** 감사 기록 줄(contract.md 13절). 지난 판본을 감사했으면 수를 보여 주지 않는다 */
+export function auditLine(c: Card): string | undefined {
+  if (!c.audit) return undefined
+  return c.audit.current ? `감사: 근거 있는 지적 ${c.audit.confirmed}건` : '감사: 지난 판본 기준'
+}
+
 /** 다시 실행 대기 카드의 다음 명령 */
 export function resumeCommand(c: Card): string {
   return `gotechy run ${c.id}`
@@ -246,6 +254,8 @@ function formatCard(c: Card): string {
     lines.push('  결정하려면: gotechy decide <게이트 번호> <선택>')
   if (c.approval) lines.push(`  승인 대기 ${c.approval.id}: ${gateCommand(c.approval)}`)
   if (c.group === 'resume') lines.push(`  다음: ${resumeCommand(c)}`)
+  const audit = auditLine(c)
+  if (audit) lines.push(`  ${audit}`)
   if (c.newTerms.length > 0) lines.push(`  새 용어: ${c.newTerms.join(', ')}`)
   // 리드 메모는 실패와 결정 필요 카드에 보인다. accept가 충돌로 멈춘 사유도 여기 남는다(contract.md 9.4절)
   if (c.group !== 'done' && c.handoff?.lead_note)

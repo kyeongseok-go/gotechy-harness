@@ -4,6 +4,7 @@
 import { raw } from 'hono/html'
 import type { Child } from 'hono/jsx'
 import {
+  auditLine,
   type Card,
   cardLabel,
   countLine,
@@ -310,6 +311,7 @@ function InboxCard(props: { card: Card; mode: ViewMode }) {
               결정을 모두 마쳤어요. 다음: <code>{t(resumeCommand(c))}</code>
             </p>
           ) : null}
+          {auditLine(c) ? <p>{t(auditLine(c) ?? '')}</p> : null}
           {c.newTerms.length > 0 ? <p>새 용어: {t(c.newTerms.join(', '))}</p> : null}
           {c.handoff?.lead_note && c.group !== 'done' ? (
             <p>리드: {t(truncate(c.handoff.lead_note.replace(/\s*\n\s*/g, ' '), 80))}</p>

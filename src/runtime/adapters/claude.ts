@@ -19,6 +19,9 @@ const DENY = [
   'Read(~/.gotechy/**)',
 ]
 
+/** claude에 넘기는 환경 변수 허용 목록. 감사관도 같은 목록을 쓴다 */
+export const CLAUDE_ENV = ['ANTHROPIC_API_KEY', 'CLAUDE_CONFIG_DIR']
+
 export function claudeArgs(req: WorkerRequest): string[] {
   const args = [
     'claude',
@@ -48,7 +51,7 @@ export const claudeAdapter: WorkerAdapter = {
       cwd: req.cwd,
       timeoutMs: req.timeoutMs,
       // 허용 목록만 넘긴다(contract.md 6.3절). 워커는 train 버전 그대로 돈다(10.1절)
-      env: workerEnv(['ANTHROPIC_API_KEY', 'CLAUDE_CONFIG_DIR'], { DISABLE_AUTOUPDATER: '1' }),
+      env: workerEnv(CLAUDE_ENV, { DISABLE_AUTOUPDATER: '1' }),
       replaceEnv: true,
     })
     const usage = parseClaudeUsage(r.stdout)

@@ -1,6 +1,7 @@
 // 인박스와 화면 파일(contract.md 8절). 메인 체크아웃의 orchestration/을 읽기만 하고, 화면은 .gotechy/view/에만 쓴다.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { attachAudit } from '../core/audit'
 import { parseFrontmatter } from '../core/frontmatter'
 import { attachGates, buildCard, type Card, startGateCard } from '../core/inbox'
 import { renderHandoffPage, renderInboxPage } from '../core/view/pages'
@@ -37,7 +38,7 @@ export function loadCards(p: Project, cwd = process.cwd(), opts: LoadOptions = {
       knownTerms: known,
       ...(task.title ? { title: task.title } : {}),
     })
-    cards.push(card.problem ? card : attachGates(card, gates))
+    cards.push(card.problem ? card : withAudit(p, attachGates(card, gates)))
   }
   for (const g of gates.filter((g) => g.class === 'approval-before' && g.status === 'pending')) {
     if (withHandoff.has(g.task)) continue
@@ -107,4 +108,17 @@ export function renderViews(p: Project, cwd = process.cwd(), opts: LoadOptions =
     pages.set(card.id, file)
   }
   return { dir, index, pages }
+}
+
+/** 감사 기록(contract.md 13절)이 있으면 카드에 붙인다. 읽을 수 없는 기록은 없는 것으로 본다 */
+function withAudit(p: Project, c: Card): Card {
+  const file = join(paths.orch(p), 'audits', `${c.id}.md`)
+  if (!existsSync(file)) return c
+  const parsed = parseFrontmatter(readFileSync(file, 'utf8'), file)
+  if (!parsed.ok) return c
+  const d = parsed.value.data
+  const rev = typeof d.handoff_rev === 'number' ? d.handoff_rev : null
+  return typeof d.confirmed === 'number'
+    ? attachAudit(c, { handoff_rev: rev, confirmed: d.confirmed })
+    : c
 }

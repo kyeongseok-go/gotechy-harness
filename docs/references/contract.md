@@ -481,6 +481,7 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 - 스킬은 설치된 프로젝트에서 스스로 완결된다. 하네스 저장소의 문서(`docs/` 아래)를 가리키지 않고, 스킬이 프로젝트에 만드는 경로(`docs/product-specs/`, `docs/exec-plans/`, `docs/decisions/`, `docs/quality/`, `docs/security/`, `docs/compliance/`, `docs/evals/`, `docs/operations/`, `docs/launch/`, `docs/retros/`, `docs/discovery/`, `docs/content/`)만 쓴다. 하네스의 서브에이전트 정의(`.claude/agents/`)도 깔리지 않으므로 가리키지 않고, 있으면 쓰는 선택으로만 적는다. 원문 링크가 필요하면 GitHub 주소를 쓴다.
 - 스킬 파일(본문, `references/`, 평가 케이스)은 문체 규칙(7절) 경고가 0건이다. `tests/core/packs-structure.test.ts`가 위 규칙을 모두 검사한다.
 - 모든 팩을 깔아도 스킬은 15개 이하다(doctor의 세션당 상한).
+- 위임 작업에도 전문가 기준을 넘긴다: 제한 모드 워커는 스킬을 스스로 로드하지 않으므로(1a M1), `run`은 작업 명세 `packs`의 스킬(owner-protocol 제외, 그 규칙은 지시문에 이미 있다) `SKILL.md` 본문을 메인 체크아웃의 `.agents/skills/`(없으면 `.claude/skills/`)에서 읽어 지시문의 "이번 작업의 전문가 기준" 절에 넣는다. 합계 16KB까지 넣고 넘으면 자르며 남은 것은 `references/`를 읽으라고 알린다. 링크나 일반 파일이 아닌 것은 읽지 않는다. 깔리지 않은 스킬은 실행 메시지로 알린다. 워커는 `.claude/`, `.agents/`, AGENTS.md를 바꾸지 못하고, 읽기는 그 스킬의 references 파일만 한다. HANDOFF 틀의 `skills_loaded`는 넣은 스킬 목록으로 미리 채운다.
 - AGENTS.md 팩 색인: `init --packs`가 설치에 성공하면 `apm.yml`에 train 출처와 커밋으로 적힌 스킬(전에 깐 것 포함)로 AGENTS.md의 `<!-- gotechy:packs:start -->`와 `<!-- gotechy:packs:end -->` 사이를 표로 다시 쓴다. 표시가 하나씩 정확히 있을 때만 쓰고, 없으면(오너가 쓴 라우터) 건드리지 않고 경고한다. 다시 실행해도 같은 표다.
 
 ## 11. 무인 루프 `gotechy loop [--budget <달러>] [--max-attempts <N>] [--reset]` (1b N3)

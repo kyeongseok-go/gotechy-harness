@@ -11,10 +11,16 @@ export type PromptDecision = {
   instruction: string | null
 }
 
+/** 지시문에 넣는 전문가 스킬 본문의 합계 상한(바이트). 자세한 기준은 워커가 references를 읽는다 */
+export const MAX_SKILL_BYTES = 16_000
+
+export type PromptSkill = { name: string; body: string }
+
 export function buildWorkerPrompt(
   task: TaskFrontmatter,
   taskBody: string,
   decisions: PromptDecision[] = [],
+  skills: PromptSkill[] = [],
 ): string {
   const handoff = handoffPathFor(task.id)
   const decided =
@@ -33,7 +39,7 @@ export function buildWorkerPrompt(
     '',
     '## 규칙',
     `- 바꿀 수 있는 파일: ${task.ownership.join(', ')} 그리고 ${handoff}. 그 밖의 파일을 바꾸면 실행 전체가 실패 처리됩니다.`,
-    '- orchestration/gates/, orchestration/tasks/, .claude/, .agents/, AGENTS.md 는 읽거나 바꾸지 마세요.',
+    '- orchestration/gates/, orchestration/tasks/ 는 읽거나 바꾸지 마세요. .claude/, .agents/, AGENTS.md 는 바꾸지 마세요(읽기는 아래 전문가 스킬의 references 파일만).',
     '- 작업 범위를 넓히지 마세요. 요청하지 않은 기능, 추상화, 설정을 더하지 마세요.',
     `- 완료 판정은 리드가 다음 명령으로 직접 합니다: \`${task.verify}\``,
     '- 확신이 없는 결정이 필요하면 임의로 정하지 말고 HANDOFF의 "결정 필요"에 올리고 status를 needs-decision으로 두세요.',
@@ -47,6 +53,7 @@ export function buildWorkerPrompt(
     taskBody.trim(),
     '',
     ...decided,
+    ...skillSection(skills),
     `## HANDOFF 작성 (${handoff})`,
     '아래 형식 그대로 쓰세요. 절은 내용이 없어도 두고 "없음"이라고 쓰세요.',
     '',
@@ -54,7 +61,7 @@ export function buildWorkerPrompt(
     `task: ${task.id}`,
     'status: done            # done | failed | needs-decision',
     `packs: [${task.packs.join(', ')}]`,
-    'skills_loaded: []',
+    `skills_loaded: [${skills.map((s) => s.name).join(', ')}]`,
     'new_terms: []           # 이번에 처음 쓴 전문 용어 이름',
     'comprehension_keys: []  # "말해 보기" 질문마다 좋은 답에 들어갈 핵심어 목록. 예: [[해시, salt], [세션]]',
     '---',
@@ -127,4 +134,55 @@ export function buildRewritePrompt(
   }
   if (issues.length > lines.length) lines.push(`- 외 ${issues.length - lines.length}건`)
   return [...head, ...lines].join('\n')
+}
+
+/** 작업 팩의 스킬 본문(contract.md 10.8절). 합계 상한을 넘으면 자르고, references를 읽으라고 알린다 */
+function skillSection(skills: PromptSkill[]): string[] {
+  if (skills.length === 0) return []
+  const out = [
+    '## 이번 작업의 전문가 기준',
+    '아래 스킬의 절차와 합격선을 지키세요. 자세한 기준이 필요하면 `.agents/skills/<스킬>/references/`의 파일을 읽으세요(바꾸지는 마세요). HANDOFF의 skills_loaded에는 실제로 따른 스킬만 남기세요.',
+    '',
+  ]
+  let left = MAX_SKILL_BYTES
+  for (const s of skills) {
+    const text = s.body.trim()
+    if (left <= 0) {
+      out.push(
+        `### ${s.name}`,
+        '(상한을 넘어 본문을 넣지 못해 잘렸어요. `.agents/skills/' +
+          s.name +
+          '/SKILL.md`를 읽으세요)',
+        '',
+      )
+      continue
+    }
+    const bytes = Buffer.byteLength(text)
+    const body = bytes <= left ? text : cutBytes(text, left)
+    left -= Buffer.byteLength(body)
+    out.push(
+      `### ${s.name}`,
+      body,
+      ...(bytes > Buffer.byteLength(body)
+        ? [
+            `(본문이 길어 여기서 잘렸어요. 나머지는 \`.agents/skills/${s.name}/SKILL.md\`와 references/를 읽으세요)`,
+          ]
+        : []),
+      '',
+    )
+  }
+  return out
+}
+
+/** UTF-8 글자를 깨지 않고 max 바이트 안으로 자른다 */
+function cutBytes(text: string, max: number): string {
+  let used = 0
+  let out = ''
+  for (const ch of text) {
+    const n = Buffer.byteLength(ch)
+    if (used + n > max) break
+    used += n
+    out += ch
+  }
+  return out
 }

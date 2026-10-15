@@ -10,7 +10,7 @@
    - 1일 미만의 작은 기능: 미니 스펙 뒤 구현.
    - 그 이상, 또는 사용자 데이터, 인증, 결제를 건드림: 풀 스펙과 실행 계획(ExecPlan).
    - 제품이나 사이트 단위(화면 여러 개, 새 프로젝트): 스펙 위저드부터.
-2. 리드는 맡길 일을 작업 명세로 만든다: `gotechy task new "<제목>" --verify "<판정 명령>" --ownership "<바꿀 경로>" --agent claude`(Codex면 `--agent codex`).
+2. 리드는 맡길 일을 작업 명세로 만든다: `gotechy task new "<제목>" --verify "<판정 명령>" --ownership "<바꿀 경로>" --agent claude --packs owner,<팩>`(Codex면 `--agent codex`). `--packs`에 적은 팩의 스킬 본문이 워커 지시문에 들어간다.
 3. 워커는 `gotechy run T-###`로 격리된 worktree에서 일하고, 끝나면 `orchestration/handoffs/T-###.md`(HANDOFF)를 남긴다.
 4. 오너는 `gotechy inbox`나 HANDOFF 화면에서 이해하고 결정한다. 결정은 오너만 한다.
 5. 리드는 결정을 읽고 다음 작업을 잇는다. 승인된 결과는 `gotechy accept T-###`로 메인에 합친다.

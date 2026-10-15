@@ -57,7 +57,7 @@ git add -A && git commit -m "gotechy 하네스 연결"
 
 | 단계 | 명령 | 누가 |
 |---|---|---|
-| 작업 만들기 | `gotechy task new "<제목>" --verify "<판정 명령>" --ownership "<바꿀 경로>" --agent claude` (Codex면 `--agent codex`) | 리드(에이전트)도 가능 |
+| 작업 만들기 | `gotechy task new "<제목>" --verify "<판정 명령>" --ownership "<바꿀 경로>" --agent claude --packs owner,build` (Codex면 `--agent codex`. `--packs`에 적은 팩의 전문가 기준이 워커 지시문에 들어가요) | 리드(에이전트)도 가능 |
 | 워커 실행 | `gotechy run T-001` (`--agent`를 안 적었으면 `--adapter claude`) | 리드도 가능 |
 | 보고 보기 | `gotechy inbox`, 화면은 `gotechy render T-001` | 누구나 |
 | 다른 계열 모델로 대조 | `gotechy audit T-001` (claude 감사관은 0.5달러 상한) | 리드도 가능(유료) |

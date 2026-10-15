@@ -20,8 +20,9 @@ import { parseFrontmatter, serializeFrontmatter } from '../core/frontmatter'
 import { formatIssue, type Issue } from '../core/issues'
 import { hasErrors, lintHandoff } from '../core/lint-handoff'
 import { lintTask } from '../core/lint-task'
+import { expandPacks } from '../core/packs'
 import { disallowedChanges, handoffPathFor } from '../core/paths'
-import { buildRewritePrompt, buildWorkerPrompt } from '../core/prompt'
+import { buildRewritePrompt, buildWorkerPrompt, type PromptSkill } from '../core/prompt'
 import { HANDOFF_SECTIONS, type HandoffFrontmatter, type TaskFrontmatter } from '../core/schema'
 import { addUsage, emptyUsage } from '../core/usage'
 import { accountHome } from './account'
@@ -174,10 +175,15 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
 
   const parsedTask = parseFrontmatter(taskText, taskFile)
   const body = parsedTask.ok ? parsedTask.value.body : ''
+  const skills = workerSkills(p, task.packs)
+  if (skills.missing.length > 0)
+    log(
+      `${task.id}: 이 프로젝트에 깔리지 않은 스킬은 지시문에 넣지 못했어요: ${skills.missing.join(', ')} (gotechy init --packs로 깔기)`,
+    )
   const req = {
     taskId: task.id,
     cwd: wt,
-    prompt: buildWorkerPrompt(task, body, gates.decisions),
+    prompt: buildWorkerPrompt(task, body, gates.decisions, skills.found),
     model: task.model ?? null,
     effort: task.effort ?? null,
     budgetUsd: task.budget_usd ?? 1,
@@ -189,6 +195,8 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
   saveRawLog(p, task.id, adapterName, result.rawOutput, result.stderr)
 
   const notes: string[] = []
+  if (skills.missing.length > 0)
+    notes.push(`깔리지 않아 지시문에 넣지 못한 스킬: ${skills.missing.join(', ')}`)
   if (result.timedOut)
     notes.push(`워커가 시간 상한(${task.timeout_min ?? 20}분)을 넘겨 중단됐습니다.`)
   if (result.exitCode !== 0)
@@ -498,6 +506,25 @@ async function rewriteHandoff(
   if (!(await resetTo(wt, committed)))
     return { kind: 'tampered', result: r, notes: ['다시 쓰기 뒤 작업 트리를 되돌리지 못했어요.'] }
   return { kind: 'ok', text, result: r, notes: [`HANDOFF 다시 쓰기 ${n}회`] }
+}
+
+/**
+ * 작업 팩의 스킬 본문을 메인 체크아웃의 설치본(.agents/skills, 없으면 .claude/skills)에서 읽는다(contract.md 10.8절).
+ * owner-protocol의 규칙은 지시문에 이미 있다. 링크나 일반 파일이 아닌 것은 읽지 않는다(저장소 밖 글을 지시문에 넣지 않게).
+ */
+function workerSkills(p: Project, packs: string[]): { found: PromptSkill[]; missing: string[] } {
+  const found: PromptSkill[] = []
+  const missing: string[] = []
+  for (const name of expandPacks(packs).skills) {
+    if (name === 'owner-protocol') continue
+    const file = ['.agents', '.claude']
+      .map((d) => join(p.root, d, 'skills', name, 'SKILL.md'))
+      .find((f) => lstatSync(f, { throwIfNoEntry: false })?.isFile())
+    const parsed = file ? parseFrontmatter(readFileSync(file, 'utf8'), file) : undefined
+    if (parsed?.ok) found.push({ name, body: parsed.value.body })
+    else missing.push(name)
+  }
+  return { found, missing }
 }
 
 function preflight(task: TaskFrontmatter, opts: RunOptions): string | undefined {

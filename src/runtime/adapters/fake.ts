@@ -30,6 +30,9 @@ export const fakeAdapter: WorkerAdapter = {
         stderr: `fake 어댑터에는 --fixture <폴더>가 필요합니다 (받은 값: ${dir ?? '없음'})`,
       }
     }
+    // 녹화 폴더에 record-prompt가 있으면 받은 지시문을 prompt.txt로 남긴다(지시문 내용 테스트용)
+    if (req.fixtureDir && existsSync(join(req.fixtureDir, 'record-prompt')))
+      writeFileSync(join(req.fixtureDir, 'prompt.txt'), req.prompt)
     const files = join(dir, 'files')
     if (existsSync(files)) cpSync(files, req.cwd, { recursive: true })
     // 공격 재현용: symlinks.json의 [{path, target}]대로 작업 폴더에 심볼릭 링크를 만든다

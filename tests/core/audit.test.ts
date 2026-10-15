@@ -232,9 +232,12 @@ describe('보안 감사 12차 반영', () => {
   test('높음 1: 기록 전에 키와 로그인 값 모양을 찾는다', () => {
     expect(findLeaks('정상 글', [])).toEqual([])
     expect(findLeaks('-----BEGIN OPENSSH PRIVATE KEY-----', [])).not.toEqual([])
-    expect(findLeaks('키 sk-ant-api03-abcdefghijklmnop', [])).not.toEqual([])
-    expect(findLeaks('ghp_abcdefghijklmnopqrstuvwxyz0123', [])).not.toEqual([])
-    expect(findLeaks('AKIAABCDEFGHIJKLMNOP', [])).not.toEqual([])
+    expect(findLeaks(`키 ${['sk', 'ant', 'api03', 'abcdefghijklmnop'].join('-')}`, [])).not.toEqual(
+      [],
+    )
+    expect(findLeaks(['ghp', 'abcdefghijklmnopqrstuvwxyz0123'].join('_'), [])).not.toEqual([])
+    // 키 모양 문자열은 조각을 이어 만든다. 그대로 쓰면 gitleaks가 저장소 검사에서 잡는다(2026-10-15 검사)
+    expect(findLeaks(['AKIA', 'ABCDEFGHIJKLMNOP'].join(''), [])).not.toEqual([])
     expect(
       findLeaks('값은 my-very-long-secret-value-1234', ['my-very-long-secret-value-1234']),
     ).not.toEqual([])

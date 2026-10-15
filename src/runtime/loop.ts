@@ -18,7 +18,7 @@ import { extractSections } from '../core/sections'
 import { gateCheck, listGates, readTask } from './gates'
 import { loadCards } from './inbox'
 import { appendEvent, linkedPaths, type Project, paths, updateFrontmatter } from './project'
-import type { RunOutcome } from './run'
+import { type RunOutcome, rewriteAllowance } from './run'
 
 export type LoopOutcome = 'done' | 'needs-decision' | 'waiting' | 'stopped' | 'budget'
 export type LoopResult = {
@@ -193,7 +193,7 @@ async function loopLocked(
       const t = state.tasks[id] ?? { attempts: 0 }
       state.tasks[id] = t
       t.attempts++
-      const reserve = Math.max(task.budget_usd ?? 1, MIN_RESERVE)
+      const reserve = Math.max(task.budget_usd ?? 1, MIN_RESERVE) + rewriteAllowance(task)
       reserved += reserve
       writeState(p, state)
       log(`${id} 실행 (${t.attempts}번째 시도)`)
@@ -206,7 +206,9 @@ async function loopLocked(
         writeState(p, state)
         continue
       }
-      const cost = handoffOf(p, id)?.h.usage?.cost_usd ?? 0
+      // 비용을 모르면 예약한 만큼 쓴 것으로 센다(보안 감사 14차 중간 4)
+      const known = handoffOf(p, id)?.h.usage?.cost_usd
+      const cost = typeof known === 'number' ? known : reserve
       t.costUsd = (t.costUsd ?? 0) + cost
       if (cost > reserve) reserved += cost - reserve
       const after = readTask(p, id)?.status
@@ -280,7 +282,7 @@ function pickNext(
       skipped.add(id)
       continue
     }
-    const cost = Math.max(task.budget_usd ?? 1, MIN_RESERVE)
+    const cost = Math.max(task.budget_usd ?? 1, MIN_RESERVE) + rewriteAllowance(task)
     if (reserved + cost > budget) {
       note(
         id,

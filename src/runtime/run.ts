@@ -15,7 +15,7 @@ import {
   writeSync,
 } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { formatVerifyLog } from '../core/audit'
+import { findLeaks, formatVerifyLog } from '../core/audit'
 import { parseFrontmatter, serializeFrontmatter } from '../core/frontmatter'
 import { formatIssue, type Issue } from '../core/issues'
 import { hasErrors, lintHandoff } from '../core/lint-handoff'
@@ -264,61 +264,113 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
   const mainHandoff = paths.handoff(p, task.id)
   const prevRev = readRev(mainHandoff)
   saveVerifyLog(p, task.id, prevRev + 1, (await headCommit(wt)) ?? '', verify.stdout, verify.stderr)
-  const finalize = (text: string | undefined, res: WorkerResult) =>
-    finalizeHandoff({
-      workerText: text,
-      task,
-      adapter: adapterName,
-      result: res,
-      verifyExit: verify.exitCode,
-      blocked: bad.length > 0,
-      notes,
-      rev: prevRev + 1,
-      changed: allowed,
-      sandboxed: verify.sandboxed,
-    })
+  // verify 시각은 한 번만 찍는다. 다시 쓸 때마다 찍으면 verify 시각이 아니라 다시 쓴 시각이 된다(보안 감사 14차 낮음 3)
+  const verifiedAt = new Date().toISOString()
+  const allSecrets = WORKER_SECRET_VARS.map((k) => process.env[k] ?? '')
+  const rewriteNotes: string[] = []
+  // 워커 원문이 아니라 실제로 기록할 글(YAML을 다시 직렬화한 글)을 검사한다. 이스케이프로 숨긴 키가 직렬화로 살아난다
+  // (보안 감사 14차 중간 2, 실험 확인). 걸리면 워커 HANDOFF를 버리고 빈 보고서로 실패 처리한다
+  const finalize = (text: string | undefined, res: WorkerResult) => {
+    const make = (t: string | undefined) =>
+      finalizeHandoff({
+        workerText: t,
+        task,
+        adapter: adapterName,
+        result: res,
+        verifyExit: verify.exitCode,
+        blocked: bad.length > 0,
+        notes,
+        rev: prevRev + 1,
+        changed: allowed,
+        sandboxed: verify.sandboxed,
+        verifiedAt,
+      })
+    const out = make(text)
+    const leaks = findLeaks(out.text, allSecrets)
+    if (leaks.length === 0) return out
+    notes.push(
+      `워커 HANDOFF에 로그인 값이나 키 모양(${[...new Set(leaks)].join(', ')})이 있어 버렸어요.`,
+    )
+    return make(undefined)
+  }
   let res = result
   let fm = finalize(workerText, res)
   writeNoFollow(wt, handoffRel, fm.text)
   await commitPaths(wt, [handoffRel], `${task.id}: HANDOFF 확정`)
   const knownTerms = loadKnownTerms(p.root)
   let hl = lintHandoff(fm.text, handoffRel, { knownTerms })
-  // 형식만 틀린 HANDOFF는 워커에게 HANDOFF만 다시 쓰게 한다(최대 2회, TD-016). 코드는 그대로라 verify는 다시 돌리지 않는다.
-  // 워커가 실패했거나 허용 밖 변경으로 막힌 실행은 하지 않는다
+  // 형식만 틀린 HANDOFF는 워커에게 HANDOFF만 다시 쓰게 한다(TD-016). 코드는 그대로라 verify는 다시 돌리지 않는다.
+  // 워커가 실패했거나, 허용 밖 변경으로 막혔거나, verify가 실패한 실행은 하지 않는다(보안 감사 14차 낮음 1).
+  // codex는 비용 상한이 없어 한 번만(TD-015, 보안 감사 14차 중간 4)
+  const maxRewrites = adapterName === 'codex' ? 1 : MAX_REWRITES
+  let rewrites = 0
+  let rewriteBlocked = false
   for (
     let n = 1;
-    n <= MAX_REWRITES &&
+    n <= maxRewrites &&
     hasErrors(hl.issues) &&
     bad.length === 0 &&
+    verify.exitCode === 0 &&
     res.exitCode === 0 &&
     !res.timedOut;
     n++
   ) {
     const issues = hl.issues.filter((i) => i.severity !== 'warning')
     log(
-      `${task.id}: HANDOFF 형식 오류 ${issues.length}건, 워커에게 다시 쓰게 해요(${n}/${MAX_REWRITES})`,
+      `${task.id}: HANDOFF 형식 오류 ${issues.length}건, 워커에게 다시 쓰게 해요(${n}/${maxRewrites})`,
     )
-    const again = await rewriteHandoff(
-      p,
-      task,
-      adapter,
-      adapterName,
-      req,
-      wt,
-      handoffRel,
-      issues,
-      n,
-    )
+    const committed = await headCommit(wt)
+    if (!committed) break
+    let again: RewriteOutcome
+    try {
+      again = await rewriteHandoff(
+        p,
+        task,
+        adapter,
+        adapterName,
+        req,
+        wt,
+        handoffRel,
+        issues,
+        n,
+        committed,
+      )
+    } catch (e) {
+      // 예외로 끝나면 작업이 running으로 남고 기록이 어긋난다. 실패로 끝맺는다(보안 감사 14차 중간 3)
+      const ok = await resetTo(wt, committed)
+      const note = `다시 쓰기 중 오류로 멈췄어요: ${(e as Error).message}`
+      notes.push(note)
+      rewriteNotes.push(note)
+      if (!ok) return finishTampered(p, task, adapterName, res, notes, taskFile, log)
+      rewriteBlocked = true
+      break
+    }
+    rewrites = n
+    // 막히거나 실패한 다시 쓰기의 비용도 더한다(보안 감사 14차 중간 4)
+    if (again.result)
+      res = {
+        ...res,
+        usage: addUsage(res.usage ?? emptyUsage(), again.result.usage ?? emptyUsage()),
+      }
     notes.push(...again.notes)
+    rewriteNotes.push(...again.notes)
     if (again.kind !== 'ok') {
       if (again.kind === 'tampered')
         return finishTampered(p, task, adapterName, res, notes, taskFile, log)
+      rewriteBlocked = true
       break
     }
-    res = { ...res, usage: addUsage(res.usage ?? emptyUsage(), again.result.usage ?? emptyUsage()) }
     fm = finalize(again.text, res)
     writeNoFollow(wt, handoffRel, fm.text)
     await commitPaths(wt, [handoffRel], `${task.id}: HANDOFF 다시 쓰기 ${n}`)
+    hl = lintHandoff(fm.text, handoffRel, { knownTerms })
+  }
+  // 다시 쓰기가 끝나 사용량이 바뀌었으면 마지막 HANDOFF에 반영한다(막힌 다시 쓰기의 비용 포함)
+  if (rewriteBlocked) {
+    // 작업 트리는 다시 쓰기 직전 커밋(리드가 확정한 HANDOFF)으로 되돌아가 있다
+    fm = finalize(readRegularFile(wt, handoffRel), res)
+    writeNoFollow(wt, handoffRel, fm.text)
+    await commitPaths(wt, [handoffRel], `${task.id}: HANDOFF 사용량 반영`)
     hl = lintHandoff(fm.text, handoffRel, { knownTerms })
   }
 
@@ -335,7 +387,9 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     )
     updateFrontmatter(mainHandoff, {
       status: 'failed',
-      lead_note: 'HANDOFF lint 실패. 워커가 형식을 지키지 않았습니다.',
+      lead_note: ['HANDOFF lint 실패. 워커가 형식을 지키지 않았습니다.', ...rewriteNotes].join(
+        ' / ',
+      ),
     })
   }
   if (warnings.length > 0)
@@ -362,23 +416,32 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     verify_exit: verify.exitCode,
     blocked: bad,
     usage: res.usage,
+    rewrites,
+    rewrite_blocked: rewriteBlocked,
   })
   log(`${task.id}: ${status}`)
   return { status, messages, handoffFile: mainHandoff }
 }
 
 const MAX_REWRITES = 2
+
+/** 한 번의 run에서 다시 쓰기가 더 쓸 수 있는 최대 비용. 무인 루프가 예산을 예약할 때 더한다(보안 감사 14차 중간 4) */
+export function rewriteAllowance(task: Pick<TaskFrontmatter, 'agent' | 'budget_usd'>): number {
+  const times = task.agent === 'codex' ? 1 : MAX_REWRITES
+  return times * Math.min(task.budget_usd ?? 1, REWRITE_BUDGET_USD)
+}
 // 다시 쓰기는 형식만 고치는 일이라 상한을 작게 둔다(codex는 비용 상한이 없어 시간 상한만 걸린다, TD-015)
 const REWRITE_BUDGET_USD = 0.25
 const REWRITE_TIMEOUT_MS = 5 * 60_000
 
 type RewriteOutcome =
   | { kind: 'ok'; text: string | undefined; result: WorkerResult; notes: string[] }
-  | { kind: 'stop' | 'tampered'; notes: string[] }
+  | { kind: 'stop' | 'tampered'; result?: WorkerResult; notes: string[] }
 
 /**
- * 워커에게 HANDOFF만 다시 쓰게 한다(TD-016). HANDOFF 밖 변경, 링크, 로그인 값이 생기면 작업 트리를 다시 쓰기 직전 커밋으로
- * 통째로 되돌리고 멈춘다. git 설정이 바뀌면 git을 더 부르지 않는다(tampered)
+ * 워커에게 HANDOFF만 다시 쓰게 한다(TD-016). 끝나면 HANDOFF 글만 읽고 작업 트리를 다시 쓰기 직전 커밋으로 통째로 되돌린다.
+ * 무시 파일과 빈 폴더까지 남지 않게 하기 위해서다(보안 감사 14차 중간 1). HANDOFF 밖 변경, 링크, 로그인 값이 생기면 멈춘다.
+ * git 설정이 바뀌거나 되돌리기가 실패하면 git을 더 부르지 않는다(tampered)
  */
 async function rewriteHandoff(
   p: Project,
@@ -390,10 +453,8 @@ async function rewriteHandoff(
   handoffRel: string,
   issues: Issue[],
   n: number,
+  committed: string,
 ): Promise<RewriteOutcome> {
-  const committed = await headCommit(wt)
-  if (!committed)
-    return { kind: 'stop', notes: ['다시 쓰기 전에 작업 브랜치 커밋을 읽지 못했어요.'] }
   const snap = await gitSnapshot(p.root, wt)
   const r = await adapter.run({
     ...req,
@@ -407,17 +468,21 @@ async function rewriteHandoff(
   if (tampered.length > 0)
     return {
       kind: 'tampered',
+      result: r,
       notes: [
         `다시 쓰기 중 git 설정이나 worktree 연결이 바뀌어 되돌렸어요: ${tampered.join(', ')}`,
       ],
     }
-  if (r.exitCode !== 0 || r.timedOut) {
-    await resetTo(wt, committed)
-    return {
-      kind: 'stop',
-      notes: [`다시 쓰기 워커가 exit ${r.exitCode}${r.timedOut ? '(시간 초과)' : ''}로 끝났어요.`],
-    }
-  }
+  const back = async (note: string): Promise<RewriteOutcome> =>
+    (await resetTo(wt, committed))
+      ? { kind: 'stop', result: r, notes: [note] }
+      : {
+          kind: 'tampered',
+          result: r,
+          notes: [note, '작업 트리를 다시 쓰기 전으로 되돌리지 못했어요.'],
+        }
+  if (r.exitCode !== 0 || r.timedOut)
+    return back(`다시 쓰기 워커가 exit ${r.exitCode}${r.timedOut ? '(시간 초과)' : ''}로 끝났어요.`)
   const changed = await changedFiles(wt, committed)
   const path = join(wt, handoffRel)
   const secrets = WORKER_SECRET_VARS.map((k) => process.env[k] ?? '').filter((v) => v.length >= 16)
@@ -425,21 +490,14 @@ async function rewriteHandoff(
     changed.includes(handoffRel) &&
     (isSymlink(path) || isHardLinked(path) || containsAny(path, secrets))
   const outside = changed.filter((f) => f !== handoffRel)
-  if (outside.length > 0 || handoffBad) {
-    await resetTo(wt, committed)
-    return {
-      kind: 'stop',
-      notes: [
-        `다시 쓰기에서 HANDOFF 밖 파일을 바꾸거나 링크, 로그인 값을 넣어 모두 되돌렸어요: ${[...outside, ...(handoffBad ? [handoffRel] : [])].join(', ')}`,
-      ],
-    }
-  }
-  return {
-    kind: 'ok',
-    text: readRegularFile(wt, handoffRel),
-    result: r,
-    notes: [`HANDOFF 다시 쓰기 ${n}회`],
-  }
+  if (outside.length > 0 || handoffBad)
+    return back(
+      `다시 쓰기에서 HANDOFF 밖 파일을 바꾸거나 링크, 로그인 값을 넣어 모두 되돌렸어요: ${[...outside, ...(handoffBad ? [handoffRel] : [])].join(', ')}`,
+    )
+  const text = readRegularFile(wt, handoffRel)
+  if (!(await resetTo(wt, committed)))
+    return { kind: 'tampered', result: r, notes: ['다시 쓰기 뒤 작업 트리를 되돌리지 못했어요.'] }
+  return { kind: 'ok', text, result: r, notes: [`HANDOFF 다시 쓰기 ${n}회`] }
 }
 
 function preflight(task: TaskFrontmatter, opts: RunOptions): string | undefined {
@@ -475,6 +533,8 @@ type FinalizeInput = {
   changed: string[]
   /** verify를 샌드박스 안에서 돌렸는가(macOS 밖이면 false) */
   sandboxed: boolean
+  /** verify를 마친 시각. 다시 쓰기로 여러 번 확정해도 같은 값을 쓴다 */
+  verifiedAt?: string
 }
 
 const UNSANDBOXED =
@@ -518,7 +578,11 @@ function finalizeHandoff(i: FinalizeInput): {
     model: i.result.model ?? i.task.model ?? null,
     effort: i.task.effort ?? null,
     usage: i.result.usage ?? emptyUsage(),
-    verified: { command: i.task.verify, exit_code: i.verifyExit, at: new Date().toISOString() },
+    verified: {
+      command: i.task.verify,
+      exit_code: i.verifyExit,
+      at: i.verifiedAt ?? new Date().toISOString(),
+    },
     changed_files: i.changed,
   }
   const out = { ...data, task: i.task.id, status, ...lead } as Record<string, unknown>
@@ -640,7 +704,13 @@ function finishTampered(
   mkdirSync(dirname(mainHandoff), { recursive: true })
   writeFileSync(mainHandoff, fm.text)
   updateFrontmatter(taskFile, { status: 'failed' })
-  appendEvent(p, { type: 'run.end', task: task.id, status: 'failed', tampered: true })
+  appendEvent(p, {
+    type: 'run.end',
+    task: task.id,
+    status: 'failed',
+    tampered: true,
+    usage: result.usage,
+  })
   log(`${task.id}: failed (git 설정 변경)`)
   return { status: 'failed', messages: notes, handoffFile: mainHandoff }
 }

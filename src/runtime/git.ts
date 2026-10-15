@@ -165,10 +165,17 @@ export async function discardUncommitted(wt: string): Promise<void> {
   await git(['clean', '-ffdxq'], wt)
 }
 
-/** 작업 트리를 커밋 하나로 통째로 되돌린다(추적 파일, 새 파일, 무시 파일, 중첩 저장소까지) */
-export async function resetTo(wt: string, commit: string): Promise<void> {
-  await git(['reset', '-q', '--hard', commit], wt)
-  await git(['clean', '-ffdxq'], wt)
+/**
+ * 작업 트리를 커밋 하나로 통째로 되돌린다(추적 파일, 새 파일, 무시 파일, 중첩 저장소까지). 예외를 던지지 않고,
+ * 되돌린 뒤 작업 트리가 그 커밋과 같은지 다시 보아 결과를 돌려준다(보안 감사 14차 중간 3)
+ */
+export async function resetTo(wt: string, commit: string): Promise<boolean> {
+  const reset = await gitProc(['reset', '-q', '--hard', commit], wt)
+  const clean = await gitProc(['clean', '-ffdxq'], wt)
+  if (reset.exitCode !== 0 || clean.exitCode !== 0) return false
+  const left = await gitProc(['status', '--porcelain', '--ignored', '-uall', '-z'], wt)
+  const head = await gitProc(['rev-parse', 'HEAD'], wt)
+  return left.exitCode === 0 && left.stdout === '' && head.stdout.trim() === commit
 }
 
 /** 지정한 경로만 커밋한다. */
@@ -196,7 +203,8 @@ export async function gitSnapshot(root: string, wt: string): Promise<GitSnapshot
   files.set(join(root, '.git', 'config'), read(join(root, '.git', 'config')))
   const meta = /^gitdir:\s*(.+)$/m.exec(link ?? '')?.[1]?.trim()
   if (meta)
-    for (const f of ['gitdir', 'commondir', 'config.worktree'])
+    // HEAD도 지킨다. 바뀌면 리드의 reset과 commit이 다른 브랜치(main 등)에 작용한다(보안 감사 14차 낮음 5)
+    for (const f of ['gitdir', 'commondir', 'config.worktree', 'HEAD'])
       files.set(join(meta, f), read(join(meta, f)))
   return { files, configList: await configList(wt) }
 }

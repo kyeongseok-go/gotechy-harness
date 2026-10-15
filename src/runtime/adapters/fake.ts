@@ -105,19 +105,24 @@ export const fakeAdapter: WorkerAdapter = {
         env: process.env,
       })
     }
+    // 사용량 재생: usage.json이 있으면 그 값을 돌려준다(다시 쓰기 비용 합 시험, 보안 감사 14차 중간 4)
+    const usageFile = join(dir, 'usage.json')
+    const usage = existsSync(usageFile)
+      ? (JSON.parse(readFileSync(usageFile, 'utf8')) as WorkerResult['usage'])
+      : {
+          input_tokens: 0,
+          cache_read_tokens: 0,
+          cache_write_tokens: 0,
+          output_tokens: 0,
+          cost_usd: 0,
+        }
     return {
       exitCode: 0,
       timedOut: false,
       rawOutput: '',
       stderr: '',
-      usage: {
-        input_tokens: 0,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        output_tokens: 0,
-        cost_usd: 0,
-      },
       model: 'fake',
+      ...(usage ? { usage } : {}),
     }
   },
 }

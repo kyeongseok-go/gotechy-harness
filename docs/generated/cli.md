@@ -44,7 +44,8 @@ Usage: gotechy init [options]
 현재 폴더에 계약 골격(orchestration/), AGENTS.md 라우터, 팩을 깐다 (팩은 apm, contract.md 10.7절)
 
 Options:
-  --packs <list>  설치할 팩 (쉼표 구분) (default: "owner")
+  --packs <list>  설치할 팩 (쉼표 구분, 모두는 all. 목록은 contract.md 10.8절) (default:
+                  "owner")
   -h, --help      display help for command
 ```
 
@@ -65,6 +66,18 @@ Options:
   --effort <level>    low | medium | high | xhigh | max
   --packs <list>      팩 (쉼표 구분) (default: "owner")
   -h, --help          display help for command
+```
+
+## gotechy task restart
+
+```text
+Usage: gotechy task restart [options] <taskId>
+
+멈춘 작업(병합 충돌, verify 실패 등)을 지금 메인 위에서 처음부터 다시 하게 한다. 옛 브랜치는 try<N>으로 남긴다
+(contract.md 9.6절)
+
+Options:
+  -h, --help  display help for command
 ```
 
 ## gotechy task lint

@@ -88,7 +88,13 @@ export async function runSandboxedShell(
   const env = verifyEnv(paths.tmp)
   if (!available)
     return {
-      ...(await runProc(['sh', '-c', command], { cwd, timeoutMs, env, replaceEnv: true })),
+      ...(await runProc(['sh', '-c', command], {
+        cwd,
+        timeoutMs,
+        env,
+        replaceEnv: true,
+        group: true,
+      })),
       sandboxed: false,
     }
   const r = await runProc([SANDBOX_EXEC, '-p', sandboxProfile(paths), 'sh', '-c', command], {
@@ -96,6 +102,7 @@ export async function runSandboxedShell(
     timeoutMs,
     env,
     replaceEnv: true,
+    group: true,
   })
   return { ...r, sandboxed: true }
 }

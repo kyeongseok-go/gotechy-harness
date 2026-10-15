@@ -35,6 +35,7 @@ import {
   linkedPaths,
   PROJECT_DIRS,
 } from './runtime/project'
+import { restartTask } from './runtime/restart'
 import { runTask } from './runtime/run'
 import { startServe } from './runtime/serve'
 import { applySetup, formatPlan, planSetup, restoreSetup } from './runtime/setup'
@@ -191,7 +192,7 @@ program
   .description(
     '현재 폴더에 계약 골격(orchestration/), AGENTS.md 라우터, 팩을 깐다 (팩은 apm, contract.md 10.7절)',
   )
-  .option('--packs <list>', '설치할 팩 (쉼표 구분)', 'owner')
+  .option('--packs <list>', '설치할 팩 (쉼표 구분, 모두는 all. 목록은 contract.md 10.8절)', 'owner')
   .action(async (o: { packs: string }) => {
     const root = process.cwd()
     let r: ReturnType<typeof initProject>
@@ -214,6 +215,7 @@ program
     const p = await installPacks(root, packs, { ...train.packs, lib: libraryRoot() }, process.env)
     for (const c of p.created) console.log(`created: ${c}`)
     for (const s of p.skipped) console.log(`kept:    ${s}`)
+    for (const w of p.warnings) console.warn(`warning: ${w}`)
     for (const e of p.errors) console.error(`error:   ${e}`)
     if (p.errors.length > 0) process.exit(1)
   })
@@ -261,6 +263,18 @@ task
       process.exit(code)
     },
   )
+task
+  .command('restart')
+  .description(
+    '멈춘 작업(병합 충돌, verify 실패 등)을 지금 메인 위에서 처음부터 다시 하게 한다. 옛 브랜치는 try<N>으로 남긴다 (contract.md 9.6절)',
+  )
+  .argument('<taskId>')
+  .action(async (taskId: string) => {
+    const out = await restartTask(requireProject(), taskId)
+    for (const m of out.messages) (out.status === 'restarted' ? console.log : console.error)(m)
+    process.exit(out.status === 'restarted' ? 0 : 1)
+  })
+
 task
   .command('lint')
   .argument('<files...>')

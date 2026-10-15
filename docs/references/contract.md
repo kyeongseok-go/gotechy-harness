@@ -61,6 +61,7 @@ task:  draft → ready → running → done | failed | needs-decision
        done → accepted (gotechy accept가 메인에 병합한 뒤, M2c)
        needs-decision → ready (결정 해소 후)
        failed → ready (리드가 원인 수정 후 재시도)
+       needs-decision | failed | done | running(멈춘 것) → ready (gotechy task restart, 9.6절)
 gate:  pending → resolved (거절도 resolution 값의 하나다)
 ```
 
@@ -264,6 +265,7 @@ frontmatter:
 - 작업에 필요한 게이트(6.1절)가 모두 `ok`여야 시작한다. `approval-before`는 `진행`이어야 한다. 빠진 게이트는 다시 열고 멈춘다.
 - 선행 작업(`deps`)은 `accepted`여야 하고, 선행 작업에 필요한 게이트도 모두 `ok`이며 승인 계열은 통과 선택(`진행`, `승인`)이어야 한다.
 - 위 이유로 멈추면 exit 1이고, 어떤 게이트를 어떻게 하면 되는지 알려 준다.
+- 워커, 감사관, 리드 verify는 새 프로세스 그룹으로 띄우고, 끝나면 그룹 전체를 끝낸다(TD-029 일부, 2026-10-16). 그래서 이들이 남긴 백그라운드 프로세스가 리드의 검사 뒤에 worktree나 git 설정을 바꾸지 못하고, 출력을 쥔 채 남은 자식 때문에 run이 기다리지도 않는다. `setsid`로 그룹을 벗어난 프로세스는 막지 못한다.
 
 ## 8. 인박스와 읽기 전용 화면 (M2b)
 
@@ -360,13 +362,23 @@ frontmatter:
 ### 9.4 `gotechy accept T-###`
 
 - 조건: 작업 `done`, HANDOFF `verified.exit_code` 0, 필요한 게이트(6.1절)가 모두 `ok`이고 승인 계열은 통과 선택, 읽을 수 없는 게이트 파일 없음. 하나라도 어기면 exit 1과 사유.
+- 비밀 값 검사(TD-012, 2026-10-16): 병합하기 전에 `gitleaks git --log-opts "<메인>..gotechy/T-###"`로 워커 커밋을 검사한다. 설정은 라이브러리의 `templates/project/gitleaks.toml`만 쓰고(`--config`), 무시 목록 자리에는 빈 폴더를 주고(`--gitleaks-ignore-path`), `gitleaks:allow` 주석을 따르지 않는다(`--ignore-gitleaks-allow`). 저장소의 `.gitleaks.toml` 허용 목록이 기본 실행을 끄는 것을 실험으로 확인했고, 워커가 그 파일을 심을 수 있기 때문이다. 찾으면 병합하지 않고 작업을 `needs-decision`으로 바꾸고, `lead_note`에는 값 대신 `파일:줄 (규칙)`과 다시 하는 명령만 남긴다(exit 1, 상태 `secret-found`). gitleaks가 없거나 오류로 끝나면 병합하지 않고 작업 상태도 그대로 둔다(exit 1, fail-closed). gitleaks 경로는 `GOTECHY_GITLEAKS`가 있으면 그것, 없으면 PATH에서 찾는다.
 - 절차: 메인의 현재 커밋에서 임시 worktree를 만들고, 작업 브랜치 `gotechy/T-###`를 `--no-ff --no-commit`으로 병합한다. 병합 결과에서 `orchestration/` 아래 변경은 메인 커밋의 상태로 되돌린다. 작업 명세, HANDOFF, 게이트는 리드의 기록이라 메인 체크아웃에만 두고, 병합하는 것은 워커가 바꾼 파일뿐이다. 커밋한 뒤 그 자리에서 작업의 `verify`를 다시 실행한다.
-- 충돌이나 verify 실패면 임시 worktree를 지우고 작업을 `needs-decision`으로 바꾸고 HANDOFF에 `lead_note`로 사유를 남긴 뒤 exit 1.
+- 충돌이나 verify 실패면 임시 worktree를 지우고 작업을 `needs-decision`으로 바꾸고 HANDOFF에 `lead_note`로 사유와 다시 하는 명령(`gotechy task restart T-###`, 9.6절)을 남긴 뒤 exit 1.
 - 성공하면 메인 체크아웃을 그 병합 커밋으로 fast-forward한다. 메인의 커밋하지 않은 변경과 겹쳐 git이 거부하면 exit 1(메인은 그대로). 성공하면 작업을 `accepted`로 바꾸고 작업 worktree와 임시 worktree를 지운다. 작업 브랜치는 기록으로 남긴다.
 
 ### 9.5 프로젝트 용어 은행 누적
 
 - `accept`가 성공하면 HANDOFF "새 용어" 절의 `- 용어: 풀이` 중 은행(라이브러리와 프로젝트)에 없는 것을 `orchestration/terms.jsonl`에 `{term, easy, src: "T-###"}`로 더한다. 오너가 승인한 작업의 풀이만 쌓인다.
+
+### 9.6 `gotechy task restart T-###` (TD-006, 2026-10-16)
+
+accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메인 위에서 처음부터 다시 하게 한다. 같은 worktree에서 이어 가면 옛 기준 커밋 위라 같은 충돌이 다시 난다.
+
+- 조건: 작업이 `needs-decision`, `failed`, `done`(병합 전), 멈춘 `running` 중 하나. `accepted`, `draft`, `ready`면 exit 1. run과 같은 작업별 잠금을 잡아, 도는 run이 있으면 exit 1.
+- 절차: 작업 worktree가 git에 등록된 worktree면 치운다(같은 자리에 등록되지 않은 폴더가 있으면 손대지 않고 exit 1). 작업 브랜치 `gotechy/T-###`는 지우지 않고 `gotechy/T-###-try<N>`(N은 비어 있는 가장 작은 수)으로 이름만 바꾼다. 기준 커밋 기록(`.base`)을 지우고 작업을 `ready`로 바꾼다. 이벤트 `task.restart`를 남긴다.
+- 메인의 HANDOFF, 게이트, 결정 장부는 그대로다. 다음 `run`은 지금 메인에서 새 worktree를 만들고, 그 HANDOFF 판본의 오너 결정을 워커 지시문에 넣으며(6.6절), 새 HANDOFF는 판본을 하나 올린다.
+- 종료코드: 다시 하게 했으면 0, 거부하면 1.
 
 ## 10. 설치 계층 (M3)
 
@@ -430,7 +442,7 @@ frontmatter:
 ### 10.7 팩 설치 `gotechy init --packs <팩들>`
 
 - `init`은 골격(1절)을 만든 뒤 팩을 apm으로 설치한다. 복사로 깔지 않는다. 설치 결과의 변조와 드리프트를 `apm audit --ci`로 잡기 위해서다.
-- 팩 하나는 스킬 여러 개다(`owner` = `owner-protocol`). 스킬마다 `apm.yml`의 `dependencies.apm`에 `<packs.source>/skills/<스킬>#<packs.ref>` 한 줄을 넣고, `targets: [claude, agent-skills]`로 `.claude/skills/`와 `.agents/skills/` 두 곳에 깐다. `apm.yml`이 없으면 만들고(이름은 폴더 이름), 있으면 빠진 줄만 더한다. 같은 스킬이 다른 ref로 이미 있으면 바꾸지 않고 exit 1이다(어느 판본을 쓸지는 오너가 정한다).
+- 팩 하나는 스킬 여러 개다. 팩 목록은 10.8절이고 `--packs all`은 모든 팩이다. 스킬마다 `apm.yml`의 `dependencies.apm`에 `<packs.source>/skills/<스킬>#<packs.ref>` 한 줄을 넣고, `targets: [claude, agent-skills]`로 `.claude/skills/`와 `.agents/skills/` 두 곳에 깐다. `apm.yml`이 없으면 만들고(이름은 폴더 이름), 있으면 빠진 줄만 더한다. 같은 스킬이 다른 ref로 이미 있으면 바꾸지 않고 exit 1이다(어느 판본을 쓸지는 오너가 정한다).
 - `apm.yml`에는 init이 다루는 키(`name`, `version`, `description`, `targets`, `dependencies.apm`)와 train의 출처와 커밋으로 만든 팩 줄만 있어야 한다. 다른 의존성, `dependencies`의 다른 종류(`mcp` 등), 다른 키(`scripts`, `registries`, `devDependencies` 등)가 있으면 apm을 부르지 않고 exit 1이다. 남이 만든 저장소의 `apm.yml`을 init이 통째로 설치해 리드가 읽을 지시문이나 MCP 설정이 들어오는 것을 막는다(보안 감사 7차 중간 1).
 - `apm.yml`, `apm.lock.yaml`, `apm_modules`, `.claude`, `.claude/skills`, `.agents`, `.agents/skills`, 스킬 폴더 중 하나라도 심볼릭 링크면 apm을 부르지 않고 exit 1이다(보안 감사 7차 중간 4).
 - apm에는 환경 변수 허용 목록(PATH, HOME, TMPDIR, 사용자 이름, 셸, 언어, 터미널, 프록시, 인증서, XDG 폴더)만 넘긴다. 팩 출처는 공개 저장소라 토큰이 필요 없다(보안 감사 7차 낮음 5).
@@ -441,6 +453,35 @@ frontmatter:
 - 락 파일에는 로컬 경로가 들어가지 않는다(git 의존성의 `repo_url`, `resolved_commit`, 파일별 sha256만). 그래서 `apm.yml`, `apm.lock.yaml`, 깔린 스킬 파일을 커밋해도 된다. apm이 `.gitignore`에 `apm_modules/`를 더한다.
 - 다시 실행해도 `apm.yml`과 `apm.lock.yaml`은 바뀌지 않는다.
 - apm은 사용자 홈에 설정(`~/.apm/`)과 캐시를 쓰고, 시작할 때 새 버전이 있는지 확인한다(스스로 업데이트하지는 않는다).
+
+### 10.8 팩과 스킬의 구성 (2026-10-16)
+
+팩은 일의 단계별 전문가 묶음이고, 스킬 원본은 라이브러리의 `skills/<스킬>/`이다. 목록의 원천은 `src/core/packs.ts`다.
+
+| 팩 | 스킬 | 단계 |
+|---|---|---|
+| `owner` | `owner-protocol` | 오너 보고(HANDOFF) |
+| `discover` | `gotechy-discover` | 발견 |
+| `define` | `gotechy-spec`, `gotechy-plan` | 정의와 계획 |
+| `design` | `gotechy-design` | 디자인 |
+| `build` | `gotechy-build` | 구현(스택별 참고 파일 포함) |
+| `verify` | `gotechy-quality`, `gotechy-security` | 검증 |
+| `ai` | `gotechy-ai-eval` | AI 기능 |
+| `comply-kr` | `gotechy-comply-kr` | 한국 법 요구사항 |
+| `ship` | `gotechy-ship` | 출시 |
+| `operate` | `gotechy-operate` | 운영 |
+| `grow` | `gotechy-launch`, `gotekie-blog-writer` | 알리기 |
+| `learn` | `gotechy-retro` | 회고와 학습 |
+
+- 스킬 하나는 다음으로 이뤄진다. 앞의 둘(`skills/` 아래)만 프로젝트에 깔리고, 나머지 둘은 라이브러리에만 있다.
+  - `skills/<스킬>/SKILL.md`: `name`(폴더 이름과 같음), `description`(400자 이하), 본문 150줄 이하. 자세한 것은 `references/`로 빼고 필요할 때만 연다.
+  - `skills/<스킬>/references/`: `bar.md`(그 분야 최고 전문가의 기준: 원천 표와 URL, 확인일, `[기계]`와 `[사람]` 판정이 붙은 측정형 체크리스트, A~D 등급, 흔한 실패), `lens.md`(오너에게 설명할 때의 그림, 비유, 용어, 면접 꼬리 질문, 40줄 이하), 그 밖의 절차와 템플릿.
+  - `radar/sources/<스킬>.yaml`: 최신화가 볼 출처(`id`, `title`, `url`, `trust`, `watch`, `feed`, `cadence`, `covers`). `trust`는 official, standard, regulator, paper, community. `watch`는 github-releases, rss, page.
+  - `evals/<스킬>/<케이스>/`: Claude Code `claude plugin eval` 형식(`prompt.md`와 `graders/*.md`). 스킬마다 능력(capability) 2개 이상, 회귀(regression) 1개 이상. 채점기 키는 공식 문서의 표만 쓴다.
+- 스킬은 설치된 프로젝트에서 스스로 완결된다. 하네스 저장소의 문서(`docs/` 아래)를 가리키지 않고, 스킬이 프로젝트에 만드는 경로(`docs/product-specs/`, `docs/exec-plans/`, `docs/decisions/`, `docs/quality/`, `docs/security/`, `docs/compliance/`, `docs/evals/`, `docs/operations/`, `docs/launch/`, `docs/retros/`, `docs/discovery/`, `docs/content/`)만 쓴다. 하네스의 서브에이전트 정의(`.claude/agents/`)도 깔리지 않으므로 가리키지 않고, 있으면 쓰는 선택으로만 적는다. 원문 링크가 필요하면 GitHub 주소를 쓴다.
+- 스킬 파일(본문, `references/`, 평가 케이스)은 문체 규칙(7절) 경고가 0건이다. `tests/core/packs-structure.test.ts`가 위 규칙을 모두 검사한다.
+- 모든 팩을 깔아도 스킬은 15개 이하다(doctor의 세션당 상한).
+- AGENTS.md 팩 색인: `init --packs`가 설치에 성공하면 `apm.yml`에 train 출처와 커밋으로 적힌 스킬(전에 깐 것 포함)로 AGENTS.md의 `<!-- gotechy:packs:start -->`와 `<!-- gotechy:packs:end -->` 사이를 표로 다시 쓴다. 표시가 하나씩 정확히 있을 때만 쓰고, 없으면(오너가 쓴 라우터) 건드리지 않고 경고한다. 다시 실행해도 같은 표다.
 
 ## 11. 무인 루프 `gotechy loop [--budget <달러>] [--max-attempts <N>] [--reset]` (1b N3)
 

@@ -56,6 +56,7 @@ export const claudeAdapter: WorkerAdapter = {
       timeoutMs: req.timeoutMs,
       env,
       replaceEnv: true,
+      group: true,
     })
     const usage = parseClaudeUsage(r.stdout)
     let model: string | undefined

@@ -12,11 +12,9 @@
 | TD-003 | 2026-09-18 | 문서 다이어트 (2,700줄 → 900줄 목표): `docs/references/research/`·`gotekie-blog-writer`를 원본 저장소/사용자 레벨로 분리, DESIGN+FRONTEND·RELIABILITY+DEPLOYMENT 병합, AI_PLAYBOOK+evals를 옵션 팩화 | docs/ 전반 | 🟡 | core-beliefs #4("지도는 짧게")를 하네스 자신이 위반. 복사본마다 무관한 42% 동반 | TD-002와 함께 |
 | TD-004 | 2026-09-18 | 커밋·브랜치·PR 규약 부재 — career evidence의 1차 원천이 PR/커밋 링크인데 그걸 만드는 규약이 없음 | AGENTS.md 또는 신설 | 🟢 | evidence 품질이 그때그때 달라짐 | 첫 PR 작성 시 |
 | TD-005 | 2026-10-14 | 문체 규칙(contract.md 7절) 이전에 쓴 문서에 경고가 약 1,700건 남아 있다. `gotechy text lint` 기준 docs 1,321건(research 제외), .claude 316건, AGENTS.md 71건, ARCHITECTURE.md 8건. 대부분 가운데점, 화살표, em-dash. 이 표의 심각도 칸에 쓰는 색 원 이모지도 걸리는데, 바꾸려면 `/gotechy-ship` 스킬과 이 문서의 규칙을 함께 고쳐야 한다 | docs/, .claude/, AGENTS.md | 🟡 | 에이전트가 기존 문서를 본보기로 삼아 같은 문체를 다시 만든다. 2026-10-21부터 문체 규칙이 오류가 되면 이 문서들을 고칠 때마다 검사가 막는다 | 손대는 문서부터 고친다. 에이전트가 가장 자주 읽는 AGENTS.md와 .claude 규칙, 스킬을 10-20 전에 먼저. 분량은 TD-003(문서 다이어트)으로 먼저 줄인다 |
-| TD-006 | 2026-10-14 | `accept`가 충돌이나 병합 후 verify 실패로 멈춘 작업을 다시 진행할 길이 없다. 작업을 needs-decision으로 바꾸고 사유만 남기는데, 다시 실행하면 옛 기준 커밋의 worktree에서 이어 가서 같은 충돌이 난다 | src/runtime/accept.ts, src/runtime/run.ts | 🟡 | 오너가 손으로 브랜치를 고치거나 작업을 새로 만들어야 한다 | 1b: 작업 브랜치를 새 메인 위로 다시 만드는 `gotechy task rebase` 또는 재실행 옵션 |
 | TD-007 | 2026-10-14 | 허용 범위 검사(`changedFiles`)가 무시 파일(.gitignore 대상)의 변경을 보지 않는다 | src/runtime/git.ts | 🟡 | 워커가 node_modules 같은 무시 경로에 코드를 심을 수 있다. verify 샌드박스로 피해는 작업 폴더 안에 갇힌다 | 1b: 기준 시점의 무시 파일 목록과 비교 |
 | TD-009 | 2026-10-14 | verify 샌드박스가 macOS 전용이다. 다른 OS에서는 기록만 남긴다 | src/runtime/sandbox.ts | 🟡 | 리눅스 CI나 2단계 다른 아키텍처에서 격리 약속이 깨진다 | 2단계: bubblewrap 등 리눅스 샌드박스 |
 | TD-010 | 2026-10-14 | `src/runtime/run.ts` 줄 커버리지 90.7%, 2026-10-14 18:22에 92.1%(핵심 모듈 목록 밖. 타임아웃, 게이트 열기 실패, 샌드박스 없음 분기). 같은 밤에 `usage.ts`(100%)와 `pages.tsx`(95.0%)는 기준을 넘겼다 | src/runtime/run.ts | 🟢 | 드문 실패 경로가 깨져도 모른다 | 1a 완료 게이트 전 |
-| TD-012 | 2026-10-14 | `gotechy accept`가 병합하는 워커 변경에는 gitleaks 검사가 없다. 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 워커에 넘긴 로그인 값 검사(2026-10-14 감사 6차) 말고는 막히지 않는다 | src/runtime/accept.ts | 🟡 | 워커가 만든 토큰 같은 값이 메인에 들어갈 수 있다 | accept에서 병합 diff에 gitleaks를 돌리기 |
 | TD-015 | 2026-10-15 | Codex 워커와 codex 감사관(contract.md 13절, 시간 상한 5분)에는 비용 상한(`budget_usd`)이 걸리지 않는다. codex CLI에 옵션이 없고 시간 상한만 있다(보안 감사 7차 낮음 7) | src/runtime/adapters/codex.ts | 🟡 | 오염된 입력이 Codex를 시간 상한까지 돌게 하면 비용이 쌓인다 | 지금은 무인 루프가 Codex 작업을 돌리지 않는다(2026-10-15). 갚을 때: `--json` 이벤트의 사용량을 실시간으로 더해 상한에서 중단 |
 | TD-017 | 2026-10-15 | (하네스 개선, 1a 회고) 외부 경계(브라우저, OS, 외부 CLI)를 건드리는 기능을 실험 증거 없이 커밋했다(1b N2의 Origin: null). `.claude/rules/testing.md`의 예외 규칙을 "커밋 전에 실험 증거"로 못박는다 | .claude/rules/testing.md | 🟢 | 자동 테스트가 실제 환경과 다른 가정(fetch에 Origin 직접 넣기)으로 통과한다 | 2단계 시작 전 |
 | TD-018 | 2026-10-15 | (출시 후 측정) 스펙 성공 기준 "오너가 HANDOFF 한 건을 이해하고 결정하는 데 3분 이내, 이해 게이트 핵심어 적중률 60% 이상"을 공문서 프로젝트 실사용 10건으로 잰다 | docs/product-specs/harness-v2.md | 🟢 | 재지 않으면 1a의 목적(이해하고 결정)이 이뤄졌는지 모른다 | 1a 완료 2주 뒤(2026-10-29) 또는 결정 10건 |
@@ -28,7 +26,7 @@
 | TD-026 | 2026-10-15 | 가드 hook 감싸개가 시간 초과를 막지 못한다. 에이전트 쪽 hook 시간 상한에 걸리면 명령이 통과된다. 막는 판정도 exit 0과 JSON에만 기댄다(보안 감사 13차 낮음 3) | src/runtime/init.ts | 🟢 | 가드가 느려지면 오너 전용 명령이 통과될 수 있다 | 감싸개 안에 hook 상한보다 짧은 감시 타이머, 막는 판정에도 exit 2 |
 | TD-027 | 2026-10-15 | 죽은 run의 잠금을 두 프로세스가 동시에 회수하면 둘 다 잠금을 잡을 수 있다(보안 감사 13차 낮음 6) | src/runtime/run.ts | 🟢 | 같은 작업의 run이나 감사가 겹칠 수 있다(드묾) | 회수를 원자적으로(이름 바꾸기로 잠금 폴더 교체) |
 | TD-028 | 2026-10-15 | 감사관 프롬프트를 명령줄 인자로 넘기고(리눅스는 인자 하나 128KB 한도), 하위 프로세스 출력에 상한이 없다(보안 감사 13차 낮음 7, 11) | src/runtime/auditors.ts, src/runtime/proc.ts | 🟢 | 큰 입력으로 감사를 실패시키거나 메모리를 다 쓸 수 있다 | 프롬프트는 표준 입력으로(codex의 표준 입력 처리 실험 먼저), 출력은 끝 N MB만 보관 |
-| TD-029 | 2026-10-15 | 워커가 출력을 닫은 백그라운드 프로세스를 남기면, 리드의 검사 뒤에 worktree의 `.git` 파일이나 설정을 바꿔 리드의 git이 공격자 설정(필터)을 오너 권한으로 실행할 수 있다(추정). 하위 프로세스는 직계만 죽인다(보안 감사 14차 중간 5) | src/runtime/proc.ts, src/runtime/git.ts | 🟡 | 확인되면 높음. 첫 실행과 다시 쓰기 모두 해당 | 워커를 새 프로세스 그룹으로 띄우고 끝나면 그룹 전체를 종료, 리드의 git은 실행 전에 확정한 `--git-dir`과 `--work-tree`를 쓰기. 실험 먼저 |
+| TD-029 | 2026-10-15 | 워커가 출력을 닫은 백그라운드 프로세스를 남기면, 리드의 검사 뒤에 worktree의 `.git` 파일이나 설정을 바꿔 리드의 git이 공격자 설정(필터)을 오너 권한으로 실행할 수 있다(추정). 하위 프로세스는 직계만 죽인다(보안 감사 14차 중간 5) | src/runtime/proc.ts, src/runtime/git.ts | 🟡 | 확인되면 높음. 첫 실행과 다시 쓰기 모두 해당 | 2026-10-16 일부 상환: 워커, 감사관, verify를 새 프로세스 그룹으로 띄우고 끝나면 그룹 전체를 끝낸다(실험 확인, `tests/e2e/proc-group.test.ts`). 남은 것: `setsid`로 그룹을 벗어난 프로세스, 리드의 git이 실행 전에 확정한 `--git-dir`과 `--work-tree`를 쓰기 |
 
 심각도: 🔴 구조적(레이어 위반·보안) / 🟡 기능적(엣지케이스·성능) / 🟢 표면적(네이밍·중복)
 
@@ -36,6 +34,8 @@
 
 | ID | 내용 | 상환일 | 증거 |
 |---|---|---|---|
+| TD-012 | accept가 병합 전에 워커 커밋을 gitleaks로 검사한다. 설정과 무시 목록은 라이브러리 것만 쓰고 `gitleaks:allow` 주석을 따르지 않는다(대상 폴더의 `.gitleaks.toml` 허용 목록이 기본 실행을 끄는 것을 실험으로 확인). 찾으면 병합하지 않고 위치와 규칙만 남기며, gitleaks가 없거나 오류면 병합하지 않는다(contract.md 9.4절). CI에도 train의 gitleaks를 깐다 | 2026-10-16 | `tests/e2e/accept-secrets.test.ts`(6개, mutation 4종 중 3종을 잡음. 무시 목록 자리 지정은 실행 위치가 라이브러리라 빼도 결과가 같음) |
+| TD-006 | accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 `gotechy task restart T-###`로 지금 메인 위에서 처음부터 다시 한다. 옛 작업 브랜치는 `gotechy/T-###-try<N>`으로 남기고, 메인의 HANDOFF와 결정은 그대로 다음 run이 이어 받는다(contract.md 9.6절) | 2026-10-16 | `tests/e2e/restart.test.ts`(5개, mutation 4종 중 3종을 잡음. 1종은 git이 등록되지 않은 폴더 치우기를 거부해 결과가 같음) |
 | TD-016 | HANDOFF lint에 걸리면 같은 worktree의 워커에게 HANDOFF만 다시 쓰게 한다(최대 2회, 비용 0.25달러, 시간 5분). HANDOFF 밖 변경, 링크, 로그인 값이 생기면 직전 커밋으로 되돌리고 실패. verify는 다시 돌리지 않는다(contract.md 6.6절) | 2026-10-15 | `tests/e2e/rewrite.test.ts`(8개, mutation 4종 모두 잡음) |
 | TD-020 | 보호 경로를 대소문자와 유니코드 접기를 무시하고 비교한다(`foldPath`). 실험: 아직 없는 `.CLAUDE/`를 만들면 git은 `.CLAUDE/settings.json`으로 보여 주고 맥은 `.claude/settings.json`으로 읽는다. `.agentſ/`도 `.agents/`로 읽힌다. 허용 범위에 `.Agents/`를 넣은 작업은 run이 거부한다 | 2026-10-15 | `tests/core/paths-case.test.ts`(6개, mutation 3종 모두 잡음) |
 | TD-022 | 게이트를 모두 결정한 `needs-decision` 작업을 인박스와 화면에서 "다시 실행 대기" 묶음으로 따로 보여 주고, 카드 끝에 `다음: gotechy run T-###`를 쓴다(contract.md 8.1절) | 2026-10-15 | `tests/core/inbox-resume.test.ts`(8개, 조건 3개를 빼는 mutation 모두 잡음) |

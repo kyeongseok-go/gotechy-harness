@@ -129,6 +129,7 @@ async function runCodex(req: AuditorRequest): Promise<AuditorResult> {
     timeoutMs: req.timeoutMs,
     env,
     replaceEnv: true,
+    group: true,
   })
   const out: AuditorResult = {
     exitCode: r.exitCode,
@@ -152,6 +153,7 @@ async function runClaude(req: AuditorRequest): Promise<AuditorResult> {
     timeoutMs: req.timeoutMs,
     env,
     replaceEnv: true,
+    group: true,
   })
   const out: AuditorResult = {
     exitCode: r.exitCode,

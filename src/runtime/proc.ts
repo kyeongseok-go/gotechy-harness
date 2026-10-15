@@ -9,6 +9,12 @@ export async function runProc(
     env?: Record<string, string | undefined>
     /** true면 opts.env만 넘긴다(오너 환경 변수를 물려주지 않음) */
     replaceEnv?: boolean
+    /**
+     * true면 새 프로세스 그룹으로 띄우고, 끝나면 그룹 전체를 끝낸다(TD-029). 워커와 verify가 남긴 백그라운드
+     * 프로세스가 리드의 검사 뒤에 worktree나 git 설정을 바꾸지 못하게, 출력을 쥔 자식 때문에 기다리지 않게.
+     * setsid로 그룹을 벗어난 프로세스는 막지 못한다.
+     */
+    group?: boolean
   },
 ): Promise<ProcResult> {
   const proc = Bun.spawn({
@@ -17,6 +23,7 @@ export async function runProc(
     stdin: 'ignore',
     stdout: 'pipe',
     stderr: 'pipe',
+    detached: opts.group === true,
     env: opts.replaceEnv
       ? (opts.env ?? {})
       : opts.env
@@ -33,12 +40,21 @@ export async function runProc(
         killTimer = setTimeout(() => proc.kill('SIGKILL'), 10_000)
       }, opts.timeoutMs)
     : undefined
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ])
+  const out = new Response(proc.stdout).text()
+  const err = new Response(proc.stderr).text()
+  const exitCode = await proc.exited
+  if (opts.group) killGroup(proc.pid)
+  const [stdout, stderr] = await Promise.all([out, err])
   if (timer) clearTimeout(timer)
   if (killTimer) clearTimeout(killTimer)
   return { exitCode, stdout, stderr, timedOut }
+}
+
+/** 프로세스 그룹 전체를 끝낸다. 이미 없으면 조용히 넘어간다 */
+function killGroup(pgid: number): void {
+  try {
+    process.kill(-pgid, 'SIGKILL')
+  } catch {
+    // ESRCH: 그룹에 남은 프로세스가 없다
+  }
 }

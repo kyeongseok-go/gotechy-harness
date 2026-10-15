@@ -5,20 +5,24 @@ import { existsSync, lstatSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { basename, join } from 'node:path'
 import { parse } from 'yaml'
 import { lockProblems, managedFiles, planManifest, SKILL_DIRS, skillDep } from '../core/apm'
+import { ALL_SKILLS, expandPacks, PACKS, replaceRouter, routerTable } from '../core/packs'
 import type { DoctorCheck } from './doctor'
 import { gitProc } from './git'
 import { runProc } from './proc'
 import { linkedPaths } from './project'
 
-export const PACKS: Record<string, string[]> = { owner: ['owner-protocol'] }
-
-export type PackReport = { created: string[]; skipped: string[]; errors: string[] }
+export type PackReport = {
+  created: string[]
+  skipped: string[]
+  errors: string[]
+  warnings: string[]
+}
 /** train의 packs와, 그 커밋을 담은 라이브러리 저장소(대조 기준) */
 export type PackSource = { source: string; ref: string; lib: string }
 type Env = Record<string, string | undefined>
 
 const APM_TIMEOUT_MS = 300_000
-const KNOWN_SKILLS = [...new Set(Object.values(PACKS).flat())]
+const KNOWN_SKILLS = ALL_SKILLS
 /** init과 apm이 쓰는 경로. 링크면 apm이 그 너머에 쓰거나 gotechy가 저장소 밖 파일을 고친다(보안 감사 7차 중간 4) */
 const APM_PATHS = [
   'apm.yml',
@@ -191,13 +195,10 @@ export async function installPacks(
   src: PackSource,
   env: Env,
 ): Promise<PackReport> {
-  const report: PackReport = { created: [], skipped: [], errors: [] }
-  const skills: string[] = []
-  for (const pack of packs) {
-    const list = PACKS[pack]
-    if (list) skills.push(...list)
-    else report.errors.push(`알 수 없는 팩: ${pack} (사용 가능: ${Object.keys(PACKS).join(', ')})`)
-  }
+  const report: PackReport = { created: [], skipped: [], errors: [], warnings: [] }
+  const { skills, unknown } = expandPacks(packs)
+  for (const pack of unknown)
+    report.errors.push(`알 수 없는 팩: ${pack} (사용 가능: ${Object.keys(PACKS).join(', ')}, all)`)
   if (report.errors.length > 0 || skills.length === 0) return report
 
   const linked = linkedPaths(root, [
@@ -296,7 +297,47 @@ export async function installPacks(
   if (problems.length > 0) return rollback(problems)
   for (const skill of skills)
     for (const dir of SKILL_DIRS) report.created.push(`${dir}/${skill}/ (apm)`)
+  updateRouter(root, installedSkills(readFileSync(manifest, 'utf8'), src), report)
   return report
+}
+
+/** apm.yml에 train 출처와 커밋으로 적힌 스킬(이번에 깐 것과 전에 깐 것 모두) */
+function installedSkills(manifestText: string, src: PackSource): string[] {
+  let listed: unknown
+  try {
+    listed = (parse(manifestText) as { dependencies?: { apm?: unknown } } | null)?.dependencies?.apm
+  } catch {
+    return []
+  }
+  return KNOWN_SKILLS.filter(
+    (s) => Array.isArray(listed) && listed.includes(skillDep(src.source, s, src.ref)),
+  )
+}
+
+/** AGENTS.md 팩 색인 표를 깔린 스킬에 맞춘다(contract.md 10.8절). 표시가 없으면 오너의 라우터라 건드리지 않는다 */
+function updateRouter(root: string, installed: string[], report: PackReport): void {
+  const file = join(root, 'AGENTS.md')
+  const st = lstatSync(file, { throwIfNoEntry: false })
+  if (!st?.isFile()) {
+    report.warnings.push(
+      'AGENTS.md가 없어 팩 색인 표를 쓰지 않았어요. `gotechy init`이 템플릿을 깔아요',
+    )
+    return
+  }
+  const before = readFileSync(file, 'utf8')
+  const after = replaceRouter(before, routerTable(installed))
+  if (after === undefined) {
+    report.warnings.push(
+      'AGENTS.md에 팩 색인 표시(<!-- gotechy:packs:start -->, <!-- gotechy:packs:end -->)가 하나씩 없어 표를 고치지 않았어요. 깔린 스킬은 .agents/skills/에 있어요',
+    )
+    return
+  }
+  if (after === before) {
+    report.skipped.push('AGENTS.md 팩 색인')
+    return
+  }
+  writeFileSync(file, after)
+  report.created.push('AGENTS.md 팩 색인')
 }
 
 /** 프로젝트의 팩이 락과 라이브러리 커밋과 같은가. 팩을 쓰지 않는 프로젝트(apm.yml, 락 모두 없음)면 undefined */

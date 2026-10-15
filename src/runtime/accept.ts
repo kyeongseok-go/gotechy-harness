@@ -10,9 +10,16 @@ import { acceptBlockers } from './gates'
 import { GIT_IDENTITY, gitProc as git, headCommit } from './git'
 import { appendEvent, type Project, paths, updateFrontmatter } from './project'
 import { runSandboxedShell } from './sandbox'
+import { scanCommits } from './secrets'
 import { loadKnownTerms } from './terms'
 
-export type AcceptStatus = 'accepted' | 'rejected' | 'conflict' | 'verify-failed' | 'ff-refused'
+export type AcceptStatus =
+  | 'accepted'
+  | 'rejected'
+  | 'conflict'
+  | 'verify-failed'
+  | 'ff-refused'
+  | 'secret-found'
 export type AcceptOutcome = { status: AcceptStatus; messages: string[] }
 
 export async function acceptTask(p: Project, home: string, id: string): Promise<AcceptOutcome> {
@@ -46,6 +53,21 @@ export async function acceptTask(p: Project, home: string, id: string): Promise<
   const scope = await branchScopeProblems(head, branch, task.data.ownership, id, p.root)
   if (scope.length > 0)
     return reject('작업 브랜치에 허용 밖 변경이 있어 병합하지 않아요:', ...scope)
+  // 리드의 git은 hook을 끄고 돌아서, 워커가 넣은 비밀 값은 여기서 막지 않으면 메인에 들어간다(TD-012)
+  const scan = await scanCommits(p.root, `${head}..${branch}`)
+  if (!scan.ok) return reject(scan.error, '메인은 바뀌지 않았어요. 작업 상태도 그대로예요.')
+  if (scan.hits.length > 0)
+    return holdForDecision(
+      p,
+      id,
+      'secret-found',
+      `병합할 변경에 비밀로 보이는 값이 있어 합치지 않았어요: ${scan.hits
+        .slice(0, 5)
+        .map((h) => `${h.file}:${h.line} (${h.rule})`)
+        .join(
+          ', ',
+        )}${scan.hits.length > 5 ? ` 외 ${scan.hits.length - 5}건` : ''}. 값을 빼고 다시 하려면 gotechy task restart ${id}. 이력에 남은 값은 이미 노출됐다고 보고 바꾸세요`,
+    )
 
   const tmp = join(p.root, '.gotechy', 'accept', `${id}-${process.pid}`)
   mkdirSync(join(p.root, '.gotechy', 'accept'), { recursive: true })
@@ -63,7 +85,7 @@ export async function acceptTask(p: Project, home: string, id: string): Promise<
         p,
         id,
         'conflict',
-        `메인과 병합이 충돌했어요 (${conflicted.join(', ') || merge.stderr.trim()}). 작업을 새 메인 위에서 다시 하거나 직접 고쳐야 해요`,
+        `메인과 병합이 충돌했어요 (${conflicted.join(', ') || merge.stderr.trim()}). 새 메인 위에서 다시 하려면 gotechy task restart ${id}, 아니면 작업 브랜치를 직접 고치세요`,
       )
     }
     // 작업 명세, HANDOFF, 게이트는 리드의 기록이라 메인 체크아웃에만 둔다. 병합하는 것은 워커가 바꾼 파일뿐이다.
@@ -95,7 +117,7 @@ export async function acceptTask(p: Project, home: string, id: string): Promise<
         p,
         id,
         'verify-failed',
-        `병합한 결과에서 verify가 실패했어요 (\`${task.data.verify}\`: exit ${verify.exitCode}). 다른 작업과 합쳐지며 깨진 것이라 메인에 반영하지 않았어요`,
+        `병합한 결과에서 verify가 실패했어요 (\`${task.data.verify}\`: exit ${verify.exitCode}). 다른 작업과 합쳐지며 깨진 것이라 메인에 반영하지 않았어요. 새 메인 위에서 다시 하려면 gotechy task restart ${id}`,
       )
     const ff = await git(['merge', '--ff-only', '-q', merged ?? 'HEAD'], p.root)
     if (ff.exitCode !== 0)

@@ -33,6 +33,7 @@ setDefaultTimeout(30_000)
 const APM = Bun.which('apm', { PATH: process.env.PATH ?? '' })
 const train = parseTrain(readFileSync(join(LIB, 'train.yaml'), 'utf8'))
 const SKILL = readFileSync(join(LIB, 'skills', 'owner-protocol', 'SKILL.md'), 'utf8')
+const RETRO = '---\nname: gotechy-retro\ndescription: 시험용 회고 스킬\n---\n\n# 회고\n'
 // GitHub에 없는 이름. insteadOf가 빠지면 설치가 실패해 네트워크로 새지 않았음을 보여 준다
 const SOURCE = 'gotechy-test/fixture-lib'
 let REF = ''
@@ -75,6 +76,9 @@ beforeAll(() => {
   const src = join(base, 'src')
   mkdirSync(join(src, 'skills', 'owner-protocol'), { recursive: true })
   writeFileSync(join(src, 'skills', 'owner-protocol', 'SKILL.md'), SKILL)
+  // 두 번째 팩(learn)의 스킬. 색인 표가 팩을 더할 때 쌓이는지 본다
+  mkdirSync(join(src, 'skills', 'gotechy-retro'), { recursive: true })
+  writeFileSync(join(src, 'skills', 'gotechy-retro', 'SKILL.md'), RETRO)
   git(['init', '-q', '-b', 'main'], src)
   git(['add', '-A'], src)
   git(['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'skills'], src)
@@ -129,6 +133,44 @@ function tamperWithLock(root: string, text: string) {
   lock = lock.replaceAll(oldHash, newHash)
   writeFileSync(lockFile, lock)
 }
+
+describe('AGENTS.md 팩 색인 (contract.md 10.8절)', () => {
+  test('init 템플릿의 색인 표를 깔린 스킬로 다시 쓰고, 팩을 더하면 표가 쌓인다', async () => {
+    const root = newProject()
+    expect((await initWithPacks(root)).errors).toEqual([])
+    const first = readFileSync(join(root, 'AGENTS.md'), 'utf8')
+    expect(first).toContain('`.agents/skills/owner-protocol/SKILL.md`')
+    expect(first).not.toContain('gotechy-retro/SKILL.md')
+    const r = await installPacks(root, ['learn'], src(), env)
+    expect(r.errors).toEqual([])
+    expect(r.created).toContain('AGENTS.md 팩 색인')
+    const second = readFileSync(join(root, 'AGENTS.md'), 'utf8')
+    expect(second).toContain('`.agents/skills/owner-protocol/SKILL.md`')
+    expect(second).toContain('`.agents/skills/gotechy-retro/SKILL.md`')
+    expect(second.indexOf('owner-protocol/SKILL.md')).toBeLessThan(
+      second.indexOf('gotechy-retro/SKILL.md'),
+    )
+    const again = await installPacks(root, ['learn'], src(), env)
+    expect(again.skipped).toContain('AGENTS.md 팩 색인')
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(second)
+  })
+
+  test('오너가 쓴 AGENTS.md(표시 없음)는 건드리지 않고 알린다', async () => {
+    const root = newProject()
+    writeFileSync(join(root, 'AGENTS.md'), '# 내 지도\n')
+    const r = await initWithPacks(root)
+    expect(r.errors).toEqual([])
+    expect(r.warnings.join('\n')).toContain('gotechy:packs:start')
+    expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe('# 내 지도\n')
+  })
+
+  test('모르는 팩 이름이면 쓸 수 있는 팩 목록과 all을 알려 준다', async () => {
+    const root = newProject()
+    const r = await initWithPacks(root, ['nope'])
+    expect(r.errors.join('\n')).toContain('all')
+    expect(r.errors.join('\n')).toContain('define')
+  })
+})
 
 describe('팩 설치 (apm)', () => {
   test('apm이 PATH에 있다 (이 테스트들의 전제. bin/gotechy test나 CI의 apm 설치 단계로 돌린다)', () => {

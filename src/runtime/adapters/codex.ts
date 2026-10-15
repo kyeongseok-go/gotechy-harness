@@ -40,6 +40,7 @@ export const codexAdapter: WorkerAdapter = {
       timeoutMs: req.timeoutMs,
       env,
       replaceEnv: true,
+      group: true,
     })
     const result: WorkerResult = {
       exitCode: r.exitCode,

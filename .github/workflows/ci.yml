@@ -25,15 +25,18 @@ jobs:
           MISE_AUTO_INSTALL: "0"
           MISE_EXEC_AUTO_INSTALL: "0"
         run: sh bin/gotechy --version
-      - name: train의 apm 설치(mise 락 그대로)
+      # accept가 병합 전에 gitleaks로 비밀 값을 찾는다(TD-012, contract.md 9.4절). gitleaks가 없으면 accept는 병합하지 않는다
+      - name: train의 apm, gitleaks 설치(mise 락 그대로)
         env:
           MISE_LOCKED: "1"
           MISE_GITHUB_TOKEN: ${{ github.token }}
         run: |
           M="${{ runner.temp }}/gotechy/bin/mise"
-          "$M" install github:microsoft/apm
+          "$M" install github:microsoft/apm aqua:gitleaks/gitleaks
           dirname "$("$M" which apm)" >> "$GITHUB_PATH"
+          dirname "$("$M" which gitleaks)" >> "$GITHUB_PATH"
       - run: apm --version
+      - run: gitleaks version
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test --coverage

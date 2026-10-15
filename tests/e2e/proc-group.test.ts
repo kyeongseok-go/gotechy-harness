@@ -1,0 +1,46 @@
+// TD-029: 워커와 verify가 남긴 백그라운드 프로세스는 실행이 끝날 때 함께 끝낸다(contract.md 6.6절).
+// 2026-10-16 실험: Bun.spawn의 detached는 새 프로세스 그룹을 만들고, 그룹에 보낸 SIGKILL은 남은 자식까지 끝낸다.
+import { describe, expect, test } from 'bun:test'
+import { existsSync, mkdtempSync, realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { runProc } from '../../src/runtime/proc'
+import { runTask } from '../../src/runtime/run'
+import { FAKE, makeHome, makeProject, newTask } from './helpers'
+
+const later = (file: string) => `(sleep 1; touch '${file}') >/dev/null 2>&1 &`
+
+describe('프로세스 그룹 정리 (TD-029)', () => {
+  test('group이면 끝난 뒤 남은 백그라운드 자식도 끝낸다', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-pg-')))
+    const r = await runProc(['sh', '-c', `${later(join(dir, 'left'))} echo done`], {
+      cwd: dir,
+      group: true,
+    })
+    expect(r.stdout.trim()).toBe('done')
+    await Bun.sleep(1_500)
+    expect(existsSync(join(dir, 'left'))).toBe(false)
+  })
+
+  test('출력을 쥔 채 남은 자식이 있어도 기다리지 않고 돌아온다', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-pg-')))
+    const started = Date.now()
+    const r = await runProc(['sh', '-c', 'sleep 20 & echo done'], { cwd: dir, group: true })
+    expect(r.stdout).toContain('done')
+    expect(Date.now() - started).toBeLessThan(5_000)
+  })
+
+  test('리드 verify가 남긴 백그라운드 프로세스는 run이 끝날 때 끝난다', async () => {
+    const root = makeProject()
+    const home = makeHome()
+    const id = newTask(root, { verify: `${later('LEFT')} grep -q 설치 README.md` })
+    const out = await runTask({ root }, id, {
+      adapter: 'fake',
+      fixtureDir: join(FAKE, 'readme-ok'),
+      home,
+    })
+    expect(out.status).toBe('done')
+    await Bun.sleep(1_500)
+    expect(existsSync(join(root, '.gotechy', 'worktrees', id, 'LEFT'))).toBe(false)
+  })
+})

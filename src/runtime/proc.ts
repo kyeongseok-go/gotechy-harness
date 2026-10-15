@@ -59,15 +59,34 @@ export async function runProc(
 
 const DRAIN_GRACE_MS = 2_000
 
-/** 스트림을 끝까지(또는 끊을 때까지) 모은다 */
+/** 하위 프로세스 출력의 보관 상한. 넘으면 끝 부분만 남긴다(TD-028, 메모리를 다 쓰지 않게) */
+export const MAX_OUTPUT_BYTES = 16 * 1024 * 1024
+
+/** 스트림을 끝까지(또는 끊을 때까지) 모은다. 상한을 넘으면 앞부분을 버린다 */
 function drain(stream: ReadableStream<Uint8Array>) {
   const reader = stream.getReader()
   const chunks: Uint8Array[] = []
+  let kept = 0
+  let dropped = 0
   const done = (async () => {
     for (;;) {
       const { done, value } = await reader.read()
       if (done) return
       chunks.push(value)
+      kept += value.byteLength
+      while (kept > MAX_OUTPUT_BYTES && chunks.length > 0) {
+        const first = chunks[0] as Uint8Array
+        const over = kept - MAX_OUTPUT_BYTES
+        if (first.byteLength <= over) {
+          chunks.shift()
+          kept -= first.byteLength
+          dropped += first.byteLength
+        } else {
+          chunks[0] = first.subarray(over)
+          kept -= over
+          dropped += over
+        }
+      }
     }
   })().catch(() => {
     // 끊은 스트림의 읽기 오류는 무시한다(이미 모은 것을 돌려준다)
@@ -77,7 +96,9 @@ function drain(stream: ReadableStream<Uint8Array>) {
     cancel: () => {
       reader.cancel().catch(() => {})
     },
-    text: () => Buffer.concat(chunks).toString('utf8'),
+    text: () =>
+      (dropped > 0 ? `(앞부분 ${dropped}바이트가 보관 상한을 넘어 잘렸어요)\n` : '') +
+      Buffer.concat(chunks).toString('utf8'),
   }
 }
 

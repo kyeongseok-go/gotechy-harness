@@ -4,7 +4,7 @@ import { describe, expect, test } from 'bun:test'
 import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runProc } from '../../src/runtime/proc'
+import { MAX_OUTPUT_BYTES, runProc } from '../../src/runtime/proc'
 import { runTask } from '../../src/runtime/run'
 import { FAKE, makeHome, makeProject, newTask } from './helpers'
 
@@ -88,5 +88,18 @@ describe('프로세스 그룹 정리 (TD-029)', () => {
     expect(out.status).toBe('done')
     await Bun.sleep(1_500)
     expect(existsSync(join(root, '.gotechy', 'worktrees', id, 'LEFT'))).toBe(false)
+  })
+})
+
+describe('출력 상한 (TD-028 일부)', () => {
+  test('출력이 상한을 넘으면 끝 부분만 남기고 잘렸다고 표시한다', async () => {
+    const dir = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-cap-')))
+    const r = await runProc(['sh', '-c', 'yes 0123456789 | head -c 30000000; echo TAIL-MARK'], {
+      cwd: dir,
+      group: true,
+    })
+    expect(Buffer.byteLength(r.stdout)).toBeLessThanOrEqual(MAX_OUTPUT_BYTES + 200)
+    expect(r.stdout).toContain('TAIL-MARK')
+    expect(r.stdout).toContain('잘렸어요')
   })
 })

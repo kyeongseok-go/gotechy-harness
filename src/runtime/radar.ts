@@ -62,7 +62,6 @@ export const defaultFetch: FetchText = async (url, accept) => {
 /** 보고서에 남길 웹 글: 제어 문자를 지우고 한 줄로 펴고 80자에서 자른다 */
 const clean = (s: string | undefined) => {
   const one = displayText(s ?? '')
-    .replace(/[\u0000-\u001f\u007f]/g, '')
     .replace(/\s+/g, ' ')
     .replace(/\|/g, '/')
     .trim()

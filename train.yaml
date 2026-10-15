@@ -22,7 +22,7 @@ tools:
 # 프로젝트에 까는 팩의 출처(contract.md 10.1절, 10.7절). ref는 이 저장소의 커밋이고, 그 커밋의 skills/가 지금과 같아야 한다
 packs:
   source: kyeongseok-go/gotechy-harness
-  ref: 0911a92296891606021a1f7264d0657aa5a650dc
+  ref: aa499c8a0eac9e1a635a26e6a69c8d466a9f7bd5
 # 전역 설정에 넣는 정책(contract.md 10.1절). 자동 업데이트 끄기(claude의 DISABLE_AUTOUPDATER, codex의
 # check_for_update_on_startup)는 넣지 않는다. 오너가 쓰는 claude와 codex가 업데이트를 못 받게 되어서다
 # (2026-10-15 오너 결정, T-005). 워커는 어댑터가 따로 끄고 train 버전 그대로 돈다

@@ -17,6 +17,7 @@ import { lintTask } from './core/lint-task'
 import { lintStyle } from './core/style'
 import { parseTrain } from './core/train'
 import { acceptTask } from './runtime/accept'
+import { homeMismatch } from './runtime/account'
 import { auditTask } from './runtime/audit'
 import { formatDoctor, runDoctor } from './runtime/doctor'
 import { decideGate, listGates, pinOwner, verifyGates } from './runtime/gates'
@@ -645,6 +646,9 @@ program
     // 고정 키는 커밋돼 있어야 바뀐 것이 git diff에 드러난다(보안 감사 11차 낮음 5)
     const pinWarning = await pinCommitWarning(p.root)
     if (pinWarning) console.error(pinWarning)
+    // 다른 HOME으로 검증하면 끝 기록 검사가 다른 기록을 본다(TD-019)
+    const homeWarning = homeMismatch(process.env)
+    if (homeWarning) console.error(homeWarning)
     for (const v of verdicts)
       console.log(`${v.id} ${v.status}${v.reasons.length > 0 ? `: ${v.reasons.join(' / ')}` : ''}`)
     process.exit(verdicts.some((v) => v.status === 'fail') ? 1 : 0)

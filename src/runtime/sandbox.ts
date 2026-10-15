@@ -6,6 +6,7 @@
 import { existsSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { accountHome } from './account'
 import { type ProcResult, runProc } from './proc'
 
 const SANDBOX_EXEC = '/usr/bin/sandbox-exec'
@@ -42,7 +43,9 @@ const real = (p: string) => (existsSync(p) ? realpathSync(p) : p)
 const quote = (p: string) => `"${real(p).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 
 export function sandboxProfile(s: SandboxPaths): string {
-  const secrets = [...s.secret, ...HOME_SECRETS.map((d) => join(homedir(), d))]
+  // 환경 변수 HOME과 계정의 진짜 홈을 모두 막는다. HOME만 보면 HOME을 바꿔 부른 run에서 진짜 홈이 열린다(TD-019)
+  const homes = [...new Set([homedir(), accountHome()].filter((h): h is string => Boolean(h)))]
+  const secrets = [...s.secret, ...homes.flatMap((h) => HOME_SECRETS.map((d) => join(h, d)))]
   return [
     '(version 1)',
     '(allow default)',

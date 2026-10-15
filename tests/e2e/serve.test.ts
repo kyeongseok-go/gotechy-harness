@@ -388,6 +388,26 @@ describe('화면과 이동', () => {
     expect(page).toContain('href="/G-002"')
   })
 
+  test('HANDOFF 화면의 선택지 버튼은 그 선택을 미리 고른 결정 화면을 연다(선택지에 없는 값은 무시)', async () => {
+    const id = await decisionProject()
+    const s = serve()
+    const cookie = await login(s)
+    const page = await (await fetch(`${s.origin}/${id}`, { headers: { cookie } })).text()
+    const href = /href="(\/G-\d+\?choice=[^"]+)"/.exec(page)?.[1]
+    expect(href).toBeDefined()
+    const choice = decodeURIComponent((href ?? '').split('choice=')[1] ?? '')
+    const gate = await (await fetch(`${s.origin}${href}`, { headers: { cookie } })).text()
+    expect(gate.match(/checked/g)).toHaveLength(1)
+    expect(gate).toContain(`value="${choice}" required="" checked`)
+    const bad = await (
+      await fetch(`${s.origin}${(href ?? '').split('?')[0]}?choice=%22%3E%3Cscript%3E`, {
+        headers: { cookie },
+      })
+    ).text()
+    expect(bad).not.toContain('checked')
+    expect(bad).not.toContain('<script>')
+  })
+
   test('시작 승인 게이트(HANDOFF 없음)도 인박스에서 결정 화면으로 이어진다', async () => {
     const id = newTask(root, { title: '배포 스크립트', gate: 'before' })
     gateCheck({ root }, home, taskOf(id))

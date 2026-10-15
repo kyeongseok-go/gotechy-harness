@@ -4,6 +4,7 @@
 import { raw } from 'hono/html'
 import type { Child } from 'hono/jsx'
 import {
+  type AuditItem,
   auditLine,
   type Card,
   cardLabel,
@@ -17,6 +18,7 @@ import {
   displayText as t,
   truncate,
 } from '../inbox'
+import { isNone } from '../sections'
 import { extractEnglishTerms } from '../style'
 import { type TermEntry, termsUsed } from '../terms'
 import { renderMarkdown } from './markdown'
@@ -58,6 +60,23 @@ footer { margin-top: 3rem; color: var(--muted); font-size: .9rem; }
 fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 1rem 0; padding: .6rem 1rem; }
 label { display: block; margin: .3rem 0; } textarea { width: 100%; min-height: 4rem; font: inherit; }
 button { font: inherit; font-weight: 700; padding: .5rem 1.2rem; border-radius: 8px; }
+.summary { font-size: 1.15rem; margin: .6rem 0 1rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .4rem 0 1rem; padding: 0; list-style: none; }
+.chips li { border: 1px solid var(--line); border-radius: 999px; padding: .15rem .7rem; font-size: .9rem; }
+.chips .ok { border-color: var(--done); color: var(--done); } .chips .warn { border-color: var(--decision); color: var(--decision); }
+.chips .bad { border-color: var(--failed); color: var(--failed); }
+.dcard { border: 2px solid var(--decision); border-radius: 10px; padding: .6rem 1rem .8rem; margin: .8rem 0; }
+.dcard .q { font-weight: 700; margin: .2rem 0 .6rem; } .dcard .gid { color: var(--muted); font-size: .85rem; margin: 0; }
+.opts { display: flex; flex-wrap: wrap; gap: .5rem; margin: .2rem 0 .5rem; }
+.opts a, .opts span { display: inline-block; border: 1px solid var(--line); border-radius: 8px; padding: .45rem .9rem;
+  text-decoration: none; min-height: 44px; box-sizing: border-box; line-height: 1.6; }
+.opts .rec { border: 2px solid var(--decision); font-weight: 700; }
+.why { color: var(--muted); margin: 0; font-size: .95rem; }
+.tag { font-size: .8rem; border-radius: 4px; padding: 0 .35rem; margin-left: .3rem; border: 1px solid var(--line); white-space: nowrap; }
+.tag.ok { color: var(--done); border-color: var(--done); } .tag.inf { color: var(--decision); border-color: var(--decision); }
+.tag.est { color: var(--failed); border-color: var(--failed); }
+.finding { border-left: 4px solid var(--failed); padding: .2rem .8rem; margin: .4rem 0; }
+.finding.unconfirmed { border-left-color: var(--line); } .sev { color: var(--failed); font-weight: 700; }
 `
 
 const RISK = '건너뛴 것, 확인 못 한 것, 리스크'
@@ -164,7 +183,6 @@ export function renderHandoffPage(input: {
 }): string {
   const c = input.card
   const mode = input.mode ?? 'file'
-  const open = openGates(c)
   const h = c.handoff
   const body = [...c.sections.values()].map((s) => s.content).join('\n')
   const words = new Set([
@@ -172,6 +190,12 @@ export function renderHandoffPage(input: {
     ...(h?.new_terms ?? []).map((w) => w.toLowerCase()),
   ])
   const explained = termsUsed(input.terms, words)
+  const done = listItems(c.sections.get('한 일')?.content)
+  const findings = c.audit?.current ? c.audit.items : []
+  const pairs = pairFindings(
+    done.map((i) => i.text),
+    findings,
+  )
   return page(
     <Layout title={`${c.id} ${c.title ?? ''}`} mode={mode}>
       <header class={c.group}>
@@ -182,31 +206,29 @@ export function renderHandoffPage(input: {
         <h1>
           {c.id} {t(c.title ?? '(작업 명세 없음)')}
         </h1>
-        <p class="signal">{t(signalLine(c))}</p>
+        <p class="summary">{t(c.summary)}</p>
+        <Chips card={c} />
       </header>
       <main>
-        {mode === 'serve' && open.length > 0 ? (
-          <section class="must">
-            <h2>결정하기</h2>
-            <ul>
-              {open.map((g) => (
-                <li>
-                  <a href={`/${g.id}`}>{g.id}</a> {t(g.label)}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-        <Section card={c} title="결정 필요" className={c.blocking.length > 0 ? 'must' : ''} />
-        <Section card={c} title="한 줄 요약" />
         {c.group === 'failed' && h?.lead_note ? (
           <section>
             <h2>리드 메모</h2>
             <p>{t(h.lead_note)}</p>
           </section>
         ) : null}
-        <Section card={c} title="한 일" />
-        <Section card={c} title={RISK} />
+        <Decisions card={c} mode={mode} />
+        <AuditSection card={c} unpaired={pairs.unpaired} />
+        <section>
+          <h2>한 일</h2>
+          <Items items={done} fallback={c.sections.get('한 일')?.content} findings={pairs.byItem} />
+        </section>
+        <section>
+          <h2>{RISK}</h2>
+          <Items
+            items={listItems(c.sections.get(RISK)?.content)}
+            fallback={c.sections.get(RISK)?.content}
+          />
+        </section>
         <Fold card={c} title="증거" />
         <Fold card={c} title="새 용어">
           {explained.length > 0 ? (
@@ -227,6 +249,335 @@ export function renderHandoffPage(input: {
       <footer>{FOOTER[mode]}</footer>
     </Layout>,
   )
+}
+
+/** 3초 상태 칩(contract.md 8.2절): 검증, 형식 오류, 감사, 리스크, 비용과 파일 수 */
+function Chips(props: { card: Card }) {
+  const c = props.card
+  const h = c.handoff
+  if (!h) return null
+  const chips: { text: string; tone: 'ok' | 'warn' | 'bad' | '' }[] = []
+  const v = h.verified
+  chips.push(
+    !v
+      ? { text: '검증 기록 없음', tone: 'warn' }
+      : v.exit_code === 0
+        ? { text: '검증 통과', tone: 'ok' }
+        : { text: `검증 실패 exit ${v.exit_code}`, tone: 'bad' },
+  )
+  if (c.formatErrors > 0) chips.push({ text: `형식 오류 ${c.formatErrors}건`, tone: 'bad' })
+  const a = c.audit
+  if (!a) chips.push({ text: '감사 전', tone: '' })
+  else if (!a.current) chips.push({ text: '감사: 지난 판본 기준', tone: 'warn' })
+  else if (a.confirmed > 0)
+    chips.push({ text: `감사 지적 ${a.confirmed}건(근거 확인됨)`, tone: 'bad' })
+  else if (a.items.length > 0)
+    chips.push({ text: `감사 지적 ${a.items.length}건(근거 확인 안 됨)`, tone: 'warn' })
+  else chips.push({ text: '감사 지적 없음', tone: 'ok' })
+  chips.push(
+    c.risks === undefined
+      ? { text: '리스크 기록 없음', tone: 'warn' }
+      : c.risks > 0
+        ? { text: `리스크 ${c.risks}`, tone: 'warn' }
+        : { text: '리스크 없음', tone: 'ok' },
+  )
+  const cost = h.usage?.cost_usd
+  const files = h.changed_files?.filter((f) => !f.startsWith('orchestration/handoffs/'))
+  chips.push({
+    text: `${typeof cost === 'number' ? `$${cost.toFixed(2)}` : '비용 모름'}, ${files ? `파일 ${files.length}개` : '파일 기록 없음'}`,
+    tone: '',
+  })
+  return (
+    <ul class="chips">
+      {chips.map((x) => (
+        <li class={x.tone}>{t(x.text)}</li>
+      ))}
+    </ul>
+  )
+}
+
+/** 결정 카드(시안 B). 막는 결정, 시작 승인, 결과 승인을 카드로, 기본값은 접고 알림은 목록으로 */
+function Decisions(props: { card: Card; mode: ViewMode }) {
+  const c = props.card
+  const mode = props.mode
+  const cards: Child[] = []
+  if (c.startGate)
+    cards.push(
+      <GateCard
+        id={c.startGate.id}
+        kind="시작 승인"
+        question="이 작업을 시작할까요?"
+        options={c.startGate.options}
+        mode={mode}
+      />,
+    )
+  for (const d of c.blocking)
+    cards.push(
+      <section class="dcard">
+        <p class="gid">
+          {d.gate ? (
+            <>
+              <GateId id={d.gate} open={!d.decided} mode={mode} />, 막는 결정
+            </>
+          ) : (
+            '막는 결정(게이트 없음)'
+          )}
+        </p>
+        <p class="q">{t(d.question)}</p>
+        {d.decided ? (
+          <p>결정함: {t(d.decided)}</p>
+        ) : (
+          <Options
+            gate={d.gate}
+            options={d.options ?? (d.pick ? [d.pick] : [])}
+            pick={d.pick}
+            mode={mode}
+          />
+        )}
+        {d.reason ? <p class="why">이유: {t(d.reason)}</p> : null}
+      </section>,
+    )
+  if (c.approval)
+    cards.push(
+      <GateCard
+        id={c.approval.id}
+        kind="결과 승인"
+        question="이 결과를 승인할까요?"
+        options={c.approval.options}
+        mode={mode}
+      />,
+    )
+  if (cards.length === 0 && c.defaultItems.length === 0 && c.alerts.length === 0) return null
+  return (
+    <section>
+      {cards.length > 0 ? <h2>결정할 것 {cards.length}건</h2> : null}
+      {cards}
+      {c.defaultItems.length > 0 ? (
+        <details>
+          <summary>기본값으로 진행한 것 {c.defaultItems.length}건</summary>
+          <ul>
+            {c.defaultItems.map((d) => (
+              <li>
+                {t(d.question)}
+                {d.pick ? ` 추천대로 "${t(d.pick)}"로 진행했어요.` : ''}
+                {d.reason ? ` 이유: ${t(d.reason)}` : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {c.alerts.length > 0 ? (
+        <>
+          <h2>알릴 것</h2>
+          <ul>
+            {c.alerts.map((a) => (
+              <li>{t(a)}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  )
+}
+
+function GateCard(props: {
+  id: string
+  kind: string
+  question: string
+  options: string[]
+  mode: ViewMode
+}) {
+  return (
+    <section class="dcard">
+      <p class="gid">
+        <GateId id={props.id} open mode={props.mode} />, {props.kind}
+      </p>
+      <p class="q">{props.question}</p>
+      <Options gate={props.id} options={props.options} pick={undefined} mode={props.mode} />
+    </section>
+  )
+}
+
+/** serve 화면의 열린 게이트 번호는 미리 고르지 않은 결정 화면으로 잇는다 */
+function GateId(props: { id: string; open: boolean; mode: ViewMode }) {
+  return props.mode === 'serve' && props.open ? (
+    <a href={`/${props.id}`}>{props.id}</a>
+  ) : (
+    <>{props.id}</>
+  )
+}
+
+/** 선택지. serve에서 열린 게이트면 그 선택을 미리 고른 결정 화면으로 잇고, 파일 화면이면 decide 명령을 보여 준다 */
+function Options(props: {
+  gate: string | undefined
+  options: string[]
+  pick: string | undefined
+  mode: ViewMode
+}) {
+  const { gate, mode } = props
+  return (
+    <>
+      <div class="opts">
+        {props.options.map((o) => {
+          const label = `${t(o)}${o === props.pick ? ' (추천)' : ''}`
+          const cls = o === props.pick ? 'rec' : ''
+          return mode === 'serve' && gate ? (
+            <a href={`/${gate}?choice=${encodeURIComponent(o)}`} class={cls}>
+              {label}
+            </a>
+          ) : (
+            <span class={cls}>{label}</span>
+          )
+        })}
+      </div>
+      {mode === 'file' && gate ? (
+        <p>
+          <code>gotechy decide {gate} &lt;선택&gt;</code>
+        </p>
+      ) : null}
+    </>
+  )
+}
+
+/** 한 일 항목과 짝짓지 못한 감사 지적. 지난 판본 감사면 지적 없이 한 줄만 */
+function AuditSection(props: { card: Card; unpaired: AuditItem[] }) {
+  const a = props.card.audit
+  if (!a) return null
+  if (!a.current)
+    return (
+      <section>
+        <h2>감사관이 본 것</h2>
+        <p class="why">
+          지난 판본 기준 감사라 지적을 붙이지 않았어요. 다시 감사하려면{' '}
+          <code>gotechy audit {props.card.id}</code>
+        </p>
+      </section>
+    )
+  if (props.unpaired.length === 0) return null
+  return (
+    <section>
+      <h2>감사관이 본 것</h2>
+      <p class="why">
+        다른 계열 모델이 HANDOFF를 실제 변경과 대조한 권고예요. 한 일 항목과 짝짓지 못한 지적만 여기
+        모아요.
+      </p>
+      {props.unpaired.map((f) => (
+        <Finding f={f} />
+      ))}
+    </section>
+  )
+}
+
+const SEVERITY: Record<AuditItem['severity'], string> = {
+  high: '높음',
+  medium: '중간',
+  low: '낮음',
+}
+function Finding(props: { f: AuditItem }) {
+  const f = props.f
+  return (
+    <div class={f.confirmed ? 'finding' : 'finding unconfirmed'}>
+      <p>
+        <span class="sev">[{SEVERITY[f.severity]}]</span> 감사:{' '}
+        <code>{t(`${f.file}:${f.line}`)}</code>, {f.confirmed ? '근거 확인됨' : '근거 확인 안 됨'}
+      </p>
+      <p class="why">실제: {t(f.actual)}</p>
+    </div>
+  )
+}
+
+type Item = { text: string; tag: 'ok' | 'inf' | 'est' | undefined }
+const TAGS: Record<string, Item['tag']> = { 확인: 'ok', 추론: 'inf', 추정: 'est' }
+const TAG_TEXT: Record<NonNullable<Item['tag']>, string> = { ok: '확인', inf: '추론', est: '추정' }
+
+/** 절의 목록 항목(맨 위 수준). 목록이 아닌 글이 섞이면 빈 배열을 돌려 원문 그대로 보여 주게 한다 */
+function listItems(content: string | undefined): Item[] {
+  if (!content || isNone(content)) return []
+  const out: string[] = []
+  for (const line of content.split('\n')) {
+    if (line.trim() === '') continue
+    const top = /^[-*]\s+(.*)$/.exec(line)
+    if (top) out.push(top[1] ?? '')
+    else if (/^\s+\S/.test(line) && out.length > 0) out[out.length - 1] += `\n${line}`
+    else return []
+  }
+  return out.map((raw) => {
+    const m = /\s*\[(확인|추론|추정)\]\s*$/.exec(raw)
+    return m
+      ? { text: raw.slice(0, m.index), tag: TAGS[m[1] ?? ''] }
+      : { text: raw, tag: undefined }
+  })
+}
+
+function Items(props: {
+  items: Item[]
+  fallback: string | undefined
+  findings?: Map<number, AuditItem[]>
+}) {
+  if (props.items.length === 0) return md(props.fallback)
+  return (
+    <ul>
+      {props.items.map((item, i) => (
+        <li>
+          {raw(renderMarkdown(t(item.text)).replace(/^<p>([\s\S]*)<\/p>\n?$/, '$1'))}
+          {item.tag ? <span class={`tag ${item.tag}`}>{TAG_TEXT[item.tag]}</span> : null}
+          {(props.findings?.get(i) ?? []).map((f) => (
+            <Finding f={f} />
+          ))}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** 감사 지적을 주장이 가장 닮은 한 일 항목 하나에 짝짓는다(문자 두 개씩 묶은 조각의 Dice 계수 0.4 이상) */
+export const PAIR_MIN = 0.4
+export function pairFindings(
+  items: string[],
+  findings: AuditItem[],
+): { byItem: Map<number, AuditItem[]>; unpaired: AuditItem[] } {
+  const byItem = new Map<number, AuditItem[]>()
+  const unpaired: AuditItem[] = []
+  const keys = items.map(bigrams)
+  for (const f of findings) {
+    const claim = bigrams(f.claim)
+    let best = -1
+    let score = 0
+    keys.forEach((k, i) => {
+      const s = dice(k, claim)
+      if (s > score) {
+        score = s
+        best = i
+      }
+    })
+    if (best >= 0 && score >= PAIR_MIN) byItem.set(best, [...(byItem.get(best) ?? []), f])
+    else unpaired.push(f)
+  }
+  return { byItem, unpaired }
+}
+
+function bigrams(s: string): Map<string, number> {
+  const chars = [
+    ...s
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/[\s\p{P}\p{S}]/gu, ''),
+  ]
+  const out = new Map<string, number>()
+  for (let i = 0; i + 1 < chars.length; i++) {
+    const g = `${chars[i]}${chars[i + 1]}`
+    out.set(g, (out.get(g) ?? 0) + 1)
+  }
+  return out
+}
+
+function dice(a: Map<string, number>, b: Map<string, number>): number {
+  let total = 0
+  let shared = 0
+  for (const n of a.values()) total += n
+  for (const n of b.values()) total += n
+  for (const [g, n] of a) shared += Math.min(n, b.get(g) ?? 0)
+  return total === 0 ? 0 : (2 * shared) / total
 }
 
 /** 카드에서 아직 결정하지 않은 게이트(막는 결정, 승인, 시작 승인) */
@@ -359,6 +710,8 @@ export type GateForm = {
   budgetUsd: number | undefined
   /** 결정했지만 검증에 실패해 다시 결정하는 경우의 사유 */
   failing: string[]
+  /** HANDOFF 화면의 선택지 버튼에서 온 선택. 선택지 중 하나일 때만 미리 고른다 */
+  preselect?: string | null
 }
 
 /** 결정 화면(contract.md 8.3절). 문자열은 모두 JSX가 이스케이프한다 */
@@ -404,7 +757,7 @@ export function renderGatePage(f: GateForm): string {
             <legend>선택</legend>
             {f.options.map((o) => (
               <label>
-                <input type="radio" name="choice" value={o} required />
+                <input type="radio" name="choice" value={o} required checked={o === f.preselect} />
                 {t(o)}
                 {o === f.recommended ? ' (추천)' : ''}
               </label>

@@ -1,7 +1,7 @@
 // 인박스와 화면 파일(contract.md 8절). 메인 체크아웃의 orchestration/을 읽기만 하고, 화면은 .gotechy/view/에만 쓴다.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import { attachAudit } from '../core/audit'
+import { AuditItems, attachAudit } from '../core/audit'
 import { parseFrontmatter } from '../core/frontmatter'
 import { attachGates, buildCard, type Card, startGateCard } from '../core/inbox'
 import { renderHandoffPage, renderInboxPage } from '../core/view/pages'
@@ -119,11 +119,14 @@ function withAudit(p: Project, c: Card): Card {
   const d = parsed.value.data
   const rev = typeof d.handoff_rev === 'number' ? d.handoff_rev : null
   const input = d.input as { diff_truncated?: unknown } | undefined
+  // 지적 목록이 규칙에 맞지 않으면 화면에 붙이지 않는다(수는 그대로 보여 준다)
+  const items = AuditItems.safeParse(d.items ?? [])
   return typeof d.confirmed === 'number'
     ? attachAudit(c, {
         handoff_rev: rev,
         confirmed: d.confirmed,
         truncated: input?.diff_truncated === true,
+        items: items.success ? items.data : [],
       })
     : c
 }

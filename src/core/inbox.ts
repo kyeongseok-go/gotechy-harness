@@ -20,9 +20,20 @@ export type Card = {
   handoff?: HandoffFrontmatter
   sections: Map<string, Section>
   summary: string
-  /** gate: 열린 게이트 번호, decided: 이미 고른 선택 (contract.md 9.3절) */
-  blocking: { question: string; pick?: string; gate?: string; decided?: string }[]
+  /** gate: 열린 게이트 번호, decided: 이미 고른 선택 (contract.md 9.3절). options, reason은 HANDOFF에 적힌 것 */
+  blocking: {
+    question: string
+    pick?: string
+    gate?: string
+    decided?: string
+    options?: string[]
+    reason?: string
+  }[]
   defaults: number
+  /** 기본값 결정 목록(화면의 "기본값으로 진행한 것") */
+  defaultItems: { question: string; pick?: string; reason?: string }[]
+  /** 알림 표지 항목 */
+  alerts: string[]
   /** 리스크 절이 없으면 undefined. 없는 절을 "리스크 없음"으로 읽으면 오너를 잘못 안심시킨다 */
   risks: number | undefined
   /** 계약(4절, 4.1절) 위반 수. 문체 규칙은 날짜에 따라 강도가 바뀌어 세지 않는다 */
@@ -33,8 +44,18 @@ export type Card = {
   startGate?: { id: string; options: string[] }
   /** 용어 은행에 없는 새 용어 */
   newTerms: string[]
-  /** 감사 기록(contract.md 13절). current: 지금 HANDOFF 판본을 감사했는가 */
-  audit?: { current: boolean; confirmed: number; truncated: boolean }
+  /** 감사 기록(contract.md 13절). current: 지금 HANDOFF 판본을 감사했는가. items: 기록의 지적(화면용) */
+  audit?: { current: boolean; confirmed: number; truncated: boolean; items: AuditItem[] }
+}
+
+/** 감사 지적 하나(contract.md 13절). confirmed: 리드가 작업 브랜치에서 file:line을 확인했는가 */
+export type AuditItem = {
+  severity: 'high' | 'medium' | 'low'
+  file: string
+  line: number
+  confirmed: boolean
+  claim: string
+  actual: string
 }
 
 export const GROUP_LABEL: Record<CardGroup, string> = {
@@ -70,6 +91,8 @@ export function buildCard(input: {
     summary: '',
     blocking: [],
     defaults: 0,
+    defaultItems: [],
+    alerts: [],
     risks: undefined,
     formatErrors: 0,
     newTerms: [],
@@ -100,8 +123,21 @@ export function buildCard(input: {
     summary: summaryLine?.trim() ?? '(요약 없음)',
     blocking: decisions
       .filter((d) => d.marker === '막는')
-      .map((d) => (d.pick ? { question: d.question, pick: d.pick } : { question: d.question })),
+      .map((d) => ({
+        question: d.question,
+        ...(d.pick ? { pick: d.pick } : {}),
+        ...(d.options ? { options: d.options } : {}),
+        ...(d.reason ? { reason: d.reason } : {}),
+      })),
     defaults: decisions.filter((d) => d.marker === '기본값').length,
+    defaultItems: decisions
+      .filter((d) => d.marker === '기본값')
+      .map((d) => ({
+        question: d.question,
+        ...(d.pick ? { pick: d.pick } : {}),
+        ...(d.reason ? { reason: d.reason } : {}),
+      })),
+    alerts: decisions.filter((d) => d.marker === '알림').map((d) => d.question),
     risks: !risk ? undefined : isNone(risk.content) ? 0 : topItems(risk).length,
     formatErrors: lintHandoff(input.text, input.file).issues.filter(
       (i) => !i.rule.startsWith('style-') && hasErrors([i]),
@@ -170,6 +206,8 @@ export function startGateCard(taskId: string, title: string | undefined, gate: G
     summary: '',
     blocking: [],
     defaults: 0,
+    defaultItems: [],
+    alerts: [],
     risks: undefined,
     formatErrors: 0,
     startGate: { id: gate.id, options: gate.options },

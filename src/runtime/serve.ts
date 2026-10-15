@@ -244,7 +244,7 @@ export function startServe(o: ServeOptions): ServeHandle {
     return task.autonomy
   }
 
-  function gatePage(req: Request, s: Session, id: string): Response {
+  function gatePage(req: Request, s: Session, id: string, preselect: string | null): Response {
     const v = gateView(o.project, id)
     if (!v) return message(404, '없는 화면이에요', [])
     const verdict = verifyGates(o.project, o.home, [id])[0]
@@ -284,6 +284,7 @@ export function startServe(o: ServeOptions): ServeHandle {
         autonomy: v.autonomy,
         budgetUsd: v.budgetUsd,
         failing: verdict?.status === 'fail' ? verdict.reasons : [],
+        preselect,
       }),
     )
   }
@@ -342,7 +343,7 @@ export function startServe(o: ServeOptions): ServeHandle {
       return html(renderHandoffPage({ card, terms: loadTermBank(o.project.root), mode: 'serve' }))
     }
     const gate = GATE_PATH.exec(url.pathname)
-    if (gate) return gatePage(req, s, gate[1] as string)
+    if (gate) return gatePage(req, s, gate[1] as string, url.searchParams.get('choice'))
     return message(404, '없는 화면이에요', [])
   }
 

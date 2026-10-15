@@ -221,11 +221,17 @@ describe('보안 감사 12차 반영', () => {
         findings: 1,
         confirmed: 0,
         cost_usd: null,
+        items: [
+          { ...(finding({ claim: 'a\u001b]52;c;eA==\u0007b' }) as AuditFinding), confirmed: false },
+        ],
       },
       [{ ...(finding({ claim: 'a\u001b]52;c;eA==\u0007b' }) as AuditFinding), confirmed: false }],
       `요약${RLO}뒤집기`,
     )
     expect(text).not.toMatch(/(?![\n\t])[\p{Cc}\p{Cf}\p{Bidi_Control}]/u)
+    // YAML이 제어 문자를 이스케이프 글자로 바꿔 숨기지 않게, 지적 목록도 지운 글로 남는다
+    expect(text).not.toContain('\\e')
+    expect(text).not.toContain('\\x07')
     expect(text).toContain('감사관(외부 모델)의 출력이에요')
   })
 

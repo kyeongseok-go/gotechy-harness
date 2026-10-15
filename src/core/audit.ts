@@ -2,7 +2,7 @@
 // 모델 호출과 git은 runtime/audit.ts가 한다.
 import { z } from 'zod'
 import { serializeFrontmatter } from './frontmatter'
-import { type Card, displayText } from './inbox'
+import { type AuditItem, type Card, displayText } from './inbox'
 
 export const MAX_FINDINGS = 20
 export const MAX_TEXT = 500
@@ -209,6 +209,8 @@ export type AuditRecord = {
   findings: number
   confirmed: number
   cost_usd: number | null
+  /** 지적 목록. 화면이 한 일 항목 옆에 붙인다(contract.md 8.2절, 13절) */
+  items: CheckedFinding[]
 }
 
 const SEVERITY: Record<AuditFinding['severity'], string> = {
@@ -238,21 +240,43 @@ export function renderAudit(
     one(summary) || '없음',
     '',
   ].join('\n')
-  return serializeFrontmatter(record as unknown as Record<string, unknown>, body)
+  // 화면이 읽는 지적 목록도 같은 규칙으로 지운다(contract.md 13절)
+  const stored = record.items.map((f) => ({
+    ...f,
+    file: one(f.file),
+    claim: one(f.claim),
+    actual: one(f.actual),
+  }))
+  return serializeFrontmatter(
+    { ...record, items: stored } as unknown as Record<string, unknown>,
+    body,
+  )
 }
 
-/** 인박스 카드에 감사 기록을 붙인다. 판본이 다르면 지난 판본 기준이라고만 보여 준다. */
+/** 기록 frontmatter의 지적 목록(contract.md 13절). 화면에 쓰므로 감사관 출력과 같은 규칙으로 다시 검사한다 */
+export const AuditItems = z
+  .array(AuditFinding.extend({ confirmed: z.boolean() }).strict())
+  .max(MAX_FINDINGS)
+
+/** 인박스 카드에 감사 기록을 붙인다. 판본이 다르면 지난 판본 기준이라고만 보여 주고 지적은 붙이지 않는다. */
 export function attachAudit(
   c: Card,
-  record: { handoff_rev: number | null; confirmed: number; truncated?: boolean },
+  record: {
+    handoff_rev: number | null
+    confirmed: number
+    truncated?: boolean
+    items?: AuditItem[]
+  },
 ): Card {
   const rev = c.handoff?.rev ?? null
+  const current = record.handoff_rev === rev
   return {
     ...c,
     audit: {
-      current: record.handoff_rev === rev,
+      current,
       confirmed: record.confirmed,
       truncated: record.truncated === true,
+      items: current ? (record.items ?? []) : [],
     },
   }
 }

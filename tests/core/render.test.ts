@@ -125,21 +125,29 @@ describe('HANDOFF 화면 내용', () => {
     expect(page).toContain('[나쁜 링크](JAVASCRIPT:alert(1))')
   })
 
-  test('결정, 요약, 한 일, 리스크는 펼쳐 두고 증거, 말해 보기, 다음 단계는 접는다', () => {
-    const firstFold = page.indexOf('<details')
-    expect(firstFold).toBeGreaterThan(0)
-    for (const open of ['결정 필요', '한 줄 요약', '한 일', '건너뛴 것, 확인 못 한 것, 리스크'])
-      expect(page.indexOf(`>${open}</h2>`)).toBeLessThan(firstFold)
-    for (const folded of ['증거', '말해 보기', '다음 단계'])
-      expect(page.indexOf(`>${folded}</summary>`)).toBeGreaterThan(firstFold)
+  test('결정 카드, 요약, 한 일, 리스크는 펼쳐 두고 증거, 말해 보기, 다음 단계는 접는다', () => {
+    const evidence = page.indexOf('>증거</summary>')
+    expect(evidence).toBeGreaterThan(0)
+    expect(page.indexOf('class="summary"')).toBeLessThan(page.indexOf('class="dcard"'))
+    expect(page.indexOf('class="dcard"')).toBeLessThan(page.indexOf('>한 일</h2>'))
+    expect(page.indexOf('>한 일</h2>')).toBeLessThan(
+      page.indexOf('>건너뛴 것, 확인 못 한 것, 리스크</h2>'),
+    )
+    expect(page.indexOf('>건너뛴 것, 확인 못 한 것, 리스크</h2>')).toBeLessThan(evidence)
+    for (const folded of ['말해 보기', '다음 단계'])
+      expect(page.indexOf(`>${folded}</summary>`)).toBeGreaterThan(evidence)
   })
 
   test('본문에 나온 용어 중 용어 은행에 있는 것은 풀이를 보여 준다', () => {
     expect(page).toContain('한 저장소를 여러 폴더에 펼쳐 두는 git 기능')
   })
 
-  test('3초 카드의 신호 줄을 화면 맨 위에 보여 준다', () => {
-    expect(page).toContain('막는 결정 1, 검증 통과, 리스크 1, $0.10, 파일 2개')
+  test('3초 상태 칩(검증, 감사, 리스크, 비용과 파일)을 화면 맨 위에 보여 준다', () => {
+    const chips = page.indexOf('class="chips"')
+    expect(chips).toBeGreaterThan(0)
+    expect(chips).toBeLessThan(page.indexOf('<main>'))
+    for (const s of ['검증 통과', '감사 전', '리스크 1', '$0.10, 파일 2개'])
+      expect(page).toContain(s)
   })
 })
 

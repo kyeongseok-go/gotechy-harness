@@ -170,6 +170,7 @@ async function auditLocked(p: Project, id: string, o: AuditOptions): Promise<Aud
     findings: checked.length,
     confirmed: checked.filter((f) => f.confirmed).length,
     cost_usd: res.costUsd ?? null,
+    items: checked,
   }
   const file = auditPath(p, id)
   writeAtomic(file, renderAudit(record, checked, out.summary))

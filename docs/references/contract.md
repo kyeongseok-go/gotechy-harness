@@ -303,7 +303,7 @@ frontmatter:
 - `.gotechy/view/index.html`(인박스 카드)과 읽을 수 있는 HANDOFF마다 `.gotechy/view/T-###.html`을 다시 만든다(이전 화면 파일은 지운다). 읽기 실패 카드는 화면 없이 인박스에만 나온다. 없는 작업 번호를 주면 exit 1. 작업 번호를 주면 그 화면의, 안 주면 인박스 화면의 `file://` 주소를 출력한다. `.gotechy/`는 git에 올리지 않는다.
 - 화면 구성(2026-10-16 오너 결정 T-007: 시안 B 결정 카드 먼저, 한 일 절만 시안 C 주장 옆 감사 지적. 시안 비교는 `docs/references/evidence/2026-10-15-afternoon/handoff-mockups/`):
   - 3초(맨 위): 제목 아래 한 줄 요약, 그 아래 상태 칩. 칩은 검증(`검증 통과`, `검증 실패 exit N`, `검증 기록 없음`), 형식 오류(있을 때만), 감사(`감사 전`, `감사: 지난 판본 기준`, `감사 지적 N건(근거 확인됨)`, `감사 지적 N건(근거 확인 안 됨)`, `감사 지적 없음`), 리스크, 비용과 파일 수다.
-  - 결정 카드(펼침): `결정할 것 N건` 아래에 시작 승인, 막는 결정, 결과 승인 게이트마다 카드 하나. 카드에는 게이트 번호, 질문, 선택지(추천 표시), 이유가 있다. 이미 결정한 게이트는 `결정함: X`만 보여 준다. serve 화면에서 열린 게이트의 번호는 결정 화면(`/G-###`)으로, 선택지는 그 선택을 미리 고른 결정 화면(`/G-###?choice=<선택>`)으로 잇는다. 미리 고르기는 선택지 중 하나일 때만 하고, 제출, 이해 문항, 확인 창은 그대로다. 파일 화면은 링크 대신 `gotechy decide G-### <선택>`을 보여 준다. 기본값 결정은 접힌 `기본값으로 진행한 것 N건`, 알림은 `알릴 것` 목록이다. 같은 질문을 두 번 보여 주지 않는다.
+  - 결정 카드(펼침): `결정할 것 N건` 아래에 시작 승인, 막는 결정, 결과 승인 게이트마다 카드 하나. 카드에는 게이트 번호, 질문, 선택지(추천 표시), 이유가 있다. 이미 결정한 게이트는 `결정함: X`만 보여 준다. serve 화면에서 열린 게이트의 번호는 결정 화면(`/G-###`)으로, 선택지는 그 선택을 미리 고른 결정 화면(`/G-###?choice=<선택>`)으로 잇는다. 미리 고르기는 선택지 중 하나이고 오너 자신의 화면에서 온 요청(Sec-Fetch-Site가 same-origin이거나 없음)일 때만 하며, 제출, 이해 문항, 확인 창은 그대로다. 파일 화면은 링크 대신 `gotechy decide G-### <선택>`을 보여 준다. 기본값 결정은 접힌 `기본값으로 진행한 것 N건`, 알림은 `알릴 것` 목록이다. 같은 질문을 두 번 보여 주지 않는다.
   - 30초(펼침): 한 일(항목마다 사실 표시 `[확인]`, `[추론]`, `[추정]`을 칩으로), 건너뛴 것, 확인 못 한 것, 리스크. 감사 기록이 지금 판본이면 지적마다 주장이 가장 닮은 한 일 항목 하나(글자 두 개씩 묶은 조각의 Dice 계수 0.4 이상) 아래에 붙인다. 짝을 못 찾은 지적은 결정 카드 다음의 `감사관이 본 것` 절에 모은다. 지난 판본 감사면 지적을 붙이지 않고 다시 감사하는 명령만 보여 준다. 한 일 절이 목록이 아니면 원문 그대로 보여 주고 지적은 모두 `감사관이 본 것`으로 간다.
   - 3분(접힘, `<details>`): 증거, 새 용어와 용어 은행 풀이, 말해 보기, 다음 단계, 리드 측정값(verify 명령과 결과, 모델, effort, 토큰, 비용, 바뀐 파일).
 - 보안 규칙. HANDOFF, 작업 명세, 용어 은행은 모두 신뢰하지 않는 입력으로 다룬다.
@@ -377,7 +377,7 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 
 - 조건: 작업이 `needs-decision`, `failed`, `done`(병합 전), 멈춘 `running` 중 하나. worktree 자리가 심볼릭 링크면 거부한다. `accepted`, `draft`, `ready`면 exit 1. run과 같은 작업별 잠금을 잡아, 도는 run이 있으면 exit 1.
 - 절차: 작업 worktree가 git에 등록돼 있으면 그 항목만 치운다(폴더가 없어졌어도. 저장소 전체 prune은 하지 않는다). 같은 자리에 등록되지 않은 폴더가 있으면 손대지 않고 exit 1. 비밀 값으로 멈춘 작업이면 남긴 브랜치를 push하지 말라고 알린다. 작업 브랜치 `gotechy/T-###`는 지우지 않고 `gotechy/T-###-try<N>`(N은 비어 있는 가장 작은 수)으로 이름만 바꾼다. 기준 커밋 기록(`.base`)을 지우고 작업을 `ready`로 바꾼다. 이벤트 `task.restart`를 남긴다.
-- 메인의 HANDOFF, 게이트, 결정 장부는 그대로다. 다음 `run`은 지금 메인에서 새 worktree를 만들고, 그 HANDOFF 판본의 오너 결정을 워커 지시문에 넣으며(6.6절), 새 HANDOFF는 판본을 하나 올린다.
+- 메인의 HANDOFF, 게이트, 결정 장부는 그대로다. 다음 `run`은 지금 메인에서 새 worktree를 만들고, 그 HANDOFF 판본의 오너 결정을 워커 지시문에 넣으며(6.4절), 새 HANDOFF는 판본을 하나 올린다.
 - 종료코드: 다시 하게 했으면 0, 거부하면 1.
 
 ## 10. 설치 계층 (M3)
@@ -403,7 +403,8 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 - 검사: 도구 버전이 train과 같은가, 정책이 전역 설정에 들어가 있는가, 라이브러리 스킬의 frontmatter(`name`, `description` 필수, description 400자 이하, 본문 150줄 이하, 스킬 수 15개 이하), 저장소 셸 스크립트(`bin/`, `scripts/`, `.claude/hooks/`, `.githooks/`, `templates/`)가 macOS에서 도는가. `#!/bin/sh` 스크립트는 POSIX 밖 문법(`[[`, `declare`, `mapfile`, `readarray`, `<<<`, `${x,,}`, `${x^^}`, `function f {`)을 금지하고, bash 스크립트는 macOS 기본 bash 3.2에 없는 문법(`declare -A`, `mapfile`, `readarray`, `${x,,}`, `${x^^}`, `&>>`, `|&`, `coproc`, `local -n`)만 금지한다. 둘 다 GNU 전용 명령(`sha256sum`, `date -d`)은 금지한다.
 - 실패마다 고치는 명령을 출력한다. 하나라도 실패하면 exit 1, 모두 통과하면 exit 0.
 - `GOTECHY_TRAIN`으로 다른 train 파일을 줄 수 있다(테스트에서 불일치를 주입할 때). train의 `check` 명령을 셸로 실행하므로 라이브러리 안의 파일만 받는다. 부트스트랩이 둔 `$GOTECHY_HOME/bin/mise`가 있으면 train 체크섬과 대조한다.
-- `--history`: 라이브러리의 gitleaks 설정으로 저장소 전체 이력을 검사한다(저장소의 `.gitleaks.toml`은 쓰지 않는다). 찾으면 exit 1.
+- `--history`: 라이브러리의 gitleaks 설정으로 저장소 전체 이력을 검사한다(저장소의 `.gitleaks.toml`은 쓰지 않는다). 찾으면 exit 1. 9.4절과 달리 저장소의 `.gitleaksignore`와 `gitleaks:allow` 주석은 따른다(오너가 일부러 남긴 오탐 예외. 9.4절처럼 막을지는 TD-031).
+- 프로젝트 안에서 실행하면 `.claude/settings.json`, `.claude/settings.local.json`의 `env`에 `PATH`, `NODE_ENV`, `GOTECHY_*`, `GITLEAKS_*`가 있는지 본다. 있으면 실패다. 남의 저장소가 커밋한 설정이 리드 세션의 판단(검사기 경로, 테스트용 주입)을 바꾸지 못하게 한다(보안 감사 15차 중간 2).
 - 프로젝트 안에서 실행하면(`orchestration/tasks/`가 있는 폴더) 팩 검사를 더한다. `apm.lock.yaml`이 있으면 그 폴더에서 `apm audit --ci`를 돌려 exit 0이어야 하고, 10.7절의 라이브러리 커밋 대조와 `apm.yml` 규칙도 통과해야 한다. 실패하면 고치는 법은 `apm install --frozen`(락대로 다시 깔기)이다. `apm.yml`은 있는데 `apm.lock.yaml`이 없으면 실패다. 둘 다 없으면 검사하지 않는다(팩 없이 쓰는 프로젝트).
 
 ### 10.3 `gotechy setup [--dry-run] [--restore <시각>]`
@@ -476,12 +477,12 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 - 스킬 하나는 다음으로 이뤄진다. 앞의 둘(`skills/` 아래)만 프로젝트에 깔리고, 나머지 둘은 라이브러리에만 있다.
   - `skills/<스킬>/SKILL.md`: `name`(폴더 이름과 같음), `description`(400자 이하), 본문 150줄 이하. 자세한 것은 `references/`로 빼고 필요할 때만 연다.
   - `skills/<스킬>/references/`: `bar.md`(그 분야 최고 전문가의 기준: 원천 표와 URL, 확인일, `[기계]`와 `[사람]` 판정이 붙은 측정형 체크리스트, A~D 등급, 흔한 실패), `lens.md`(오너에게 설명할 때의 그림, 비유, 용어, 면접 꼬리 질문, 40줄 이하), 그 밖의 절차와 템플릿.
-  - `radar/sources/<스킬>.yaml`: 최신화가 볼 출처(`id`, `title`, `url`, `trust`, `watch`, `feed`, `cadence`, `covers`). `trust`는 official, standard, regulator, paper, community. `watch`는 github-releases, rss, page.
+  - `radar/sources/<스킬>.yaml`: 최신화가 볼 출처(`id`, `title`, `version`(선택), `url`, `trust`, `watch`, `feed`, `cadence`, `covers`). `trust`는 official, standard, regulator, paper, community. `watch`는 github-releases, rss, page.
   - `evals/<스킬>/<케이스>/`: Claude Code `claude plugin eval` 형식(`prompt.md`와 `graders/*.md`). 스킬마다 능력(capability) 2개 이상, 회귀(regression) 1개 이상. 채점기 키는 공식 문서의 표만 쓴다.
 - 스킬은 설치된 프로젝트에서 스스로 완결된다. 하네스 저장소의 문서(`docs/` 아래)를 가리키지 않고, 스킬이 프로젝트에 만드는 경로(`docs/product-specs/`, `docs/exec-plans/`, `docs/decisions/`, `docs/quality/`, `docs/security/`, `docs/compliance/`, `docs/evals/`, `docs/operations/`, `docs/launch/`, `docs/retros/`, `docs/discovery/`, `docs/content/`)만 쓴다. 하네스의 서브에이전트 정의(`.claude/agents/`)도 깔리지 않으므로 가리키지 않고, 있으면 쓰는 선택으로만 적는다. 원문 링크가 필요하면 GitHub 주소를 쓴다.
 - 스킬 파일(본문, `references/`, 평가 케이스)은 문체 규칙(7절) 경고가 0건이다. `tests/core/packs-structure.test.ts`가 위 규칙을 모두 검사한다.
 - 모든 팩을 깔아도 스킬은 15개 이하다(doctor의 세션당 상한).
-- 위임 작업에도 전문가 기준을 넘긴다: 제한 모드 워커는 스킬을 스스로 로드하지 않으므로(1a M1), `run`은 작업 명세 `packs`의 스킬(owner-protocol 제외, 그 규칙은 지시문에 이미 있다) `SKILL.md` 본문을 메인 체크아웃의 `.agents/skills/`(없으면 `.claude/skills/`)에서 읽어 지시문의 "이번 작업의 전문가 기준" 절에 넣는다. 합계 16KB까지 넣고 넘으면 자르며 남은 것은 `references/`를 읽으라고 알린다. 링크나 일반 파일이 아닌 것은 읽지 않는다. 깔리지 않은 스킬은 실행 메시지로 알린다. 워커는 `.claude/`, `.agents/`, AGENTS.md를 바꾸지 못하고, 읽기는 그 스킬의 references 파일만 한다. HANDOFF 틀의 `skills_loaded`는 넣은 스킬 목록으로 미리 채운다.
+- 위임 작업에도 전문가 기준을 넘긴다: 제한 모드 워커는 스킬을 스스로 로드하지 않으므로(1a M1), `run`은 작업 명세 `packs`의 스킬(owner-protocol 제외, 그 규칙은 지시문에 이미 있다) `SKILL.md` 본문을 메인 체크아웃의 `.agents/skills/`(없으면 `.claude/skills/`)에서 읽어 지시문의 "이번 작업의 전문가 기준" 절에 넣는다. 합계 16,000바이트까지 넣고 넘으면 자르며 남은 것은 그 스킬의 `SKILL.md`와 `references/`를 읽으라고 알린다. 링크나 일반 파일이 아닌 것은 읽지 않는다. 깔리지 않은 스킬은 실행 메시지로 알린다. 워커는 `.claude/`, `.agents/`, AGENTS.md를 바꾸지 못하고, 읽기는 그 스킬의 `SKILL.md`와 references 파일만 한다. HANDOFF 틀의 `skills_loaded`는 지시문에 이름을 올린 스킬(본문이 잘린 것 포함)로 미리 채우고, 워커가 실제로 따른 것만 남긴다.
 - AGENTS.md 팩 색인: `init --packs`가 설치에 성공하면 `apm.yml`에 train 출처와 커밋으로 적힌 스킬(전에 깐 것 포함)로 AGENTS.md의 `<!-- gotechy:packs:start -->`와 `<!-- gotechy:packs:end -->` 사이를 표로 다시 쓴다. 표시가 하나씩 정확히 있을 때만 쓰고, 없으면(오너가 쓴 라우터) 건드리지 않고 경고한다. 다시 실행해도 같은 표다.
 
 ## 11. 무인 루프 `gotechy loop [--budget <달러>] [--max-attempts <N>] [--reset]` (1b N3)
@@ -518,7 +519,7 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 - `gotechy status --line`: 프로젝트의 열린 게이트 수를 한 줄로 출력한다(`gotechy 결정 대기 2`, 없으면 `gotechy 대기 없음`). Claude Code 상태 줄(`statusLine`)에 쓴다. 프로젝트 밖이면 아무것도 출력하지 않는다. 오너의 전역 상태 줄 설정은 바꾸지 않는다(오너가 원하면 직접 연결).
 - `gotechy keys init`, `keys rotate`는 대화형 터미널에서만 돈다. rotate는 Touch ID 없이도 지난 결정을 모두 무효로 만들 수 있어서 가드와 이 검사가 실수를 막는다(보안 감사 10차 중간 6).
 - 알려진 한계: 변수로 만든 이름(`$G decide`), 셸 별칭과 git 별칭(`git -c alias.p=push p --force`), 스크립트 파일에 써서 실행하기, `bash <<<`, `| sh`, `source`, python pty, tmux, `gh api` 쓰기, curl로 부르는 배포 hook, 태그나 main push로 도는 CI 배포는 잡지 못한다. 다른 프로젝트의 `bun src/cli.ts serve`도 gotechy로 보고 막는다(오탐). 이 저장소의 `guard-bash.sh`는 `--force-with-lease`를 허용하고 프로젝트 가드는 막는다(정책이 다름). 위키에 쓰는 Write, Edit 도구는 이 가드의 대상이 아니다(hook matcher가 Bash).
-- 하지 않은 것: Claude Code mod(결정 대기 띠, 토스트)는 1b N4의 남은 일이다. 폰 알림 방식은 오너 결정이다.
+- 하지 않은 것: Claude Code mod(결정 대기 띠, 토스트)는 2단계 P7로 넘겼다. 폰 알림 방식은 오너 결정이다.
 
 ## 13. 교차 검증 감사관 `gotechy audit T-### [--adapter codex|claude|fake] [--model <모델>] [--fixture <폴더>] [--budget <달러>]` (1b N6)
 
@@ -538,14 +539,14 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 - 기록 frontmatter에는 지적 목록 `items`(지적마다 `severity`, `file`, `line`, `confirmed`, `claim`, `actual`)도 있다. HANDOFF 화면이 한 일 항목 옆에 붙이는 데 쓰고(8.2절), 읽을 때 감사관 출력과 같은 규칙으로 다시 검사해 어긋나면 화면에 붙이지 않는다(수는 그대로).
 - 인박스: 감사 기록이 있으면 카드에 `감사: 근거 있는 지적 N건` 줄을 넣고, diff가 잘렸으면 `(diff 일부만 감사)`를 붙인다. 기록의 `handoff_rev`가 HANDOFF와 다르면 `감사: 지난 판본 기준`이다.
 - 종료코드: 기록을 쓰면 0(지적이 있어도), 대상이 없거나 감사관 실행, 출력 형식, 비밀 검사가 실패하면 1. CLI 인자가 틀리면 2.
-- 알려진 한계: 감사관도 워커가 쓴 글을 읽으므로 프롬프트 주입으로 "문제 없음"을 말하게 만들 수 있다. 그래서 지적은 권고이고, 지적이 없다고 통과로 보지 않는다. codex 감사관이 작업 폴더 밖을 어디까지 읽는지, 셸 도구를 끌 수 있는지, claude 감사관이 하위 폴더의 지시 파일을 읽는지는 아직 실험하지 않았다(TD-024). 비밀 검사는 알려진 모양만 잡고, 인코딩한 글은 놓친다. 원문 로그(`.gotechy/runs/`)에는 감사관이 읽은 글이 그대로 남는다. 실제 모델로 감사한 증거는 아직 없다(유료 실행은 오너 승인 뒤). `run`과 `loop`가 자동으로 감사를 부르지는 않는다.
+- 알려진 한계: 감사관도 워커가 쓴 글을 읽으므로 프롬프트 주입으로 "문제 없음"을 말하게 만들 수 있다. 그래서 지적은 권고이고, 지적이 없다고 통과로 보지 않는다. codex 감사관이 작업 폴더 밖을 어디까지 읽는지, 셸 도구를 끌 수 있는지, claude 감사관이 하위 폴더의 지시 파일을 읽는지는 아직 실험하지 않았다(TD-024). 비밀 검사는 알려진 모양만 잡고, 인코딩한 글은 놓친다. 원문 로그(`.gotechy/runs/`)에는 감사관이 읽은 글이 그대로 남는다. 실제 모델 감사는 claude 1회(2026-10-16, 0.128달러, `docs/references/evidence/2026-10-16-night/auditor-real/`)이고, codex 감사관은 실측 전이다. `run`과 `loop`가 자동으로 감사를 부르지는 않는다.
 
 ## 14. 최신화 출처 보기 `gotechy radar [--all] [--skill <스킬>]` (R2, 2026-10-16)
 
 전문가 팩의 bar가 기대는 출처(10.8절의 `radar/sources/<스킬>.yaml`)가 바뀌었는지 주기에 맞춰 본다. 읽기만 하고 스킬 파일은 고치지 않는다. 사실 반영과 본문 변경은 D6대로 따로 한다(바뀌는 사실은 eval 통과 시 반영, 일하는 방법은 오너 결정).
 
 - 대상: 라이브러리(`gotechy` 소스가 있는 저장소)의 `radar/sources/*.yaml`. 형식이 틀린 파일은 건너뛰고 보고서의 "형식 오류 파일"에 적는다.
-- 출처마다: `github-releases`는 `https://github.com/<feed>/releases/latest`가 리다이렉트한 주소(`/releases/tag/<태그>`)의 태그(API는 인증 없이 시간당 60회라 2026-10-16 실측에서 403이 났다), `rss`는 피드의 첫 항목 제목(RSS item 또는 Atom entry), `page`는 페이지 글의 요약값(스크립트, 스타일, 태그, 공백을 뺀 sha256 앞 16자리)을 본다. 요청마다 15초, 2MB 상한이고 인증 토큰을 쓰지 않는다.
+- 출처마다: `github-releases`는 `https://github.com/<feed>/releases/latest`가 리다이렉트한 주소(`/releases/tag/<태그>`)의 태그(API는 인증 없이 시간당 60회라 2026-10-16 실측에서 403이 났다), `rss`는 피드의 첫 항목 제목(RSS item 또는 Atom entry), `page`는 페이지 글의 요약값(스크립트, 스타일, 태그, 공백을 뺀 sha256 앞 16자리)을 본다. 요청마다 15초 상한이고, 받은 글은 200만 글자에서 자른다(받는 크기 자체를 막지는 않는다). 인증 토큰을 쓰지 않는다.
 - 주기: 마지막으로 읽은 때에서 `cadence`(weekly 7일, monthly 30일, quarterly 91일)가 지난 출처만 본다. 못 읽은 출처는 다음 실행에 다시 본다. `--all`은 주기를 무시한다.
 - 판정: 찾은 태그나 제목의 판이 출처의 `version`보다 숫자로 새로우면 "새 판"(alpha, beta, RC 같은 미리보기 판은 빼고)(출처 표를 고칠 때까지 계속 알린다), 처음 읽으면 "처음 기록", 지난번과 다르면 "바뀜", 같으면 "같음", 읽지 못하면 "못 읽음".
 - 기록: 상태는 라이브러리의 `.gotechy/radar/state.json`, 보고서는 `.gotechy/radar/report-<로컬 날짜>.md`(git에 올리지 않음). 보고서의 웹 글은 제어 문자를 지우고 한 줄로 펴고 80자에서 자른다. 웹 글은 데이터이고 지시가 아니다.

@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { acceptTask } from '../../src/runtime/accept'
 import { runTask } from '../../src/runtime/run'
-import { gitleaksPath, parseReport } from '../../src/runtime/secrets'
+import { gitleaksPath, parseReport, scanCommits } from '../../src/runtime/secrets'
 import { FAKE, fm, handoffFile, makeHome, makeProject, newTask, sh, taskFile } from './helpers'
 
 setDefaultTimeout(30_000)
@@ -158,6 +158,19 @@ describe('accept의 비밀 값 검사 (TD-012)', () => {
       process.env.NODE_ENV = saved.env
       if (saved.gl === undefined) delete process.env.GOTECHY_GITLEAKS
       else process.env.GOTECHY_GITLEAKS = saved.gl
+    }
+  })
+
+  test('train에서 gitleaks 판을 읽지 못하면 검사하지 않은 것으로 본다(fail-closed)', async () => {
+    const saved = process.env.GOTECHY_LIB
+    process.env.GOTECHY_LIB = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-notrain-')))
+    try {
+      const r = await scanCommits(join(root, '.git'), 'HEAD')
+      expect(r.ok).toBe(false)
+      expect(r.ok ? '' : r.error).toContain('train')
+    } finally {
+      if (saved === undefined) delete process.env.GOTECHY_LIB
+      else process.env.GOTECHY_LIB = saved
     }
   })
 

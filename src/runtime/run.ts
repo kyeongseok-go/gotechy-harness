@@ -532,7 +532,7 @@ function preflight(task: TaskFrontmatter, opts: RunOptions): string | undefined 
     return `상태가 ${task.status}인 작업은 실행하지 않습니다. 준비가 끝났으면 status를 ready로 바꾸세요.`
   }
   if (task.data_class !== 'public') {
-    return `1a 단계는 공개 데이터 작업만 실행합니다 (data_class: ${task.data_class}). 데이터 경계 배치는 1b에서 지원합니다.`
+    return `1a 단계는 공개 데이터 작업만 실행합니다 (data_class: ${task.data_class}). 데이터 경계 배치(내부, 기밀 데이터)는 아직 지원하지 않습니다(2단계 이후).`
   }
   const name = opts.adapter ?? task.agent
   if (!name)

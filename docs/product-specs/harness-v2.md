@@ -14,7 +14,7 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 
 ## 0. 착수 판정
 
-- 지금 이걸 먼저 할 이유: 하네스 v1.x는 다른 프로젝트에 한 번도 적용되지 않았고(exec-plans 0건, harness-bench 기준선 0%), 첫 실전 프로젝트(공문서 업무 AX 에이전트, D2)를 하네스로 진행하려면 하네스가 먼저 "실제로 쓸 수 있는 상태"여야 한다.
+- 지금 이걸 먼저 할 이유: 하네스 v1.x는 다른 프로젝트에 한 번도 적용되지 않았고(exec-plans 0건, harness-bench 기준선 0%), 첫 실전 프로젝트(2026-10-16 오너 결정으로 공문서 대신 오너가 정할 새 제품, 공문서는 보류)를 하네스로 진행하려면 하네스가 먼저 "실제로 쓸 수 있는 상태"여야 한다.
 - 다른 일과의 관계: 커리어(A)의 1순위 포트폴리오가 이 하네스 자체다(career.yaml JD 키워드: 에이전트 하네스·Claude Code skill·eval·MCP·컨텍스트 엔지니어링).
 
 ## 1. 불편함 (Why)
@@ -31,8 +31,8 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 **사용자 여정** (가장 얇은 완결 경로):
 1. 새 컴퓨터에서 `bin/gotechy`가 고정된 버전 묶음(train)을 체크섬 그대로 깔고, `gotechy setup`이 전역 정책을 넣고, `gotechy doctor`가 통과한다(2026-10-15 실제 명령으로 고침. `--profile`은 아직 없다).
 2. 프로젝트 폴더에서 `gotechy init --packs <팩들>` → 필요한 팩만 `.claude/skills`·`.agents/skills`에 설치되고 AGENTS.md 라우터가 생긴다.
-3. 메인 세션에서 오너와 리드가 작업을 정하면 리드가 작업 명세(`orchestration/tasks/T-###.md`)를 쓰고 워커(Orca 또는 native)에게 맡긴다.
-4. 워커는 작업을 끝내고 lint를 통과한 HANDOFF를 남긴다. 결정이 필요하면 인박스와 상태 줄(`gotechy status --line`)에 보인다. 폰과 맥 알림은 1b N4의 남은 일이다.
+3. 메인 세션에서 오너와 리드가 작업을 정하면 리드가 작업 명세(`orchestration/tasks/T-###.md`)를 쓰고 native 워커(claude, codex)에게 맡긴다(Orca는 화면과 알림에만, ADR 0007).
+4. 워커는 작업을 끝내고 lint를 통과한 HANDOFF를 남긴다. 결정이 필요하면 인박스와 상태 줄(`gotechy status --line`)에 보인다. 폰과 맥 알림은 2단계 P7로 넘겼다.
 5. 오너는 3초 카드 → HTML 본 화면에서 이해하고, 화면에서 바로 선택지를 고르거나 다음 지시를 적어 제출한다. 되돌리기 어려운 결정이면 "내 말로 설명" 1~2문항을 먼저 답한다.
 6. 리드가 결정 파일을 읽고 다음 작업을 이어간다.
 
@@ -52,11 +52,11 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 |---|---|---|---|
 | 깨끗한 맥에서 부트스트랩과 setup으로 doctor 통과 | 격리 HOME에서 `bin/gotechy` 부트스트랩, `gotechy setup` 후 `gotechy doctor` 종료코드 | 1a M3 완료 시 | exit ≠ 0 |
 | Claude Code와 Codex가 같은 작업 명세로 같은 형식의 HANDOFF를 낸다 | claude·codex 백엔드로 각각 실행 → verify 통과 + handoff lint 통과 | 1a M1 완료 시 | 어느 한쪽이라도 lint 실패 |
-| 오너가 HANDOFF 한 건을 이해하고 결정하는 데 3분 이내, 이해도 유지 | 게이트 `active_seconds` + 이해 게이트 핵심어 적중률 | 1a 완료 후 공문서 프로젝트 실사용 10건 | 중앙값 3분 초과, 또는 핵심어 적중률 60% 미만 |
+| 오너가 HANDOFF 한 건을 이해하고 결정하는 데 3분 이내, 이해도 유지 | 게이트 `active_seconds` + 이해 게이트 핵심어 적중률 | 첫 실전 프로젝트 실사용 10건 | 중앙값 3분 초과, 또는 핵심어 적중률 60% 미만 |
 | 결정이 서명된 파일로 반영되고 위조는 거부된다 | `decide` → `gate verify`, 수기 편집·낡은 판본·재사용 주입 (같은 OS 사용자의 악의적 위조는 1b 오너 인증에서) | 1a M2 완료 시 | 주입한 결정이 통과 |
 | 결정이 화면에서 바로 반영된다 | 화면 제출 → 게이트 해소 → 다음 작업 시작까지 사람 손 없음 | 1b 완료 시 | 수동 단계 1개 이상 |
 | 하네스가 실제 효과가 있다 | harness-bench 켬/끔 비교 (통과율·완료당 비용) | 2단계 | 켬이 통과율·완료당 비용 둘 다 열위 |
-| 첫 실전 프로젝트(공문서 에이전트)를 하네스로 진행한다 | 그 프로젝트의 ExecPlan·HANDOFF·결정 파일 존재 | 1단계 완료 후 | 하네스 밖에서 진행 |
+| 첫 실전 프로젝트(오너가 정할 새 제품, 2026-10-16)를 하네스로 진행한다 | 그 프로젝트의 ExecPlan·HANDOFF·결정 파일 존재 | 1단계 완료 후 | 하네스 밖에서 진행 |
 
 ## 4. 상태·예외 설계
 
@@ -66,7 +66,6 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 | HANDOFF lint 실패 | 워커가 교정 메시지를 보고 재작성 (최대 2회), 이후 실패로 오너에게 (2026-10-15 구현, TD-016) |
 | 막는 결정이 3개 초과 | lint가 "쪼개거나 결정 세션으로" 안내, 리드가 grill 세션으로 처리 |
 | 오래된 HANDOFF 판본으로 결정 제출 | 결정 거부, 최신 판본 다시 보기 안내 |
-| Orca 미설치·실행 불가 환경 | native 어댑터로 자동 전환, 기능 차이를 HANDOFF에 표시 |
 | 무인 모드에서 같은 실패 2회 | 해당 작업만 정지·대기, 다른 작업 계속 |
 | 회사 프로필에서 공개 등급 아닌 작업을 외부 실행기로 배치 시도 | 배치 거부 |
 | 부작용 명령(배포·force push·외부 발행)에 승인 게이트 없음 | 가드가 차단 (1b) |
@@ -95,8 +94,8 @@ career_signals:
 
 ## 6. 미해결 질문
 
-- [ ] HANDOFF 화면 레이아웃 시안 2~3안 비교 (M2에서)
-- [ ] Claude Code mod API의 공식 문서 범위 (M4 착수 시 확인)
+- [x] HANDOFF 화면 레이아웃 시안 비교(2026-10-15), 오너가 B+C를 골랐다(2026-10-16 T-007)
+- [ ] Claude Code mod API의 공식 문서 범위 (2단계 P7)
 - [ ] apm 0.x의 Windows 동작 (2단계 회사 모드)
 
 ## 변경 이력

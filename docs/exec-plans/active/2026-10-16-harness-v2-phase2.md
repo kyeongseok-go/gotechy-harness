@@ -17,7 +17,7 @@
 - [ ] P1 첫 실전 프로젝트 시작(오너의 새 제품, `docs/GETTING_STARTED.md` 순서)
 - [ ] P2 실사용 지표 수집(TD-018): 결정 10건의 `active_seconds`와 이해 게이트 적중률
 - [ ] P3 팩 평가 실측: `claude plugin eval`로 스킬마다 케이스 실행(유료, 예산 상한 오너 승인), 기여도 기준선 기록
-- [ ] P4 radar: `gotechy radar`가 `radar/sources/*.yaml`을 읽어 GitHub releases, RSS, 페이지 변경을 보고서로(무료, 읽기만)
+- [x] (2026-10-16 01:15, 밤샘 마무리 루프에서 먼저 함) P4 radar: `gotechy radar`가 `radar/sources/*.yaml`을 읽어 GitHub 릴리스(`releases/latest` 리다이렉트), RSS, 페이지 변경을 보고서로(무료, 읽기만). 커밋 768aa94, 실측 `docs/references/evidence/2026-10-16-night/radar/`
 - [ ] P5 delta PR: 바뀐 출처가 덮는 `references/` 파일만 고치는 PR 초안, eval 통과 시 머지 후보, 본문 변경은 인박스 결정
 - [ ] P6 harness-bench 켬과 끔 비교(유료)
 - [ ] P7 1b에서 넘어온 것: Claude Code mod(결정 대기 띠, 토스트), 폰 알림 방식(오너 결정), Orca 화면 연결(ADR 0007, Orca 브라우저가 `file://`를 여는지 실험 먼저), 상태 줄 화면 확인
@@ -41,7 +41,7 @@
 
 - 팩 구조와 설치: `docs/references/contract.md` 10.7절, 10.8절. 팩 목록은 `src/core/packs.ts`.
 - 평가 케이스 형식: Claude Code `claude plugin eval`(https://code.claude.com/docs/en/plugin-evals.md). 케이스는 `evals/<스킬>/<케이스>/`.
-- 최신화 출처: `radar/sources/<스킬>.yaml`(`id`, `url`, `trust`, `watch`, `feed`, `cadence`, `covers`).
+- 최신화 출처: `radar/sources/<스킬>.yaml`(`id`, `title`, `version`, `url`, `trust`, `watch`, `feed`, `cadence`, `covers`).
 
 ## Plan of Work
 
@@ -57,10 +57,9 @@ P1과 P2를 먼저 한다. 실제로 써 봐야 무엇을 재고 고칠지 정�
 
 ## Idempotence and Recovery
 
-- radar는 읽기만 하고, 보고서는 실행마다 새 파일로 남긴다.
+- radar는 읽기만 하고, 보고서는 날짜별 한 파일이다(같은 날 다시 돌리면 덮어쓴다). 상태는 `.gotechy/radar/state.json`.
 - 평가 실행은 결과 폴더를 실행마다 새로 만든다.
 
 ## Interfaces and Dependencies
 
-- 새 명령 후보: `gotechy radar`.
-- 외부: `claude plugin eval`(Claude Code 2.1.269 이상), GitHub releases API와 RSS(인증 없이).
+- 외부: `claude plugin eval`(Claude Code 2.1.269 이상), GitHub 릴리스 웹 주소의 리다이렉트와 RSS(인증 없이).

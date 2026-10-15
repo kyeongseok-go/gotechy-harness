@@ -39,7 +39,7 @@ export function buildWorkerPrompt(
     '',
     '## 규칙',
     `- 바꿀 수 있는 파일: ${task.ownership.join(', ')} 그리고 ${handoff}. 그 밖의 파일을 바꾸면 실행 전체가 실패 처리됩니다.`,
-    '- orchestration/gates/, orchestration/tasks/ 는 읽거나 바꾸지 마세요. .claude/, .agents/, AGENTS.md 는 바꾸지 마세요(읽기는 아래 전문가 스킬의 references 파일만).',
+    '- orchestration/gates/, orchestration/tasks/ 는 읽거나 바꾸지 마세요. .claude/, .agents/, AGENTS.md 는 바꾸지 마세요(읽기는 아래 전문가 스킬의 SKILL.md와 references 파일만).',
     '- 작업 범위를 넓히지 마세요. 요청하지 않은 기능, 추상화, 설정을 더하지 마세요.',
     `- 완료 판정은 리드가 다음 명령으로 직접 합니다: \`${task.verify}\``,
     '- 확신이 없는 결정이 필요하면 임의로 정하지 말고 HANDOFF의 "결정 필요"에 올리고 status를 needs-decision으로 두세요.',
@@ -141,7 +141,7 @@ function skillSection(skills: PromptSkill[]): string[] {
   if (skills.length === 0) return []
   const out = [
     '## 이번 작업의 전문가 기준',
-    '아래 스킬의 절차와 합격선을 지키세요. 자세한 기준이 필요하면 `.agents/skills/<스킬>/references/`의 파일을 읽으세요(바꾸지는 마세요). HANDOFF의 skills_loaded에는 실제로 따른 스킬만 남기세요.',
+    '아래 스킬의 절차와 합격선을 지키세요. 자세한 기준이 필요하면 `.agents/skills/<스킬>/`의 SKILL.md와 references 파일을 읽으세요(바꾸지는 마세요). HANDOFF의 skills_loaded에는 실제로 따른 스킬만 남기세요.',
     '',
   ]
   let left = MAX_SKILL_BYTES

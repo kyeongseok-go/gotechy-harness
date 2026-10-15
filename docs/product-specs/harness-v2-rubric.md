@@ -27,13 +27,13 @@ related: harness-v2.md, ../design-docs/2026-10-13-expert-library-v0.md
 | 요구 | 지금 | 근거 | 다음 단계로 가려면 |
 |---|---|---|---|
 | R1 분야별 전문가 에이전트(기획부터 마케팅까지) | **2 동작** | 2026-10-16: 팩 12개, 스킬 15개(기존 8개 이관과 새 전문가 7개). 스킬마다 최고 전문가 bar(원천 URL, 측정형 체크리스트, A~D 등급), 렌즈, 평가 케이스, 최신화 출처. 구조와 이음매 테스트(`tests/core/packs-structure.test.ts`), 사실 표본 검증 30건 중 28건 맞음(틀림 1건 고침), 위임 작업의 워커 지시문에 팩 본문이 들어감(`tests/e2e/worker-skills.test.ts`) | 실제 프로젝트에서 스킬을 쓴 기록과, `claude plugin eval`로 잰 스킬별 기여도(2단계, 유료) |
-| R2 최신 정보로 자동 갱신 | **3 실측(감지까지)** | `gotechy radar`가 출처 129개를 주기에 맞춰 읽고 새 판과 바뀐 곳을 보고서로 남김(`tests/core/radar.test.ts`). 2026-10-16 실제 실행: 16초, 새 판 1, 못 읽음 1(`docs/references/evidence/2026-10-16-night/radar/`). 반영(delta PR, eval 게이트)은 아직 없음 | 바뀐 사실을 references에 반영하는 PR 초안과 eval 게이트(2단계) |
+| R2 최신 정보로 자동 갱신 | **3 실측(감지까지)** | `gotechy radar`가 출처(실측 당시 129개, 디자인 팩까지 136개)를 주기에 맞춰 읽고 새 판과 바뀐 곳을 보고서로 남김(`tests/core/radar.test.ts`). 2026-10-16 실제 실행: 16초, 새 판 1, 못 읽음 1(`docs/references/evidence/2026-10-16-night/radar/`). 반영(delta PR, eval 게이트)은 아직 없음 | 바뀐 사실을 references에 반영하는 PR 초안과 eval 게이트(2단계) |
 | R3 어디서든 같은 환경 | **3 실측(macOS)** | train과 부트스트랩, 새 클론과 빈 HOME에서 2분 31초에 doctor 13개 통과(`2026-10-14-fresh-install/`), 팩의 커밋 고정 설치 실측(`2026-10-15-night/apm-real.txt`) | 다른 컴퓨터나 리눅스에서 같은 실측, 회사 모드(Windows) |
 | R4 필요한 전문가만 꺼내 쓰기 | **3 실측** | 2026-10-16 리허설: 빈 폴더에서 `init --packs all`이 공개 저장소의 train 커밋에서 실제 apm으로 스킬 15개를 10초에 설치, doctor가 락과 커밋 대조 통과(`docs/references/evidence/2026-10-16-night/rehearsal.md`). 팩 조합 테스트(`tests/e2e/init-apm.test.ts`, owner 다음 learn을 더하면 색인 표가 쌓임) | 실제 프로젝트 둘 이상에서 서로 다른 팩 조합으로 쓴 기록 |
 | R5 토큰과 용량 최적화 | **2 동작** | doctor가 스킬 수 15개 이하, 설명 400자 이하, 본문 150줄 이하를 검사(`src/core/doctor.ts`) | 하네스 켬과 끔의 토큰 비교 실측(harness-bench, 2단계) |
 | R6 어떤 LLM 도구에서도 | **3 실측(Claude, Codex)** | 같은 작업 명세로 실제 Claude 워커와 Codex 워커 각 1회 성공(1a M1), AGENTS.md 라우터 | Cursor나 Copilot 같은 다른 도구로 같은 작업 실측 |
 | R7 결과를 바로 이해(용어, 인터랙티브 문서, HANDOFF) | **3 실측** | 실제 Claude와 Codex 워커가 쓴 HANDOFF가 lint를 통과(1a M1), 용어 풀이, 인박스 카드, 읽기 전용 HTML, 설명 문서 2건. 화면 결정 서버의 헤드리스 Chrome 실측은 가짜 서명 도구라 3의 근거에서 뺌 | 오너가 실제 프로젝트의 HANDOFF를 화면으로 읽고 결정한 기록 |
-| R8 오케스트레이션(오너와 리드가 결정, 전문가가 실행, 원샷 세팅) | **2 동작** | native 어댑터, accept 병합, 무인 루프(녹화 재생 워커로만), 가드 | 실제 워커로 무인 루프 실측(유료), Orca 어댑터(1b N5) |
+| R8 오케스트레이션(오너와 리드가 결정, 전문가가 실행, 원샷 세팅) | **2 동작** | native 어댑터, accept 병합, 무인 루프(녹화 재생 워커로만), 가드 | 실제 워커로 무인 루프 실측(유료), Orca 화면 연결(2단계 P7, ADR 0007) |
 | R9 오너로서 이해하며 함께(AI 흐름에 먹히지 않기) | **3 실측** | 이해 게이트, 서명 결정, 확인 코드, 오너 전용 명령 가드, 프로젝트 고정 키와 장부 끝 기록(TD-013, TD-014, `tests/e2e/pin-ledger.test.ts`). 2026-10-15 오너의 실제 기기 확인(이 맥은 로그인 암호 창, ADR 0006 실측 절, 2026-10-16 승인) | 실사용 결정 10건의 이해 게이트 적중률(TD-018) |
 | R10 안정적 취업 우선, 커리어 증거 | **2 동작** | 1a 회고의 career_signals에 공개 커밋 링크 5개와 수치 3개(`completed/2026-10-13-harness-v2-phase1.md`) | 면접에서 보여 줄 데모나 블로그 글처럼 제3자가 보는 결과물 하나 |
 
@@ -56,7 +56,7 @@ related: harness-v2.md, ../design-docs/2026-10-13-expert-library-v0.md
 | 원한 방식 | 판정 | 근거 | 어긴 곳 |
 |---|---|---|---|
 | 스펙과 수용 테스트를 먼저, 외부 경계는 실험 먼저 | 부분 | apm, Chrome Origin, Bun 유휴 시간을 실험으로 확인 | 1b N2를 브라우저 실험 없이 먼저 커밋(TD-017). N1은 테스트를 구현 뒤에 씀 |
-| 마일스톤마다 적대적 리뷰와 보안 감사 | 지킴 | 감사 1~11차, 높음 8건(모두 1a 기간) 모두 수정, doc-gardener 대조, 설명 문서 독립 비평 | 없음 |
+| 마일스톤마다 적대적 리뷰와 보안 감사 | 지킴 | 감사 1~15차(2026-10-16 기준), 높음 8건(모두 1a 기간) 모두 수정, doc-gardener 대조, 설명 문서 독립 비평 | 없음 |
 | 테스트의 힘을 재기(mutation check) | 지킴 | 오늘 밤 127종(E5 20종, 감사 11차 10종 포함). 처음에 114종을 잡았고, 살아남은 13종은 테스트를 더하거나(10종) 설계를 고치거나(2종, 루프의 멈춤 기록과 장부 끝 기록의 겹치는 줄 수 비교 삭제) 효과 없는 수정을 되돌려(1종, TD-019) 처리함 | 감사 11차 수정은 테스트보다 코드를 먼저 고친 뒤 mutation으로 확인함 |
 | 부작용은 오너 지시가 있을 때만 | 지킴 | 전역 설정, 실제 오너 키, 유료 워커, force push 없음. 저장소 hook이 막은 일은 우회하지 않고 오너에게 올림 | 테스트 실수로 bun 캐시 150개를 공개 커밋에 올림(비밀 값 없음) |
 | CI가 실패하면 다음 일 전에 고친다 | 어김 | 03:27(90e7598)에 고침 | N4 커밋부터 네 커밋(f4156ca, 0d429a1, 8bb696e, b58d6f0)의 CI 실패를 바로 확인하지 않음. 1a 완료 게이트(8bb696e)도 CI 실패 중에 통과로 처리. E5 커밋(4915fac)의 시간 초과 실패는 다음 일 전에 고침(09fe656, 63a0417) |
@@ -69,7 +69,7 @@ related: harness-v2.md, ../design-docs/2026-10-13-expert-library-v0.md
 - 코드와 테스트: `bun run check`, `bun run check:boundaries`, `bun run gen:docs` 뒤 `git status --porcelain docs/generated/`
 - 설치 실측: 격리 HOME에서 `bin/gotechy doctor`(`docs/references/evidence/2026-10-14-fresh-install/` 절차)
 - 오너 인증 실측: 터미널에서 `sh scripts/owner-touchid-check.sh`
-- 실사용 측정: 공문서 프로젝트의 게이트 파일에서 `active_seconds`와 `comprehension` 모으기(TD-018)
+- 실사용 측정: 첫 실전 프로젝트의 게이트 파일에서 `active_seconds`와 `comprehension` 모으기(TD-018)
 - 판정을 바꾸면 이 표의 "지금" 칸과 아래 변경 이력을 함께 고친다
 
 ## 6. 변경 이력

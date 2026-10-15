@@ -5,7 +5,7 @@
 | 스펙 | 우선순위 | 상태 | career_signals 요약 |
 |---|---|---|---|
 | [_template-prd.md](_template-prd.md) | - | 템플릿 | - |
-| [harness-v2.md](harness-v2.md) | P0 | 구현 중(1a 완료, 1b 진행) | 도구 독립 오케스트레이션·Human-in-the-loop·재현 가능한 에이전트 환경 |
+| [harness-v2.md](harness-v2.md) | P0 | 구현 중(1a, 1b 완료 2026-10-16, 2단계 초안) | 도구 독립 오케스트레이션·Human-in-the-loop·재현 가능한 에이전트 환경 |
 | [harness-v2-rubric.md](harness-v2-rubric.md) | P0 | 판정표(살아 있는 문서) | 요구사항 R1~R10과 성공 기준의 단계 판정, 일하는 방식 판정 |
 
 상태: 아이디어 → 초안 → 확정 → 구현 중 → 출시됨 → 폐기

@@ -47,7 +47,13 @@ export async function scanCommits(gitDir: string, logOpts: string): Promise<Secr
     const ver = await run(bin, ['version'], lib)
     if (!ver.ok) return { ok: false, error: `gitleaks version이 실패했어요: ${ver.error}` }
     const version = one(ver.stdout).replace(/^v/, '')
-    if (want && version !== want)
+    // train을 읽지 못하면 판을 확인할 수 없으니 검사하지 않은 것으로 본다(fail-closed)
+    if (!want)
+      return {
+        ok: false,
+        error: 'train.yaml에서 gitleaks 판을 읽지 못해 비밀 값 검사를 믿을 수 없어요',
+      }
+    if (version !== want)
       return {
         ok: false,
         error: `gitleaks 판(${version || '읽지 못함'})이 train(${want})과 달라요(${bin}). bin/gotechy로 실행하세요`,

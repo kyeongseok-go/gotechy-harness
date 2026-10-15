@@ -87,6 +87,6 @@ mode: night
 | TD-030 | 리드의 git이 worktree의 `.git` 파일 대신 고정한 관리 폴더를 씀(실험으로 공격 경로 확인 후 막음) | 240d7a1 |
 | TD-028 | 하위 프로세스 출력 끝 16MB만 보관 | 1a34a33 |
 | K5 | 새 프로젝트 리허설: `init --packs all`이 실제 apm으로 15개 10초, run, inbox, render, accept | b825d11 |
-| K8 | 최종 검사 `bun run check` 773 pass, 커버리지 95.68%(핵심 최저 96.84%), CI 22b2215 성공. 전역 설정 해시 세 곳 그대로 | - |
+| K8 | 최종 검토: 문서 대조(doc-gardener) 20건 반영. 최종 `bun run check` 774 pass, 커버리지 95.69%(핵심 최저 96.84%), CI 9a917ba 성공. 전역 설정 해시: `~/.claude/settings.json` d5a1327f, `~/.codex/config.toml` 9028eee7로 그대로. `~/.gotechy`는 순서 없는 해시가 ac4c41f4에서 1b3dec82로 달라졌지만 정렬한 해시는 시작 때(00:07)와 같은 ad752813이고 오늘 바뀐 파일이 없다. `find`가 파일을 나열하는 순서가 바뀐 탓이라 다음부터는 정렬한 해시로 잰다 | 9a917ba |
 
 Validation 판정: 1~7 통과, 8(높음 0건 남음)은 높음 1의 리드 쪽 경로를 막고 codex 쪽 전제(유료 실험)를 TD-030에 남겨 "부분"이다.

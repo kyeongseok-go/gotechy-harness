@@ -30,7 +30,8 @@
 - [x] (2026-10-15, 밤샘 루프 2) N2 화면에서 결정: `gotechy serve`. 감사 8차(높음 0, 중간 5, 낮음 7) 모두 반영. 실제 헤드리스 Chrome으로 결정 흐름 실측. 실제 Touch ID로 화면 결정은 오너 확인으로 남김(Touch ID 확인 스크립트 마지막 단계)
 - [x] (2026-10-15, 밤샘 루프 2) N3 무인 루프: `gotechy loop`와 아침 보고서. 감사 9차(높음 0, 중간 5, 낮음 5) 반영. 실제 워커로 밤새 돌리는 실측은 오너 확인으로 남김(유료)
 - [x] (2026-10-15, 밤샘 루프 2) N4 중 부작용 가드(`gotechy guard`, TD-008)와 상태 줄(`gotechy status --line`). 감사 10차(높음 0, 중간 6, 낮음 8) 반영
-- [ ] N4 나머지: Claude Code mod(결정 대기 띠, 토스트), Codex hook, 폰 알림(오너 결정), 상태 줄 화면 확인(Validation 10, 오너)
+- [x] (2026-10-15 오후 루프) N4 중 Codex hook: `gotechy init`이 `.codex/hooks.json`에 같은 가드를 깐다(공식 문서로 형식 확인, Codex 입력으로 가드 테스트). 실제 Codex 세션에서 막히는지는 오너가 `/hooks` 승인 뒤 확인
+- [ ] N4 나머지: Claude Code mod(결정 대기 띠, 토스트), 폰 알림(오너 결정), 상태 줄 화면 확인(Validation 10, 오너)
 - [ ] N5 Orca 어댑터와 라우팅
 - [x] (2026-10-15 오후 루프) N6 중 교차 검증 감사관 `gotechy audit`(contract.md 13절). 녹화 재생으로 Validation 12 자동 테스트. 실제 모델로 감사한 증거는 오너 승인 뒤(유료)
 - [x] (2026-10-15 오후 루프) N6 화면 시안 비교: 같은 HANDOFF를 세 안(A 지금, B 결정 카드 먼저, C 주장과 증거 대조)으로 그리고 폰과 넓은 화면에서 비교(`docs/references/evidence/2026-10-15-afternoon/handoff-mockups/`). 리드 제안은 B 기본에 한 일 절만 C 방식. 오너 확인 전

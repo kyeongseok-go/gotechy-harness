@@ -33,6 +33,8 @@ export function initProject(root: string, opts: InitOptions = {}): InitReport {
     '.claude',
     '.claude/settings.json',
     '.claude/settings.local.json',
+    '.codex',
+    '.codex/hooks.json',
   ])
   if (linked.length > 0)
     throw new Error(
@@ -187,43 +189,75 @@ function installGuard(
     writeFileSync(settings, `${JSON.stringify({ permissions: { deny: CLAUDE_DENY } }, null, 2)}\n`)
     note('.claude/settings.json (deny 규칙)', true)
   }
-  const local = join(dir, 'settings.local.json')
   const command = guardHookCommand(join(lib, 'bin', 'gotechy'))
-  const entry = { matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 120 }] }
-  if (!existsSync(local)) {
-    writeFileSync(local, `${JSON.stringify({ hooks: { PreToolUse: [entry] } }, null, 2)}\n`)
-    note('.claude/settings.local.json (부작용 가드 hook)', true)
-    return
+  mergeGuardHook(
+    root,
+    '.claude/settings.local.json',
+    { matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 120 }] },
+    report,
+    note,
+  )
+  // Codex도 같은 형식의 PreToolUse hook을 읽는다(learn.chatgpt.com/docs/hooks, 2026-10-15 확인). 경로가 들어가 gitignore에 둔다.
+  // Codex는 hook 실패와 시간 초과를 막지 않으므로 같은 감싸개(실패면 exit 2)를 쓴다. 프로젝트 .codex/를 신뢰하고 /hooks에서 승인해야 돈다
+  mkdirSync(join(root, '.codex'), { recursive: true })
+  const codexChanged = mergeGuardHook(
+    root,
+    '.codex/hooks.json',
+    {
+      matcher: '^Bash$',
+      hooks: [{ type: 'command', command, timeout: 120, statusMessage: GUARD_MARK }],
+    },
+    report,
+    note,
+  )
+  if (codexChanged)
+    report.warnings.push(
+      'Codex에서 부작용 가드를 쓰려면 Codex로 이 프로젝트를 열어 신뢰하고, /hooks에서 "gotechy 가드"를 승인하세요. 승인 전에는 Codex에서 가드가 돌지 않아요.',
+    )
+}
+
+/**
+ * hook 설정 파일(Claude Code settings.local.json, Codex hooks.json)에 가드 hook을 넣는다. 파일이 이미 있으면 다른 키와 hook은
+ * 지키고 가드만 더하거나 경로를 갱신한다(감사 10차 중간 5: 파일이 있다고 건너뛰면 가드가 조용히 꺼진다). 읽을 수 없으면 바꾸지 않는다
+ */
+function mergeGuardHook(
+  root: string,
+  rel: string,
+  entry: Record<string, unknown>,
+  report: InitReport,
+  note: (path: string, made: boolean) => void,
+): boolean {
+  const file = join(root, rel)
+  if (!existsSync(file)) {
+    writeFileSync(file, `${JSON.stringify({ hooks: { PreToolUse: [entry] } }, null, 2)}\n`)
+    note(`${rel} (부작용 가드 hook)`, true)
+    return true
   }
-  // Claude Code가 허용 규칙을 쌓아 둔 개인 파일이 대부분 이미 있다. 다른 키는 지키고 가드 hook만 더하거나 경로를 갱신한다
-  // (감사 10차 중간 5: 파일이 있다고 건너뛰면 가드가 조용히 꺼진다)
   let data: Record<string, unknown>
   try {
-    data = JSON.parse(readFileSync(local, 'utf8'))
+    data = JSON.parse(readFileSync(file, 'utf8'))
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('객체가 아님')
   } catch {
     report.warnings.push(
-      `.claude/settings.local.json을 읽지 못해 부작용 가드 hook을 넣지 못했어요. 파일을 고친 뒤 init을 다시 실행하세요. 넣을 항목: ${JSON.stringify(entry)}`,
+      `${rel}을 읽지 못해 부작용 가드 hook을 넣지 못했어요. 파일을 고친 뒤 init을 다시 실행하세요. 넣을 항목: ${JSON.stringify(entry)}`,
     )
-    return
+    return false
   }
   const hooks = (data.hooks ?? {}) as Record<string, unknown>
   const pre = Array.isArray(hooks.PreToolUse) ? (hooks.PreToolUse as Record<string, unknown>[]) : []
   const ours = (h: Record<string, unknown>) => JSON.stringify(h).includes(GUARD_MARK)
   const existing = pre.find(ours)
   if (existing && JSON.stringify(existing) === JSON.stringify(entry)) {
-    note('.claude/settings.local.json (가드 hook 있음)', false)
-    return
+    note(`${rel} (가드 hook 있음)`, false)
+    return false
   }
   const next = existing ? pre.map((h) => (ours(h) ? entry : h)) : [...pre, entry]
   writeFileSync(
-    local,
+    file,
     `${JSON.stringify({ ...data, hooks: { ...hooks, PreToolUse: next } }, null, 2)}\n`,
   )
-  note(
-    `.claude/settings.local.json (${existing ? '가드 hook 경로 갱신' : '부작용 가드 hook 추가'})`,
-    true,
-  )
+  note(`${rel} (${existing ? '가드 hook 경로 갱신' : '부작용 가드 hook 추가'})`, true)
+  return true
 }
 
 /** init이 깐 hook임을 알아보는 표시(hook 문구 안에 들어간다) */

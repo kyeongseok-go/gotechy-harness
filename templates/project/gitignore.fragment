@@ -3,3 +3,4 @@
 orchestration/private/
 orchestration/.seq.lock
 .claude/settings.local.json
+.codex/hooks.json

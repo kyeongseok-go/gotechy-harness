@@ -150,7 +150,7 @@ export function startServe(o: ServeOptions): ServeHandle {
       )
     if (deciding.has(gateId))
       return message(409, '결정하지 않았어요', [
-        `${gateId}의 다른 결정이 진행 중이에요. Touch ID 창을 확인하고, 끝나면 새로 고침하세요.`,
+        `${gateId}의 다른 결정이 진행 중이에요. 확인 창(Touch ID나 맥 암호)을 확인하고, 끝나면 새로 고침하세요.`,
       ])
     deciding.add(gateId)
     log(`제출: ${gateId} ${choice} (확인 ${nonce.slice(0, 4).toUpperCase()})`)

@@ -30,7 +30,7 @@ export type ViewMode = 'file' | 'serve'
 const pageHref = (mode: ViewMode, id: string) => (mode === 'serve' ? `/${id}` : `${id}.html`)
 const FOOTER: Record<ViewMode, string> = {
   file: '읽기 전용 화면이에요. 결정은 터미널에서 해요.',
-  serve: '결정은 결정 화면에서 제출하면 Touch ID로 서명돼요.',
+  serve: '결정은 결정 화면에서 제출하면 Touch ID(지문 장치가 없으면 맥 암호)로 서명돼요.',
 }
 
 const CSS = `
@@ -416,7 +416,7 @@ export function renderGatePage(f: GateForm): string {
             다음 지시 (선택)
             <textarea name="instruction" autocomplete="off" />
           </label>
-          <button type="submit">결정하고 Touch ID로 서명</button>
+          <button type="submit">결정하고 서명하기</button>
         </form>
       </main>
       <footer>빈 답도 받지만 핵심어 적중 0으로 남아요.</footer>

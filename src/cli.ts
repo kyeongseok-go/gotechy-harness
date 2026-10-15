@@ -418,7 +418,9 @@ program
           const answer = await rl.question('확정할까요? [y/N] ')
           const yes = answer.trim().toLowerCase() === 'y'
           if (yes)
-            console.log(`Touch ID 창에 "확인 ${code}"가 보이면 승인하세요. 다른 코드면 취소하세요.`)
+            console.log(
+              `확인 창(Touch ID, 지문 장치가 없으면 맥 암호)에 "확인 ${code}"가 보이면 승인하세요. 다른 코드면 취소하세요.`,
+            )
           return yes
         },
       })

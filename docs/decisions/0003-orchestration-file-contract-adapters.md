@@ -1,6 +1,6 @@
 # 0003. 오케스트레이션: 파일 계약이 원천, 어댑터는 Orca와 native 둘
 
-- 상태: 승인됨
+- 상태: 승인됨. 어댑터 중 Orca 워커 부분은 [0007](0007-orca-screen-only.md)로 대체(2026-10-16)
 - 날짜: 2026-10-14 (결정 D7, 2026-10-13)
 - 관련: [계약 문서](../references/contract.md), [설계 문서 12절 D7](../design-docs/2026-10-13-expert-library-v0.md), [1a ExecPlan M0, M1](../exec-plans/completed/2026-10-13-harness-v2-phase1.md)
 

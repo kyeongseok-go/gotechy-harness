@@ -1,7 +1,7 @@
 // gotechy audit T-###(contract.md 13절): 워커의 HANDOFF를 실제 diff와 리드 verify 출력에 대조하는 교차 검증 감사관.
 // 지적은 권고다. 게이트나 작업 상태를 바꾸지 않고, 커밋하지 않는 .gotechy/audits/에 기록만 남긴다.
 import { createHash, randomBytes } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   type AuditorName,
@@ -23,6 +23,7 @@ import { HandoffFrontmatter } from '../core/schema'
 import { CLAUDE_ENV } from './adapters/claude'
 import { CODEX_ENV } from './adapters/codex'
 import { auditors } from './auditors'
+import { writeAtomic } from './fsutil'
 import { gitProc } from './git'
 import { libraryRoot } from './library'
 import { appendEvent, type Project, paths } from './project'
@@ -216,19 +217,6 @@ async function evidenceExists(
     ? blob.stdout.split('\n').length - 1
     : blob.stdout.split('\n').length
   return line <= lines
-}
-
-/** 같은 폴더의 무작위 이름 임시 파일에 새로 만들어 쓰고(덮어쓰기와 링크 따라가기 금지) 이름을 바꾼다 */
-function writeAtomic(file: string, text: string): void {
-  const dir = join(file, '..')
-  mkdirSync(dir, { recursive: true })
-  const tmp = join(dir, `.tmp-${randomBytes(6).toString('hex')}`)
-  try {
-    writeFileSync(tmp, text, { flag: 'wx' })
-    renameSync(tmp, file)
-  } finally {
-    rmSync(tmp, { force: true })
-  }
 }
 
 function saveAuditLog(

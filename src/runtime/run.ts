@@ -24,13 +24,16 @@ import { disallowedChanges, handoffPathFor } from '../core/paths'
 import { buildWorkerPrompt } from '../core/prompt'
 import { HANDOFF_SECTIONS, type HandoffFrontmatter, type TaskFrontmatter } from '../core/schema'
 import { emptyUsage } from '../core/usage'
+import { accountHome } from './account'
 import { adapters } from './adapters'
 import type { WorkerAdapter } from './adapters/types'
+import { writeAtomic } from './fsutil'
 import { gateCheck, openGatesAfterRun } from './gates'
 import {
   changedFiles,
   commitAll,
   commitPaths,
+  differsFromBase,
   discardUncommitted,
   ensureWorktree,
   gitSnapshot,
@@ -144,6 +147,11 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
   let base: string
   if (existsSync(baseFile)) {
     base = readFileSync(baseFile, 'utf8').trim()
+    // 남의 저장소가 커밋해 둔 기록일 수 있다. git 옵션으로 읽히는 값을 쓰지 않는다(보안 감사 13차 높음 1)
+    if (!/^[0-9a-f]{40,64}$/.test(base))
+      return refuse(
+        `${baseFile}의 기준 커밋 기록이 커밋 번호가 아니에요. 파일을 지운 뒤 다시 실행하세요.`,
+      )
   } else {
     const head = await headCommit(p.root)
     if (!head)
@@ -152,9 +160,13 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
       )
     base = head
     mkdirSync(dirname(wt), { recursive: true })
-    writeFileSync(baseFile, `${base}\n`)
+    writeAtomic(baseFile, `${base}\n`)
   }
-  await ensureWorktree(p.root, wt, `gotechy/${task.id}`, base)
+  try {
+    await ensureWorktree(p.root, wt, `gotechy/${task.id}`, base)
+  } catch (e) {
+    return refuse((e as Error).message)
+  }
   updateFrontmatter(taskFile, { status: 'running' })
   appendEvent(p, { type: 'run.start', task: task.id, adapter: adapterName, base })
   log(`${task.id}: ${adapterName} 워커 실행 (worktree ${wt})`)
@@ -213,6 +225,12 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     if (hard.length > 0) notes.push(`하드 링크를 만들어 되돌렸습니다: ${hard.join(', ')}`)
     if (leaks.length > 0)
       notes.push(`워커에 넘긴 로그인 값이 들어 있어 되돌렸습니다: ${leaks.join(', ')}`)
+    // 되돌리기가 조용히 실패하면 "되돌렸습니다" 기록이 거짓이 된다. 다시 계산해 남았으면 git을 더 부르지 않고 실패로 끝낸다(보안 감사 13차 중간 3)
+    const left = (await differsFromBase(wt, base)).filter((f) => bad.includes(f))
+    if (left.length > 0) {
+      notes.push(`허용 밖 변경을 되돌리지 못했어요: ${left.join(', ')}`)
+      return finishTampered(p, task, adapterName, result, notes, taskFile, log)
+    }
   }
   const allowed = changed.filter((f) => !bad.includes(f))
 
@@ -232,6 +250,9 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
   await discardUncommitted(wt)
   notes.push(`리드 verify: \`${task.verify}\`: exit ${verify.exitCode}`)
   if (!verify.sandboxed) notes.push(UNSANDBOXED)
+  // 계정 홈을 못 읽으면 HOME 기준 비밀 폴더만 막는다. 그 사실을 남긴다(보안 감사 13차 중간 5)
+  else if (!accountHome())
+    notes.push('계정 홈을 읽지 못해 verify 샌드박스가 HOME 기준 비밀 폴더만 막았어요.')
 
   const mainHandoff = paths.handoff(p, task.id)
   const prevRev = readRev(mainHandoff)
@@ -398,7 +419,7 @@ function saveVerifyLog(
 ) {
   const dir = join(p.root, '.gotechy', 'runs')
   mkdirSync(dir, { recursive: true })
-  writeFileSync(verifyLogFile(p, id), formatVerifyLog(rev, commit, out, err))
+  writeAtomic(verifyLogFile(p, id), formatVerifyLog(rev, commit, out, err))
 }
 
 export const verifyLogFile = (p: Project, id: string) =>
@@ -408,7 +429,7 @@ function saveRawLog(p: Project, id: string, adapter: string, out: string, err: s
   const dir = join(p.root, '.gotechy', 'runs')
   mkdirSync(dir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-  writeFileSync(join(dir, `${id}-${adapter}-${stamp}.log`), `${out}\n--- stderr ---\n${err}`)
+  writeAtomic(join(dir, `${id}-${adapter}-${stamp}.log`), `${out}\n--- stderr ---\n${err}`)
 }
 
 function refuse(message: string, issues: Issue[] = []): RunOutcome {

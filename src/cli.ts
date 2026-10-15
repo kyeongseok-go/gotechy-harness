@@ -3,7 +3,7 @@
 import { randomBytes } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
 import { Command } from 'commander'
@@ -21,7 +21,7 @@ import { homeMismatch } from './runtime/account'
 import { auditTask } from './runtime/audit'
 import { formatDoctor, runDoctor } from './runtime/doctor'
 import { decideGate, listGates, pinOwner, verifyGates } from './runtime/gates'
-import { gitProc, repoRoot } from './runtime/git'
+import { gitProc, repoRoot, trackedUnder } from './runtime/git'
 import { loadCards, renderViews } from './runtime/inbox'
 import { initProject } from './runtime/init'
 import { gotechyHome, initOwnerKey, rotateOwnerKey } from './runtime/keys'
@@ -91,11 +91,14 @@ function requireOwnerTerminal(): void {
 }
 
 function insideProject(root: string, dir: string): boolean {
-  const real = (x: string) => {
+  // 없는 경로도 가장 가까운 실제 상위 폴더를 풀어 비교한다. 그대로 두면 /tmp와 /private/tmp 같은 별칭으로 피한다(보안 감사 13차 중간 1)
+  const real = (x: string): string => {
+    const abs = resolve(x)
     try {
-      return realpathSync(x)
+      return realpathSync(abs)
     } catch {
-      return x
+      const parent = dirname(abs)
+      return parent === abs ? abs : join(real(parent), basename(abs))
     }
   }
   const r = real(root)
@@ -131,6 +134,14 @@ function requireProject() {
   if (linked.length > 0) {
     console.error(
       `심볼릭 링크라서 멈췄어요: ${linked.join(', ')}. 링크를 지우거나 실제 폴더로 바꾼 뒤 다시 실행하세요.`,
+    )
+    process.exit(2)
+  }
+  // git이 추적하는 .gotechy/와 orchestration/private/는 언제나 남이 넣은 것이다. 링크나 기록을 심어 리드의 쓰기를 돌릴 수 있다(보안 감사 13차 높음 1)
+  const planted = trackedUnder(p.root, ['.gotechy', 'orchestration/private'])
+  if (planted.length > 0) {
+    console.error(
+      `git이 추적하는 .gotechy/나 orchestration/private/ 파일이 있어 멈췄어요: ${planted.slice(0, 5).join(', ')}. 남의 저장소가 넣은 것일 수 있어요. 확인한 뒤 git rm --cached로 추적을 빼세요.`,
     )
     process.exit(2)
   }
@@ -760,4 +771,11 @@ program
     console.log('커버리지 기준을 통과했어요')
   })
 
+// GOTECHY_HOME이 비었거나 상대 경로면 어떤 명령도 돌리지 않는다(보안 감사 13차 중간 1)
+try {
+  gotechyHome()
+} catch (e) {
+  console.error((e as Error).message)
+  process.exit(2)
+}
 await program.parseAsync()

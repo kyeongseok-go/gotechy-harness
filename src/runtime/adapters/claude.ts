@@ -3,7 +3,7 @@
 import { parseClaudeUsage } from '../../core/usage'
 import { gotechyHome } from '../keys'
 import { runProc } from '../proc'
-import { workerEnv } from './env'
+import { realAgentInTest, workerEnv } from './env'
 import type { WorkerAdapter, WorkerRequest, WorkerResult } from './types'
 
 const DENY = [
@@ -47,11 +47,14 @@ export function claudeArgs(req: WorkerRequest): string[] {
 export const claudeAdapter: WorkerAdapter = {
   name: 'claude',
   async run(req): Promise<WorkerResult> {
+    // 허용 목록만 넘긴다(contract.md 6.3절). 워커는 train 버전 그대로 돈다(10.1절)
+    const env = workerEnv(CLAUDE_ENV, { DISABLE_AUTOUPDATER: '1' })
+    const blocked = realAgentInTest('claude', env.PATH)
+    if (blocked) return { exitCode: 97, timedOut: false, rawOutput: '', stderr: blocked }
     const r = await runProc(claudeArgs(req), {
       cwd: req.cwd,
       timeoutMs: req.timeoutMs,
-      // 허용 목록만 넘긴다(contract.md 6.3절). 워커는 train 버전 그대로 돈다(10.1절)
-      env: workerEnv(CLAUDE_ENV, { DISABLE_AUTOUPDATER: '1' }),
+      env,
       replaceEnv: true,
     })
     const usage = parseClaudeUsage(r.stdout)

@@ -169,14 +169,14 @@ async function branchScopeProblems(
 ): Promise<string[]> {
   const mb = (await git(['merge-base', head, branch], root)).stdout.trim()
   // 이름 바꾸기 감지를 끈다(보안 감사 7차 중간 3). 켜 두면 옮겨 간 보호 파일의 옛 이름이 목록에서 빠진다
-  const files = (await git(['diff', '--name-only', '--no-renames', mb, branch], root)).stdout
-    .trim()
-    .split('\n')
+  // -z: 이름을 따옴표로 감싸지 않고 그대로 받는다(한글 이름, 보안 감사 13차 중간 3)
+  const files = (await git(['diff', '--name-only', '-z', '--no-renames', mb, branch], root)).stdout
+    .split('\0')
     .filter(Boolean)
   if (files.length === 0) return []
   const problems = disallowedChanges(files, ownership, id).map((f) => `허용 밖 파일: ${f}`)
-  const tree = (await git(['ls-tree', '-r', branch, '--', ...files], root)).stdout
-  for (const line of tree.split('\n')) {
+  const tree = (await git(['ls-tree', '-r', '-z', branch, '--', ...files], root)).stdout
+  for (const line of tree.split('\0')) {
     const [meta, path] = line.split('\t')
     if (path && meta?.startsWith('120000')) problems.push(`심볼릭 링크: ${path}`)
     if (path && meta?.startsWith('160000')) problems.push(`하위 저장소(gitlink): ${path}`)

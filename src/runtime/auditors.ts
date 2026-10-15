@@ -6,7 +6,7 @@ import type { AuditorName } from '../core/audit'
 import { parseClaudeUsage, parseCodexUsage } from '../core/usage'
 import { CLAUDE_ENV } from './adapters/claude'
 import { CODEX_ENV } from './adapters/codex'
-import { workerEnv } from './adapters/env'
+import { realAgentInTest, workerEnv } from './adapters/env'
 import { gotechyHome } from './keys'
 import { runProc } from './proc'
 
@@ -109,10 +109,13 @@ export function claudeResultText(json: string): string {
 }
 
 async function runCodex(req: AuditorRequest): Promise<AuditorResult> {
+  const env = workerEnv(CODEX_ENV)
+  const blocked = realAgentInTest('codex', env.PATH)
+  if (blocked) return { exitCode: 97, timedOut: false, text: '', raw: '', stderr: blocked }
   const r = await runProc(codexAuditorArgs(req), {
     cwd: req.cwd,
     timeoutMs: req.timeoutMs,
-    env: workerEnv(CODEX_ENV),
+    env,
     replaceEnv: true,
   })
   const out: AuditorResult = {
@@ -129,10 +132,13 @@ async function runCodex(req: AuditorRequest): Promise<AuditorResult> {
 }
 
 async function runClaude(req: AuditorRequest): Promise<AuditorResult> {
+  const env = workerEnv(CLAUDE_ENV, { DISABLE_AUTOUPDATER: '1' })
+  const blocked = realAgentInTest('claude', env.PATH)
+  if (blocked) return { exitCode: 97, timedOut: false, text: '', raw: '', stderr: blocked }
   const r = await runProc(claudeAuditorArgs(req), {
     cwd: req.cwd,
     timeoutMs: req.timeoutMs,
-    env: workerEnv(CLAUDE_ENV, { DISABLE_AUTOUPDATER: '1' }),
+    env,
     replaceEnv: true,
   })
   const out: AuditorResult = {

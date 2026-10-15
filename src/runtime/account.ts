@@ -3,6 +3,7 @@
 
 import { CString, dlopen, FFIType, type Pointer, read } from 'bun:ffi'
 import { realpathSync } from 'node:fs'
+import { join } from 'node:path'
 
 // struct passwd에서 pw_dir의 위치(바이트). 2026-10-15 실험: macOS arm64는 48, glibc x64와 arm64는 32
 const PW_DIR_OFFSET: Partial<Record<NodeJS.Platform, number>> = { darwin: 48, linux: 32 }
@@ -46,13 +47,15 @@ const real = (p: string) => {
 }
 
 /**
- * GOTECHY_HOME 없이 HOME이 계정 홈과 다르면 경고 문장. 오너 키와 끝 기록은 HOME 기준 위치를 쓰므로,
- * 다른 HOME으로 검증하면 끝 기록 검사가 다른 기록을 본다
+ * 오너 키와 끝 기록을 실제로 쓰는 위치(GOTECHY_HOME, 없으면 HOME/.gotechy)가 계정 홈의 기본 위치와 다르면 경고 문장.
+ * 다른 위치로 검증하면 끝 기록 검사가 다른 기록을 본다. GOTECHY_HOME을 둔 경우도 비교한다(보안 감사 13차 중간 1)
  */
 export function homeMismatch(env: Record<string, string | undefined>): string | undefined {
-  if (env.GOTECHY_HOME) return undefined
   const account = accountHome()
-  if (!account || !env.HOME) return undefined
-  if (real(env.HOME) === real(account)) return undefined
-  return `주의: HOME(${env.HOME})이 계정 홈(${account})과 달라요. 오너 키와 끝 기록은 HOME 기준 위치(${env.HOME}/.gotechy)를 써요. 의도한 것이 아니라면 HOME을 고친 뒤 다시 실행하세요.`
+  if (!account) return undefined
+  const used = env.GOTECHY_HOME ?? (env.HOME ? join(env.HOME, '.gotechy') : undefined)
+  if (!used) return undefined
+  const expected = join(account, '.gotechy')
+  if (real(used) === real(expected)) return undefined
+  return `주의: 오너 키와 끝 기록 위치(${used})가 계정 홈의 기본 위치(${expected})와 달라요. 의도한 것이 아니라면 HOME이나 GOTECHY_HOME을 고친 뒤 다시 실행하세요.`
 }

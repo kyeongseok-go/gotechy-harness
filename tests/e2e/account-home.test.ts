@@ -56,10 +56,14 @@ test('HOME을 바꿔도 verify 샌드박스는 계정 홈의 비밀 폴더를 �
   expect(deny('/tmp/gotechy-fake-home/.ssh')).toBe(true)
 })
 
-test('HOME이 계정 홈과 다르고 GOTECHY_HOME이 없으면 알린다', () => {
+test('키와 끝 기록 위치가 계정 홈의 기본 위치와 다르면 알린다', () => {
   expect(homeMismatch({ HOME: accountHome() })).toBeUndefined()
   expect(homeMismatch({ HOME: '/tmp/gotechy-fake-home' })).toContain('계정 홈')
-  expect(homeMismatch({ HOME: '/tmp/gotechy-fake-home', GOTECHY_HOME: '/tmp/g' })).toBeUndefined()
+  // GOTECHY_HOME을 둔 경우도 실제 위치를 비교한다(보안 감사 13차 중간 1)
+  expect(homeMismatch({ HOME: accountHome(), GOTECHY_HOME: '/tmp/g' })).toContain('계정 홈')
+  expect(
+    homeMismatch({ HOME: '/tmp/x', GOTECHY_HOME: `${accountHome() as string}/.gotechy` }),
+  ).toBeUndefined()
 })
 
 test('gate verify는 HOME이 계정 홈과 다르면 끝 기록 위치가 기본과 다르다고 알린다', () => {

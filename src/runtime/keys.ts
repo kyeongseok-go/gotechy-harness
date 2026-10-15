@@ -13,11 +13,15 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import { OWNER_KEY_ID, ownerKeyId } from '../core/gate'
 
 export function gotechyHome(): string {
-  return process.env.GOTECHY_HOME ?? join(homedir(), '.gotechy')
+  const v = process.env.GOTECHY_HOME
+  if (v === undefined) return join(homedir(), '.gotechy')
+  // 빈 값이나 상대 경로면 키와 끝 기록이 지금 폴더(보통 프로젝트) 기준이 되어 "프로젝트 안이면 멈춤" 검사를 피한다(보안 감사 13차 중간 1)
+  if (!isAbsolute(v)) throw new Error(`GOTECHY_HOME은 절대 경로여야 해요(지금 값: "${v}")`)
+  return v
 }
 
 const ownerDir = (home: string) => join(home, 'owner')

@@ -12,6 +12,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
+import { trackedUnder } from './git'
 import { gotechyHome } from './keys'
 import { libraryRoot } from './library'
 import { linkedPaths, PROJECT_DIRS, projectId } from './project'
@@ -165,6 +166,11 @@ const CLAUDE_DENY = [
   'Bash(gotechy loop:*)',
   'Bash(script:*)',
   'Bash(expect:*)',
+  // 가드 설정 파일을 편집 도구로 고쳐 가드를 끄지 못하게(보안 감사 13차 낮음 4)
+  'Edit(.claude/**)',
+  'Write(.claude/**)',
+  'Edit(.codex/**)',
+  'Write(.codex/**)',
 ]
 
 /**
@@ -209,7 +215,12 @@ function installGuard(
     },
     report,
     note,
+    { reportOthers: true },
   )
+  if (existsSync(join(root, '.codex', 'config.toml')))
+    report.warnings.push(
+      '.codex/config.toml이 있어요. gotechy가 만든 파일이 아니에요. Codex에서 이 프로젝트를 신뢰하기 전에 내용(hook을 끄는 설정 등)을 확인하세요.',
+    )
   if (codexChanged)
     report.warnings.push(
       'Codex에서 부작용 가드를 쓰려면 Codex로 이 프로젝트를 열어 신뢰하고, /hooks에서 "gotechy 가드"를 승인하세요. 승인 전에는 Codex에서 가드가 돌지 않아요.',
@@ -217,8 +228,9 @@ function installGuard(
 }
 
 /**
- * hook 설정 파일(Claude Code settings.local.json, Codex hooks.json)에 가드 hook을 넣는다. 파일이 이미 있으면 다른 키와 hook은
- * 지키고 가드만 더하거나 경로를 갱신한다(감사 10차 중간 5: 파일이 있다고 건너뛰면 가드가 조용히 꺼진다). 읽을 수 없으면 바꾸지 않는다
+ * hook 설정 파일(Claude Code settings.local.json, Codex hooks.json)에 가드 hook을 넣는다. 다른 키와 hook은 지키고, 표시가 붙은
+ * 옛 가드 항목은 모두 지운 뒤 가드를 맨 앞에 하나만 둔다(감사 10차 중간 5, 13차 중간 4). 읽을 수 없거나 형식이 다르면 바꾸지 않는다.
+ * 돌려주는 값: 파일을 바꿨는가
  */
 function mergeGuardHook(
   root: string,
@@ -226,37 +238,60 @@ function mergeGuardHook(
   entry: Record<string, unknown>,
   report: InitReport,
   note: (path: string, made: boolean) => void,
+  opts: { reportOthers?: boolean } = {},
 ): boolean {
   const file = join(root, rel)
+  // git이 추적하는 파일에 쓰면 라이브러리 절대 경로(사용자 이름 포함)가 커밋된다(보안 감사 13차 중간 4)
+  if (trackedUnder(root, [rel]).length > 0) {
+    report.warnings.push(
+      `${rel}을 git이 추적하고 있어 부작용 가드 hook을 넣지 않았어요. 라이브러리 경로가 커밋되지 않게 git rm --cached ${rel}로 추적을 뺀 뒤 init을 다시 실행하세요.`,
+    )
+    return false
+  }
   if (!existsSync(file)) {
     writeFileSync(file, `${JSON.stringify({ hooks: { PreToolUse: [entry] } }, null, 2)}\n`)
     note(`${rel} (부작용 가드 hook)`, true)
     return true
   }
-  let data: Record<string, unknown>
-  try {
-    data = JSON.parse(readFileSync(file, 'utf8'))
-    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('객체가 아님')
-  } catch {
+  const cannot = (why: string) => {
     report.warnings.push(
-      `${rel}을 읽지 못해 부작용 가드 hook을 넣지 못했어요. 파일을 고친 뒤 init을 다시 실행하세요. 넣을 항목: ${JSON.stringify(entry)}`,
+      `${rel}을 읽지 못해(${why}) 부작용 가드 hook을 넣지 못했어요. 파일을 고친 뒤 init을 다시 실행하세요. 넣을 항목: ${JSON.stringify(entry)}`,
     )
     return false
   }
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(readFileSync(file, 'utf8'))
+  } catch {
+    return cannot('JSON이 아님')
+  }
+  const isObject = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null && !Array.isArray(v)
+  if (!isObject(data)) return cannot('객체가 아님')
+  if (data.hooks !== undefined && !isObject(data.hooks)) return cannot('hooks가 객체가 아님')
   const hooks = (data.hooks ?? {}) as Record<string, unknown>
-  const pre = Array.isArray(hooks.PreToolUse) ? (hooks.PreToolUse as Record<string, unknown>[]) : []
-  const ours = (h: Record<string, unknown>) => JSON.stringify(h).includes(GUARD_MARK)
-  const existing = pre.find(ours)
-  if (existing && JSON.stringify(existing) === JSON.stringify(entry)) {
+  if (hooks.PreToolUse !== undefined && !Array.isArray(hooks.PreToolUse))
+    return cannot('PreToolUse가 배열이 아님')
+  const pre = (hooks.PreToolUse ?? []) as unknown[]
+  const ours = (h: unknown) => JSON.stringify(h).includes(GUARD_MARK)
+  const others = pre.filter((h) => !ours(h))
+  if (opts.reportOthers && others.length > 0)
+    report.warnings.push(
+      `${rel}에 gotechy가 만들지 않은 다른 hook이 ${others.length}개 있어요(${others
+        .map((h) => (isObject(h) ? String(h.matcher ?? '모든 도구') : '읽을 수 없음'))
+        .join(', ')}). 승인하기 전에 무엇을 하는지 확인하세요.`,
+    )
+  const next = [entry, ...others]
+  if (JSON.stringify(pre) === JSON.stringify(next)) {
     note(`${rel} (가드 hook 있음)`, false)
     return false
   }
-  const next = existing ? pre.map((h) => (ours(h) ? entry : h)) : [...pre, entry]
+  const existed = pre.some(ours)
   writeFileSync(
     file,
     `${JSON.stringify({ ...data, hooks: { ...hooks, PreToolUse: next } }, null, 2)}\n`,
   )
-  note(`${rel} (${existing ? '가드 hook 경로 갱신' : '부작용 가드 hook 추가'})`, true)
+  note(`${rel} (${existed ? '가드 hook 경로 갱신' : '부작용 가드 hook 추가'})`, true)
   return true
 }
 

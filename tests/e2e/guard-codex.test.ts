@@ -94,7 +94,9 @@ describe('Codex 가드 hook (1b N4)', () => {
     const data = JSON.parse(readFileSync(hooksFile(root), 'utf8'))
     expect(data.hooks.Stop).toEqual([{ hooks: [] }])
     expect(data.hooks.PreToolUse).toHaveLength(2)
-    expect(data.hooks.PreToolUse[0]).toEqual(other)
+    // 가드는 맨 앞, 다른 hook은 그대로 뒤에(보안 감사 13차 중간 4)
+    expect(JSON.stringify(data.hooks.PreToolUse[0])).toContain('guard')
+    expect(data.hooks.PreToolUse[1]).toEqual(other)
   })
 
   test('읽을 수 없는 hooks.json은 바꾸지 않고 알린다', () => {

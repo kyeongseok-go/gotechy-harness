@@ -23,6 +23,8 @@ export const PROTECTED_FILES = [
   'apm.lock.yaml',
   'mise.toml',
   'mise.lock',
+  // Claude Code가 프로젝트 MCP 서버를 읽는 파일(보안 감사 13차 중간 2)
+  '.mcp.json',
 ] as const
 
 const IRREVERSIBLE_HINTS = [
@@ -44,7 +46,12 @@ export function normalizeRel(p: string): string {
  * 대문자로 갔다가 소문자로 오면 ſ는 s, Kelvin 기호는 k가 된다. 전각 글자는 APFS도 접지 않아 그대로 둔다
  */
 export function foldPath(p: string): string {
-  return normalizeRel(p).normalize('NFC').toUpperCase().toLowerCase()
+  // 폭 없는 글자 같은 무시되는 글자는 지운다. HFS+는 비교에서 뺀다(보안 감사 13차 낮음 1)
+  return normalizeRel(p)
+    .normalize('NFC')
+    .replace(/\p{Default_Ignorable_Code_Point}/gu, '')
+    .toUpperCase()
+    .toLowerCase()
 }
 
 const FOLDED_FILES = PROTECTED_FILES.map(foldPath)
@@ -55,11 +62,15 @@ const FOLDED_PREFIXES = PROTECTED_PREFIXES.map(foldPath)
  * 병합 뒤 리드 세션이 데이터 블록을 거치지 않고 지시로 읽는다(보안 감사 12차 중간 5)
  */
 const INSTRUCTION_FILES = ['claude.md', 'claude.local.md', 'agents.md', 'agents.override.md']
+/** 에이전트 설정 폴더. 어느 깊이에 있든 보호한다. 하위 폴더의 스킬과 설정도 에이전트가 읽는다(보안 감사 13차 중간 2) */
+const AGENT_DIRS = ['.claude', '.agents', '.codex']
 
 export function isProtected(path: string): boolean {
   const p = foldPath(path)
   if (FOLDED_FILES.includes(p)) return true
-  if (INSTRUCTION_FILES.includes(p.split('/').at(-1) ?? '')) return true
+  const parts = p.split('/')
+  if (INSTRUCTION_FILES.includes(parts.at(-1) ?? '')) return true
+  if (parts.some((part) => AGENT_DIRS.includes(part))) return true
   return FOLDED_PREFIXES.some((pre) => p === pre.replace(/\/$/, '') || p.startsWith(pre))
 }
 
@@ -77,9 +88,7 @@ export function ownershipProblem(entry: string): string | undefined {
     if (e.endsWith('/') && pre.startsWith(folded))
       return `보호 경로 ${PROTECTED_PREFIXES[i]}를 포함하는 폴더입니다`
   }
-  if (e.endsWith('/') && FOLDED_FILES.some((f) => f.startsWith(folded) || e === '')) {
-    return '보호 파일을 포함하는 폴더입니다'
-  }
+  // 보호 파일은 모두 루트에 있어 폴더 항목이 품을 수 없다. 하위의 지시 파일과 설정 폴더는 바뀐 파일마다 isProtected가 막는다
   return undefined
 }
 

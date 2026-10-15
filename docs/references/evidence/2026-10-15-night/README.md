@@ -6,7 +6,7 @@ tags: [harness-v2, evidence, overnight]
 
 # 밤샘 루프 2 증거 (2026-10-15 01:10~04:39)
 
-오너가 자는 동안 리드(Claude Code, Opus 5.5 xhigh)가 혼자 진행한 결과예요. 계획은 `docs/exec-plans/active/2026-10-15-overnight-loop.md`예요.
+오너가 자는 동안 리드(Claude Code, Opus 5.5 xhigh)가 혼자 진행한 결과예요. 계획은 `docs/exec-plans/completed/2026-10-15-overnight-loop.md`예요.
 
 ## 먼저 볼 것
 

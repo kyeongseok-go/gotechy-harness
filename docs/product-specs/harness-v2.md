@@ -6,10 +6,10 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 
 # Gotechy Harness v2 — 제품 스펙
 
-- 상태: 구현 중. 1a 완료(2026-10-15), 1b 진행 중(N0~N4의 자동화 부분까지). spec-reviewer 검토는 2026-10-13에 반영
+- 상태: 구현 중. 1a 완료(2026-10-15), 1b 완료(2026-10-16, 알림과 mod는 2단계로 이관), 2단계 초안(오너 검토 전). spec-reviewer 검토는 2026-10-13에 반영
 - 우선순위: P0
 - 작성: 2026-10-13
-- 관련 ExecPlan: [1a단계](../exec-plans/completed/2026-10-13-harness-v2-phase1.md) · [1b단계](../exec-plans/active/2026-10-14-harness-v2-phase1b.md) · 2단계
+- 관련 ExecPlan: [1a단계](../exec-plans/completed/2026-10-13-harness-v2-phase1.md), [1b단계](../exec-plans/completed/2026-10-14-harness-v2-phase1b.md), [2단계 초안](../exec-plans/active/2026-10-16-harness-v2-phase2.md)
 - 근거: [설계·결정 트리 D1~D14](../design-docs/2026-10-13-expert-library-v0.md) · [리서치](../references/research/expert-library-research-2026-10.md)
 
 ## 0. 착수 판정
@@ -63,7 +63,7 @@ tags: [harness, agent-skills, orchestration, owner-mode]
 | 상황 | 동작 |
 |---|---|
 | doctor 실패 (버전 불일치·업데이트 차단 누락) | 실패 항목과 교정 명령을 출력, 이전 train 유지 |
-| HANDOFF lint 실패 | 워커가 교정 메시지를 보고 재작성 (최대 2회), 이후 실패로 오너에게 | (아직 없음: 지금은 lint에 실패하면 바로 failed다. TD-016)
+| HANDOFF lint 실패 | 워커가 교정 메시지를 보고 재작성 (최대 2회), 이후 실패로 오너에게 (2026-10-15 구현, TD-016) |
 | 막는 결정이 3개 초과 | lint가 "쪼개거나 결정 세션으로" 안내, 리드가 grill 세션으로 처리 |
 | 오래된 HANDOFF 판본으로 결정 제출 | 결정 거부, 최신 판본 다시 보기 안내 |
 | Orca 미설치·실행 불가 환경 | native 어댑터로 자동 전환, 기능 차이를 HANDOFF에 표시 |

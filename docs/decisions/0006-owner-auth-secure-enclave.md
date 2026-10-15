@@ -3,7 +3,7 @@
 - 상태: 승인됨 (2026-10-16, 오너가 T-007의 추천안 "암호 확인으로 승인"을 골랐다. 이 맥의 확인은 맥 로그인 암호로 둔다. 약한 점은 TD-023)
 - 날짜: 2026-10-14
 - 대체: [0005](0005-decision-signing.md)의 서명 방식(HMAC). 필수 게이트를 원천에서 계산하는 부분은 그대로다.
-- 관련: [계약 6.3절, 6.4절](../references/contract.md), [1b ExecPlan](../exec-plans/active/2026-10-14-harness-v2-phase1b.md), [N0 실험](../references/evidence/2026-10-14-n0/README.md)
+- 관련: [계약 6.3절, 6.4절](../references/contract.md), [1b ExecPlan](../exec-plans/completed/2026-10-14-harness-v2-phase1b.md), [N0 실험](../references/evidence/2026-10-14-n0/README.md)
 
 ## 맥락
 

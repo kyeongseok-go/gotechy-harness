@@ -5,7 +5,7 @@ date: 2026-10-15
 
 # 오후 자율 루프 증거
 
-오너가 외출하며 "다음 할 일을 찾아 가능한 만큼 진행"을 맡겼어요. 계획과 결과 표는 `docs/exec-plans/active/2026-10-15-afternoon-loop.md`에 있어요.
+오너가 외출하며 "다음 할 일을 찾아 가능한 만큼 진행"을 맡겼어요. 계획과 결과 표는 `docs/exec-plans/completed/2026-10-15-afternoon-loop.md`에 있어요.
 
 ## 먼저 볼 것
 

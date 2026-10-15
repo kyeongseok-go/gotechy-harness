@@ -1,7 +1,7 @@
 # 하네스 v2 2단계: 첫 실전 프로젝트로 검증하고, 효과를 재고, 최신으로 유지하기
 
 - 상태: **초안, 오너 검토 전** (2026-10-16 밤샘 마무리 루프에서 작성)
-- 관련: [1b ExecPlan](2026-10-14-harness-v2-phase1b.md), [스펙](../../product-specs/harness-v2.md), [판정표](../../product-specs/harness-v2-rubric.md), [계약](../../references/contract.md)
+- 관련: [1b ExecPlan](../completed/2026-10-14-harness-v2-phase1b.md), [스펙](../../product-specs/harness-v2.md), [판정표](../../product-specs/harness-v2-rubric.md), [계약](../../references/contract.md)
 
 ## Purpose / Big Picture
 

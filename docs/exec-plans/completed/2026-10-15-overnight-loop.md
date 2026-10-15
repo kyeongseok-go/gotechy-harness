@@ -1,6 +1,6 @@
 ---
 title: 밤샘 자율 실행 루프 2 (2026-10-15 새벽, 오너 수면)
-status: active
+status: completed
 parent: docs/exec-plans/completed/2026-10-13-harness-v2-phase1.md
 mode: night
 ---

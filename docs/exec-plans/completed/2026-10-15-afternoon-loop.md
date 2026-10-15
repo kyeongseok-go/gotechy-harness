@@ -1,7 +1,7 @@
 ---
 title: 오후 자율 실행 루프 (2026-10-15 오후, 오너 외출)
-status: active
-parent: docs/exec-plans/active/2026-10-14-harness-v2-phase1b.md
+status: completed
+parent: docs/exec-plans/completed/2026-10-14-harness-v2-phase1b.md
 mode: away
 ---
 

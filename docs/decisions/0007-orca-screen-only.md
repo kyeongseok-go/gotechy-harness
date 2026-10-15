@@ -3,7 +3,7 @@
 - 상태: 승인됨
 - 날짜: 2026-10-16
 - 대체: [0003](0003-orchestration-file-contract-adapters.md)의 "어댑터는 Orca 주력과 native 둘" 중 Orca 워커 어댑터 부분. 파일 계약이 원천이라는 결정은 그대로다.
-- 관련: [1b ExecPlan N5](../exec-plans/active/2026-10-14-harness-v2-phase1b.md), 오후 루프 보고 T-007(`docs/references/evidence/2026-10-15-afternoon/orchestration/handoffs/T-007.md`)
+- 관련: [1b ExecPlan N5](../exec-plans/completed/2026-10-14-harness-v2-phase1b.md), 오후 루프 보고 T-007(`docs/references/evidence/2026-10-15-afternoon/orchestration/handoffs/T-007.md`)
 
 ## 맥락
 

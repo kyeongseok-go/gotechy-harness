@@ -54,6 +54,24 @@ export function installFakeOwnerTool(home: string): void {
   chmodSync(ownerToolPath(home), 0o755)
 }
 
+/**
+ * 라이브러리 train에 자동 업데이트 끄기 두 값을 더한 train 파일을 임시 폴더에 만든다. 라이브러리 train에는
+ * 이 값이 없지만(2026-10-15 오너 결정, T-005) setup은 train에 있으면 넣을 수 있어야 한다
+ */
+export function fullPolicyTrain(): string {
+  let text = readFileSync(join(LIB, 'train.yaml'), 'utf8')
+  for (const [from, to] of [
+    ['    env: {}', '    env:\n      DISABLE_AUTOUPDATER: "1"'],
+    ['  codex: {}', '  codex:\n    check_for_update_on_startup: false'],
+  ] as const) {
+    if (!text.includes(from)) throw new Error(`train.yaml에 ${from.trim()} 줄이 없어요`)
+    text = text.replace(from, to)
+  }
+  const f = join(realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-train-'))), 'train.yaml')
+  writeFileSync(f, text)
+  return f
+}
+
 export function makeHome(): string {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-h-')))
   installFakeOwnerTool(home)

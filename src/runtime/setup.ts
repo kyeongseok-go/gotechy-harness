@@ -87,7 +87,9 @@ function claudeAfter(text: string | null, train: Train): { after: string; summar
       summary.push(`permissions.deny += ${d}`)
     }
   if (summary.length === 0) return { after: text ?? '', summary }
-  const next = { ...obj, env, permissions: { ...permissions, deny } }
+  // train에 env 값이 없으면 env 칸을 새로 만들지 않는다
+  const keepEnv = obj.env !== undefined || Object.keys(env).length > 0
+  const next = { ...obj, ...(keepEnv ? { env } : {}), permissions: { ...permissions, deny } }
   return { after: `${JSON.stringify(next, null, 2)}\n`, summary }
 }
 
@@ -97,6 +99,8 @@ function claudeAfter(text: string | null, train: Train): { after: string; summar
  */
 function codexAfter(text: string | null, train: Train): { after: string; summary: string[] } {
   const want = train.policy.codex.check_for_update_on_startup
+  // train에 값이 없으면 codex 설정은 건드리지 않는다
+  if (want === undefined) return { after: text ?? '', summary: [] }
   const line = `${CODEX_KEY} = ${want}`
   const manual = `자동으로 고치지 못했어요. ~/.codex/config.toml의 첫 [표] 앞에 이 줄을 손으로 넣어 주세요: ${line}`
   let before: Record<string, unknown> = {}

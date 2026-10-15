@@ -64,7 +64,7 @@ export async function runDoctor(o: DoctorOptions): Promise<DoctorReport> {
     const reinstall =
       tool.pin === 'A'
         ? '라이브러리 폴더에서 `mise install --locked`를 실행하고 PATH에 mise 도구가 잡히는지 확인하세요'
-        : `${name}를 train 버전(${tool.version})으로 다시 설치하거나, 새 버전을 검증한 뒤 train을 올리세요. 자동 업데이트는 \`gotechy setup\`의 정책이 막아요`
+        : `${name}를 train 버전(${tool.version})으로 다시 설치하거나, 새 버전을 검증한 뒤 train을 올리세요`
     if (!got) {
       checks.push({
         name,

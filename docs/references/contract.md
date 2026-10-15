@@ -365,14 +365,14 @@ frontmatter:
 | pin | 뜻 | doctor |
 |---|---|---|
 | `A` | 라이브러리의 `mise.toml`과 `mise.lock`(4개 플랫폼 체크섬)으로 완전 고정 | 버전이 다르면 실패 |
-| `B` | 설치 시점 고정, 자동 업데이트는 정책으로 막음. train 2026.10.0에는 B등급 도구가 없다(2026-10-14에 claude, codex를 A로 올림) | 버전이 다르면 실패. 고치는 법은 다시 설치하거나 검증 뒤 train 올리기 |
+| `B` | 설치 시점 고정, 자동 업데이트는 그 도구의 끄기 값을 `policy`에 넣어 막음. train 2026.10.0에는 B등급 도구가 없다(2026-10-14에 claude, codex를 A로 올림) | 버전이 다르면 실패. 고치는 법은 다시 설치하거나 검증 뒤 train 올리기 |
 | `C` | 고정할 수 없음(예: GUI 앱) | 기록만 하고 실패하지 않음 |
 
 워커는 train 버전 그대로 돈다. claude 워커에는 `DISABLE_AUTOUPDATER=1` 환경 변수를, codex 워커에는 `-c check_for_update_on_startup=false`를 넘긴다. `bin/gotechy`로 실행하면 워커는 PATH 맨 앞의 mise 설치본을 쓴다.
 
 `packs`는 프로젝트에 설치할 팩의 출처다. `source`는 라이브러리의 GitHub 저장소(`owner/repo`), `ref`는 그 저장소의 커밋 SHA(40자리)다. 태그 대신 커밋으로 고정하는 이유는 커밋은 바뀌지 않고, 태그를 따로 푸시하지 않아도 되기 때문이다. `ref`는 라이브러리 HEAD의 조상이어야 하고, 그 커밋의 `skills/`는 작업 폴더의 `skills/`와 같아야 한다(`tests/core/train-lock.test.ts`). 스킬을 바꾸면 그 변경을 커밋한 뒤 `ref`를 그 커밋으로 올린다.
 
-`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `env.DISABLE_AUTOUPDATER = "1"`, `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008), `Bash(gotechy serve:*)`(8.3절), `Bash(gotechy keys:*)`(리드가 오너 키를 바꿔 모든 결정을 무효로 만들지 않게, 보안 감사 7차 낮음 8), `Bash(gotechy loop:*)`(리드가 큰 예산으로 무인 루프를 돌리지 않게, 보안 감사 9차 낮음 7). 마지막 셋은 2026-10-15에 더했다. Codex(`~/.codex/config.toml`): `check_for_update_on_startup = false`.
+`policy`는 `setup`이 전역 설정에 넣는 값이다. 전역 설정에 들어가므로 `env`는 허용한 키(`DISABLE_AUTOUPDATER`, `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`)만, `deny`는 `Bash(...)`, `Read(...)`, `Edit(...)`, `Write(...)` 형식만 받는다. Claude Code(`~/.claude/settings.json`): `permissions.deny`에 `Bash(gotechy decide:*)`, `Bash(script:*)`, `Bash(expect:*)`(TD-008), `Bash(gotechy serve:*)`(8.3절), `Bash(gotechy keys:*)`(리드가 오너 키를 바꿔 모든 결정을 무효로 만들지 않게, 보안 감사 7차 낮음 8), `Bash(gotechy loop:*)`(리드가 큰 예산으로 무인 루프를 돌리지 않게, 보안 감사 9차 낮음 7). 마지막 셋은 2026-10-15에 더했다. 자동 업데이트 끄기(Claude Code의 `env.DISABLE_AUTOUPDATER = "1"`, Codex의 `check_for_update_on_startup = false`)는 2026-10-15 오너 결정(T-005)으로 train에서 뺐다. 오너가 직접 쓰는 claude와 codex가 업데이트를 못 받게 되어서다. 그래서 오너의 도구 버전은 train과 어긋날 수 있고, 그때 doctor는 실패로 알린다. 워커는 위처럼 어댑터가 따로 끈다. 스키마는 두 값을 계속 받고, train에 값이 없으면 setup은 그 설정(`env` 칸, `~/.codex/config.toml`)을 건드리지 않는다.
 
 ### 10.2 `gotechy doctor [--history]`
 

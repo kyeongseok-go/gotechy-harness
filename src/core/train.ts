@@ -53,7 +53,7 @@ export const Train = z
             deny: z.array(z.string().regex(/^(Bash|Read|Edit|Write)\(.+\)$/)),
           })
           .strict(),
-        codex: z.object({ check_for_update_on_startup: z.boolean() }).strict(),
+        codex: z.object({ check_for_update_on_startup: z.boolean().optional() }).strict(),
       })
       .strict(),
   })

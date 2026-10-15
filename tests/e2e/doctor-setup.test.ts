@@ -18,10 +18,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runDoctor } from '../../src/runtime/doctor'
 import { applySetup, planSetup, restoreSetup } from '../../src/runtime/setup'
+import { fullPolicyTrain } from './helpers'
 
 const LIB = join(import.meta.dir, '..', '..')
 const TRAIN = join(LIB, 'train.yaml')
 const MISMATCH = join(LIB, 'tests', 'fixtures', 'train', 'train-mismatch.yaml')
+// setup의 동작은 자동 업데이트 끄기까지 든 train으로 본다(라이브러리 train에는 없음, T-005)
+const FULL = fullPolicyTrain()
 const VERSIONS: Record<string, string> = {
   mise: '2026.10.8 macos-arm64 (2026-10-11)',
   bun: '1.4.3',
@@ -66,7 +69,7 @@ beforeEach(() => {
   )
 })
 
-const opts = () => ({ home, gotechyHome: ghome, trainFile: TRAIN })
+const opts = () => ({ home, gotechyHome: ghome, trainFile: FULL })
 const doctor = (train = TRAIN) =>
   runDoctor({ trainFile: train, libRoot: LIB, home, pathEnv: `${bin}:/usr/bin:/bin` })
 
@@ -132,6 +135,47 @@ describe('setup (Validation 13, 14)', () => {
     applySetup(planSetup(opts()), opts())
     expect(lstatSync(claudeFile()).isSymbolicLink()).toBe(true)
     expect(JSON.parse(readFileSync(real, 'utf8')).env.DISABLE_AUTOUPDATER).toBe('1')
+  })
+})
+
+describe('라이브러리 train의 정책 (2026-10-15 오너 결정, T-005)', () => {
+  const lib = () => ({ ...opts(), trainFile: TRAIN })
+
+  test('막는 줄만 넣고 자동 업데이트 설정과 codex 설정은 건드리지 않는다', () => {
+    const codexBefore = sha(codexFile())
+    const plan = planSetup(lib())
+    expect(plan.changes.map((c) => c.path)).toEqual([claudeFile()])
+    expect(plan.changes[0]?.summary).toEqual([
+      'permissions.deny += Bash(gotechy decide:*)',
+      'permissions.deny += Bash(script:*)',
+      'permissions.deny += Bash(expect:*)',
+      'permissions.deny += Bash(gotechy serve:*)',
+      'permissions.deny += Bash(gotechy keys:*)',
+      'permissions.deny += Bash(gotechy loop:*)',
+    ])
+    applySetup(plan, lib())
+    const c = JSON.parse(readFileSync(claudeFile(), 'utf8'))
+    expect(c.env).toBeUndefined()
+    expect(sha(codexFile())).toBe(codexBefore)
+    expect(planSetup(lib()).changes).toEqual([])
+  })
+
+  test('codex 설정에 업데이트 값이 이미 있어도 그대로 둔다', () => {
+    writeFileSync(codexFile(), 'check_for_update_on_startup = true\nmodel = "x"\n')
+    const before = sha(codexFile())
+    const plan = planSetup(lib())
+    expect(plan.changes.map((c) => c.path)).toEqual([claudeFile()])
+    applySetup(plan, lib())
+    expect(sha(codexFile())).toBe(before)
+  })
+
+  test('이미 있는 env 값은 그대로 둔다', () => {
+    writeFileSync(claudeFile(), '{\n  "env": { "DISABLE_AUTOUPDATER": "0", "FOO": "1" }\n}\n')
+    applySetup(planSetup(lib()), lib())
+    expect(JSON.parse(readFileSync(claudeFile(), 'utf8')).env).toEqual({
+      DISABLE_AUTOUPDATER: '0',
+      FOO: '1',
+    })
   })
 })
 

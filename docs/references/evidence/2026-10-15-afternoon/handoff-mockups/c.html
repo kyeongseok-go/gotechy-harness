@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>C안 주장과 증거 대조</title><style>
+:root { color-scheme: light dark; --fg: #1d1d1f; --muted: #5f6368; --line: #d9dce1; --bg: #fff;
+  --card: #f7f8fa; --decision: #b26a00; --failed: #c5221f; --resume: #1a73e8; --done: #188038; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e8eaed; --muted: #9aa0a6; --line: #3c4043;
+  --bg: #202124; --card: #292a2d; --decision: #fdd663; --failed: #f28b82; --resume: #8ab4f8; --done: #81c995; } }
+body { margin: 0 auto; max-width: 46rem; padding: 1.5rem 1rem 4rem; background: var(--bg); color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+h1 { font-size: 1.4rem; margin: .2rem 0 .4rem; } h2 { font-size: 1.1rem; margin: 1.6rem 0 .4rem; }
+a { color: inherit; } code, pre { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+pre { overflow-x: auto; padding: .6rem; background: var(--card); border-radius: 6px; }
+.label { font-weight: 700; margin: 0; } .signal { color: var(--muted); margin: 0; }
+.decision .label { color: var(--decision); } .failed .label { color: var(--failed); } .done .label { color: var(--done); }
+.resume .label { color: var(--resume); } .card.resume { border-left-color: var(--resume); }
+.card { border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+.card.decision { border-left-color: var(--decision); } .card.failed { border-left-color: var(--failed); }
+.card.done { border-left-color: var(--done); } .card h2 { margin: .2rem 0; }
+.must { border: 2px solid var(--decision); border-radius: 8px; padding: .2rem 1rem; }
+details { border-top: 1px solid var(--line); padding: .6rem 0; } summary { cursor: pointer; font-weight: 600; }
+dt { font-weight: 600; margin-top: .4rem; } dd { margin-left: 1rem; }
+footer { margin-top: 3rem; color: var(--muted); font-size: .9rem; }
+fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 1rem 0; padding: .6rem 1rem; }
+label { display: block; margin: .3rem 0; } textarea { width: 100%; min-height: 4rem; font: inherit; }
+button { font: inherit; font-weight: 700; padding: .5rem 1.2rem; border-radius: 8px; }
+
+.summary { font-size: 1.15rem; margin: .6rem 0 1rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .4rem 0 1rem; padding: 0; list-style: none; }
+.chips li { border: 1px solid var(--line); border-radius: 999px; padding: .15rem .7rem; font-size: .9rem; }
+.chips .ok { border-color: var(--done); color: var(--done); } .chips .warn { border-color: var(--decision); color: var(--decision); }
+.chips .bad { border-color: var(--failed); color: var(--failed); }
+.dcard { border: 2px solid var(--decision); border-radius: 10px; padding: .6rem 1rem .8rem; margin: .8rem 0; }
+.dcard .q { font-weight: 700; margin: .2rem 0 .6rem; } .dcard .gid { color: var(--muted); font-size: .85rem; margin: 0; }
+.opts { display: flex; flex-wrap: wrap; gap: .5rem; margin: .2rem 0 .5rem; }
+.opts a { display: inline-block; border: 1px solid var(--line); border-radius: 8px; padding: .45rem .9rem; text-decoration: none; min-height: 44px; box-sizing: border-box; line-height: 1.6; }
+.opts a.rec { border: 2px solid var(--decision); font-weight: 700; }
+.why { color: var(--muted); margin: 0; font-size: .95rem; }
+.tag { font-size: .8rem; border-radius: 4px; padding: 0 .35rem; margin-left: .3rem; border: 1px solid var(--line); white-space: nowrap; }
+.tag.ok { color: var(--done); border-color: var(--done); } .tag.inf { color: var(--decision); border-color: var(--decision); }
+.audit { border-left: 4px solid var(--failed); padding: .2rem .8rem; margin: .8rem 0; }
+.audit .sev { color: var(--failed); font-weight: 700; }
+table.cmp { width: 100%; border-collapse: collapse; font-size: .95rem; } .cmp th, .cmp td { border-top: 1px solid var(--line); padding: .5rem .4rem; text-align: left; vertical-align: top; }
+.cmp tr.hit td { background: color-mix(in srgb, var(--failed) 8%, transparent); }
+@media (max-width: 600px) { table.cmp thead { display: none; } table.cmp tr { display: block; border-top: 1px solid var(--line); padding: .4rem 0; }
+  table.cmp td { display: block; border: 0; padding: .15rem 0; } table.cmp td::before { content: attr(data-l) " "; color: var(--muted); font-size: .85rem; } }
+.mock { background: #eef3fe; color: #1a3a7a; font-size: .85rem; padding: .4rem .8rem; border-radius: 6px; }
+</style></head><body><p class="mock">시안 C: 주장과 증거 대조. 워커가 한 말마다 근거와 감사관 지적을 한 줄에 놓아요.</p>
+<header class="decision"><p><a href="/">인박스로</a></p><p class="label">[결정 필요]</p><h1>T-003 공문 마감일 추출</h1><p class="signal">막는 결정 2, 기본값 1, 검증 통과, 리스크 2, 감사 지적 1, $0.21, 파일 2개</p></header><main>
+<section class="must"><h2>결정하기</h2><ul><li><a href="/G-004">G-004</a> 날짜가 "10. 20.(월)"처럼 연도 없이 오면 어느 해로 볼까요? (추천 공문 시행일의 해)</li><li><a href="/G-005">G-005</a> 마감 시각이 없으면 몇 시로 둘까요? (추천 18시)</li></ul></section>
+<h2>한 줄 요약</h2><p>공문 본문에서 마감일과 근거 문장을 뽑는 함수를 만들었고, 연도 없는 날짜 처리만 결정을 기다려요.</p>
+<h2>주장과 증거</h2><table class="cmp"><thead><tr><th>워커의 주장</th><th>표시</th><th>근거</th><th>감사관</th></tr></thead><tbody>
+<tr><td data-l="주장">마감 표현을 찾는 함수를 만들었어요</td><td data-l="표시">확인</td><td data-l="근거"><code>src/deadline.ts</code>, 테스트 12개 통과</td><td data-l="감사관">지적 없음</td></tr>
+<tr><td data-l="주장">마감마다 근거 문장과 줄 번호를 돌려줘요</td><td data-l="표시">확인</td><td data-l="근거"><code>tests/deadline.test.ts</code></td><td data-l="감사관">지적 없음</td></tr>
+<tr class="hit"><td data-l="주장">연도 없는 날짜는 시행일의 해로 두었어요</td><td data-l="표시">추론</td><td data-l="근거">증거 없음</td><td data-l="감사관"><b>[높음]</b> <code>src/deadline.ts:41</code> 코드는 올해로 둬요(근거 확인됨)</td></tr>
+</tbody></table>
+<h2>건너뛴 것, 확인 못 한 것, 리스크</h2><ul><li>표 안의 날짜는 아직 읽지 않아요. [확인]</li><li>실제 공문 파일(HWP)로는 확인하지 않았어요. 시험은 글로 옮긴 문장만 썼어요. [확인]</li></ul>
+<details><summary>결정 자세히(선택지와 이유)</summary><ul><li>G-004 선택지: 공문 시행일의 해, 올해, 사람에게 묻기. 이유: 공문은 시행일 기준으로 쓰여요.</li><li>G-005 선택지: 18시, 24시, 비워 두기. 이유: 학교 공문 회신은 보통 근무 시간 안에 받아요.</li><li>기본값: 붙임 파일 이름의 날짜는 마감으로 보지 않기.</li></ul></details><details><summary>증거</summary><ul><li><code>bun test tests/deadline.test.ts</code>: 12개 통과</li></ul></details><details><summary>새 용어</summary><dl><dt>정규식</dt><dd>글에서 정해진 모양(예: 날짜)을 찾는 규칙이에요.</dd></dl></details><details><summary>말해 보기</summary><ul><li>연도 없는 날짜를 시행일의 해로 보면 어떤 공문에서 틀리나요?</li></ul></details><details><summary>다음 단계</summary><ul><li>결정대로 연도 규칙을 고치고, 표 안의 날짜 읽기를 다음 작업으로 나눠요.</li></ul></details><details><summary>리드 측정값</summary><ul><li>워커 claude (claude-sonnet-5-5), $0.21, 바뀐 파일 2개</li><li>리드 verify: <code>bun test tests/deadline.test.ts</code> exit 0</li></ul></details></main><footer>결정은 결정 화면에서 제출하면 Touch ID(지문 장치가 없으면 맥 암호)로 서명돼요.</footer></body></html>

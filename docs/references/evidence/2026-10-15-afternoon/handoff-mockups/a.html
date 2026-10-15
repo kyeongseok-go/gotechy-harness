@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"/><meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; img-src data:; base-uri &#39;none&#39;; form-action &#39;self&#39;; frame-ancestors &#39;none&#39;"/><meta name="referrer" content="same-origin"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>T-003 공문 마감일 추출</title><style>
+:root { color-scheme: light dark; --fg: #1d1d1f; --muted: #5f6368; --line: #d9dce1; --bg: #fff;
+  --card: #f7f8fa; --decision: #b26a00; --failed: #c5221f; --resume: #1a73e8; --done: #188038; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e8eaed; --muted: #9aa0a6; --line: #3c4043;
+  --bg: #202124; --card: #292a2d; --decision: #fdd663; --failed: #f28b82; --resume: #8ab4f8; --done: #81c995; } }
+body { margin: 0 auto; max-width: 46rem; padding: 1.5rem 1rem 4rem; background: var(--bg); color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+h1 { font-size: 1.4rem; margin: .2rem 0 .4rem; } h2 { font-size: 1.1rem; margin: 1.6rem 0 .4rem; }
+a { color: inherit; } code, pre { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+pre { overflow-x: auto; padding: .6rem; background: var(--card); border-radius: 6px; }
+.label { font-weight: 700; margin: 0; } .signal { color: var(--muted); margin: 0; }
+.decision .label { color: var(--decision); } .failed .label { color: var(--failed); } .done .label { color: var(--done); }
+.resume .label { color: var(--resume); } .card.resume { border-left-color: var(--resume); }
+.card { border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+.card.decision { border-left-color: var(--decision); } .card.failed { border-left-color: var(--failed); }
+.card.done { border-left-color: var(--done); } .card h2 { margin: .2rem 0; }
+.must { border: 2px solid var(--decision); border-radius: 8px; padding: .2rem 1rem; }
+details { border-top: 1px solid var(--line); padding: .6rem 0; } summary { cursor: pointer; font-weight: 600; }
+dt { font-weight: 600; margin-top: .4rem; } dd { margin-left: 1rem; }
+footer { margin-top: 3rem; color: var(--muted); font-size: .9rem; }
+fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 1rem 0; padding: .6rem 1rem; }
+label { display: block; margin: .3rem 0; } textarea { width: 100%; min-height: 4rem; font: inherit; }
+button { font: inherit; font-weight: 700; padding: .5rem 1.2rem; border-radius: 8px; }
+</style></head><body><header class="decision"><p><a href="/">인박스로</a></p><p class="label">[결정 필요]</p><h1>T-003 공문 마감일 추출</h1><p class="signal">막는 결정 2, 기본값 1, 검증 통과, 리스크 2, $0.21, 파일 2개</p></header><main><section class="must"><h2>결정하기</h2><ul><li><a href="/G-004">G-004</a> 결정 G-004: 날짜가 &quot;10. 20.(월)&quot;처럼 연도 없이 오면 어느 해로 볼까요? (추천 공문 시행일의 해)</li><li><a href="/G-005">G-005</a> 결정 G-005: 마감 시각이 없으면 몇 시로 둘까요? (추천 18시)</li></ul></section><section class="must"><h2>결정 필요</h2><ul>
+<li>[막는] 날짜가 &quot;10. 20.(월)&quot;처럼 연도 없이 오면 어느 해로 볼까요?
+<ul>
+<li>선택지: 공문 시행일의 해, 올해, 사람에게 묻기</li>
+<li>추천: 공문 시행일의 해</li>
+<li>이유: 공문은 시행일 기준으로 쓰여요. 연말 공문만 다음 해로 넘어가는지 따로 봐요</li>
+</ul>
+</li>
+<li>[막는] 마감 시각이 없으면 몇 시로 둘까요?
+<ul>
+<li>선택지: 18시, 24시, 비워 두기</li>
+<li>추천: 18시</li>
+<li>이유: 학교 공문 회신은 보통 근무 시간 안에 받아요</li>
+</ul>
+</li>
+<li>[기본값] 붙임 파일 이름의 날짜를 마감으로 볼까요?
+<ul>
+<li>선택지: 보지 않기, 보기</li>
+<li>추천: 보지 않기</li>
+<li>이유: 붙임 이름의 날짜는 작성일인 경우가 많아요</li>
+</ul>
+</li>
+</ul>
+</section><section><h2>한 줄 요약</h2><p>공문 본문에서 마감일과 근거 문장을 뽑는 함수를 만들었고, 연도 없는 날짜 처리만 결정을 기다려요.</p>
+</section><section><h2>한 일</h2><ul>
+<li>본문에서 &quot;2026. 10. 20.(월) 18:00까지&quot; 같은 마감 표현을 찾는 함수를 만들었어요. [확인]</li>
+<li>찾은 마감마다 근거 문장과 줄 번호를 함께 돌려줘요. [확인]</li>
+<li>연도 없는 날짜는 지금 공문 시행일의 해로 두었어요. [추론]</li>
+</ul>
+</section><section><h2>건너뛴 것, 확인 못 한 것, 리스크</h2><ul>
+<li>표 안의 날짜는 아직 읽지 않아요. [확인]</li>
+<li>실제 공문 파일(HWP)로는 확인하지 않았어요. 시험은 글로 옮긴 문장만 썼어요. [확인]</li>
+</ul>
+</section><details><summary>증거</summary><ul>
+<li><code>bun test tests/deadline.test.ts</code>: 12개 통과</li>
+</ul>
+</details><details><summary>새 용어</summary><ul>
+<li>정규식: 글에서 정해진 모양(예: 날짜)을 찾는 규칙이에요.</li>
+</ul>
+<dl><dt>정규식</dt><dd>글에서 정해진 모양(예: 날짜)을 찾는 규칙이에요.</dd></dl></details><details><summary>말해 보기</summary><ul>
+<li>연도 없는 날짜를 시행일의 해로 보면 어떤 공문에서 틀리나요?</li>
+</ul>
+</details><details><summary>다음 단계</summary><ul>
+<li>결정대로 연도 규칙을 고치고, 표 안의 날짜 읽기를 다음 작업으로 나눠요.</li>
+</ul>
+</details><details><summary>리드 측정값</summary><dl><dt>검증</dt><dd><code>bun test tests/deadline.test.ts</code> exit 0, 2026-10-15T05:40:00.000Z</dd><dt>실행</dt><dd>claude, claude-sonnet-5-5, 판본 1</dd><dt>토큰</dt><dd>입력 41200, 캐시 읽기 0, 캐시 쓰기 0, 출력 3900</dd><dt>비용</dt><dd>$0.210</dd><dt>바뀐 파일 3개</dt><dd><ul><li><code>src/deadline.ts</code></li><li><code>tests/deadline.test.ts</code></li><li><code>orchestration/handoffs/T-003.md</code></li></ul></dd></dl></details></main><footer>결정은 결정 화면에서 제출하면 Touch ID(지문 장치가 없으면 맥 암호)로 서명돼요.</footer></body></html>

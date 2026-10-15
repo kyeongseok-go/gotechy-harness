@@ -108,6 +108,18 @@ export function claudeResultText(json: string): string {
   }
 }
 
+/** `claude -p --output-format json`의 modelUsage 키(실제로 쓴 모델). 여럿이면 쉼표로 잇는다 */
+export function claudeResultModel(json: string): string | undefined {
+  try {
+    const o = JSON.parse(json) as { modelUsage?: unknown }
+    const keys =
+      o.modelUsage && typeof o.modelUsage === 'object' ? Object.keys(o.modelUsage).sort() : []
+    return keys.length > 0 ? keys.join(', ') : undefined
+  } catch {
+    return undefined
+  }
+}
+
 async function runCodex(req: AuditorRequest): Promise<AuditorResult> {
   const env = workerEnv(CODEX_ENV)
   const blocked = realAgentInTest('codex', env.PATH)
@@ -150,7 +162,9 @@ async function runClaude(req: AuditorRequest): Promise<AuditorResult> {
   }
   const cost = parseClaudeUsage(r.stdout)?.cost_usd
   if (typeof cost === 'number') out.costUsd = cost
-  if (req.model) out.model = req.model
+  // 모델을 주지 않으면 오너의 claude 기본 모델로 돈다. 기록에는 실제로 쓴 모델을 남긴다
+  const used = req.model ?? claudeResultModel(r.stdout)
+  if (used) out.model = used
   return out
 }
 

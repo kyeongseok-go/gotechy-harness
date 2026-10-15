@@ -1,0 +1,15 @@
+import { expect, test } from 'bun:test'
+import { findDeadline } from '../src/deadline'
+
+test('연도가 있는 마감 날짜와 시각을 찾는다', () => {
+  const text = '1. 관련: 교육청 공문\n2. 2026. 10. 20.(화) 18:00까지 회신 바랍니다.'
+  expect(findDeadline(text, new Date('2026-10-01'))).toEqual({
+    date: '2026-10-20',
+    time: '18:00',
+    evidence: '2. 2026. 10. 20.(화) 18:00까지 회신 바랍니다.',
+  })
+})
+
+test('마감 표현이 없으면 undefined', () => {
+  expect(findDeadline('참고 자료입니다.', new Date('2026-10-01'))).toBeUndefined()
+})

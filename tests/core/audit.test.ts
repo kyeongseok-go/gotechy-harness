@@ -18,6 +18,7 @@ import { buildCard, formatInbox } from '../../src/core/inbox'
 import { isProtected } from '../../src/core/paths'
 import {
   claudeAuditorArgs,
+  claudeResultModel,
   claudeResultText,
   codexAuditorArgs,
   lastCodexMessage,
@@ -142,6 +143,17 @@ describe('감사관 실행 인자는 읽기만 허용한다', () => {
     expect(lastCodexMessage('깨진 줄\n')).toBe('')
     expect(claudeResultText('{"type":"result","result":"답"}')).toBe('답')
     expect(claudeResultText('깨짐')).toBe('')
+  })
+
+  test('claude 감사관이 실제로 쓴 모델을 결과의 modelUsage에서 읽는다(2026-10-16 실제 실행에서 model이 비었음)', () => {
+    expect(
+      claudeResultModel('{"type":"result","modelUsage":{"claude-opus-5-5":{"costUSD":0.1}}}'),
+    ).toBe('claude-opus-5-5')
+    expect(claudeResultModel('{"modelUsage":{"claude-haiku-5-5":{},"claude-opus-5-5":{}}}')).toBe(
+      'claude-haiku-5-5, claude-opus-5-5',
+    )
+    expect(claudeResultModel('{"modelUsage":{}}')).toBeUndefined()
+    expect(claudeResultModel('깨짐')).toBeUndefined()
   })
 })
 

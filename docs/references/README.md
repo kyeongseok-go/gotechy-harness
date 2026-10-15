@@ -27,3 +27,5 @@
 - [iso-25010-quality-research.md](research/iso-25010-quality-research.md) — ISO 25010·25023·25030 품질 모델 조사 (영상 방법론 + 벤치마크) → QUALITY_MODEL.md의 근거
 - [planning-wizard-research.md](research/planning-wizard-research.md) — 단계형 기획·디자인 위저드 조사 (Relume·매니페스트·식스샵 + Spec Kit·Kiro·Lovable·Looka 외) → WIZARD.md의 근거
 - [github-skills-ecosystem.md](research/github-skills-ecosystem.md) — GitHub 스킬 생태계 조사 (분야별 베스트 + 추천 툴킷 15)
+- [2026-10-15-gongmunseo-hwpx-research.md](research/2026-10-15-gongmunseo-hwpx-research.md) — 공문서 프로젝트 첫 조각 사전 조사(HWP, HWPX 형식, 라이브러리와 라이선스, 공문서 작성 규칙). 조사 에이전트 작성, 리드가 1차 출처를 다시 대조하지는 않음
+- [2026-10-15-gongmunseo-kickoff-questions.md](research/2026-10-15-gongmunseo-kickoff-questions.md) — 공문서 위저드 첫 단계(브리프) 질문 5개와 추천안

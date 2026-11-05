@@ -31,8 +31,8 @@ branch: upgrade-2026-11
 - [x] (2026-11-05 14:03, 커밋 시각) U5 train 2026.11.0: claude 2.1.316, codex 0.166.0, apm 0.35.0, bun 1.4.4, node 24.22.2, uv 0.13.6, gh 2.103.3(gitleaks 8.30.1은 그대로 최신). 발행 5일 이상 지난 판만 골랐다. 격리 폴더(MISE_DATA_DIR)에서 `mise lock`과 `mise install`(락 고정)으로 8개 도구가 10초에 깔리고 각 `--version`이 맞는 것을 확인. 새 툴체인으로 793 pass, 커버리지 기준 통과
 - [x] (2026-11-05 14:13, 커밋 시각) U6 죽은 run 잠금의 회수를 회수 잠금 안에서 다시 확인하고 하게(TD-027 상환). 실제 프로세스 8개 경쟁 테스트: 고치기 전 6개가 동시에 잡음, 고친 뒤 1개. 경쟁 구간을 넓히는 테스트 전용 멈춤(`NODE_ENV=test`일 때만)
 - [x] (2026-11-05 14:19, 커밋 시각) U7 허용 범위 검사가 무시 파일도 보기(TD-007 상환). 무시 경로(node_modules)에 심은 파일이 verify에 닿지 않고 failed로 남는 것을 테스트로 고정
-- [x] (2026-11-05 U8) CI가 `bun src/cli.ts test`로 커버리지 기준까지 본다(리눅스는 macOS 전용 샌드박스 모듈만 뺌). 진행 중 ExecPlan의 필수 절 5개를 테스트로 검사(셸 grep 단계 대신). 끝난 10-16 밤샘 계획에 빠진 절을 채워 completed/로 옮김. `gotechy test`가 커버리지 임시 폴더를 지움. 800 pass
-- [ ] U9 워커 하드닝: codex는 표준 입력 프롬프트, 사용자 설정 무시, 기억 끔, 토큰 상한(TD-028, TD-015 a). claude는 작업 폴더 밖 쓰기 차단(TD-024 claude 쪽)
+- [x] (2026-11-05 14:26, 커밋 시각) U8 CI가 `bun src/cli.ts test`로 커버리지 기준까지 본다(리눅스는 macOS 전용 샌드박스 모듈만 뺌). 진행 중 ExecPlan의 필수 절 5개를 테스트로 검사(셸 grep 단계 대신). 끝난 10-16 밤샘 계획에 빠진 절을 채워 completed/로 옮김. `gotechy test`가 커버리지 임시 폴더를 지움. 800 pass
+- [x] (2026-11-05 U9) 워커 하드닝: codex 워커와 감사관은 프롬프트를 표준 입력으로(TD-028 일부), `--ignore-user-config`. claude 워커는 `blockWritesOutsideWorkingDirectories`, `blockReadsOutsideWorkingDirectories`(2.1.316 설정 스키마에서 permissions 아래 확인). TD-030 무료 실험: macOS codex 0.166 쓰기 샌드박스가 git 관리 파일 쓰기를 모두 막음. 토큰 상한(`features.rollout_budget`)은 개발 중 기능이고 확인에 유료 실행이 필요해 넣지 않고 U10 제안으로. 803 pass
 - [ ] U10 오너 결정용 제안서(ADR 초안): 리눅스 샌드박스(srt), Betterleaks, 팩 eval 예산, Agent Skills 검증 도구
 - [ ] U11 최종 검토(보안 감사, 문서 대조), 오너 보고 HANDOFF, 메모리
 
@@ -96,6 +96,8 @@ branch: upgrade-2026-11
 
 - U8에서 CI가 커버리지 기준을 보자마자 리눅스에서 `src/runtime/keys.ts`가 88.30%로 걸렸다. 서명 도구를 swiftc로 빌드하는 부분(macOS 전용)이 리눅스에서 돌 수 없어서였다. 파일 전체를 빼면 리눅스에서도 도는 검증 로직의 기준까지 잃으므로, 빌드 부분만 `src/runtime/ownertool.ts`로 떼어 냈다(keys.ts는 다시 내보내 쓰는 쪽은 그대로). macOS에서 keys.ts 98.00%.
 
+- TD-030 첫 실험은 저장소를 `/private/tmp`에 둬서 `.git/config` 쓰기가 성공했다. codex 쓰기 프로필이 임시 폴더를 기본 허용하기 때문이었다. 실제 배치(홈 아래 프로젝트, 그 안의 worktree)로 다시 하니 모두 막혔다. 실험 배치가 실제와 다르면 결론이 뒤집힌다. 대조군(보통 파일 쓰기)을 꼭 같이 돌린 덕에 첫 번째 시도(필수 인자 빠짐, 모두 exit 2)도 잘못된 실험임을 바로 알았다.
+
 ## Decision Log
 
 | 결정 | 근거 | 날짜 | ADR 승격 |
@@ -103,6 +105,8 @@ branch: upgrade-2026-11
 | 새 브랜치 `upgrade-2026-11`에서 하고 푸시까지 한다(master, harness-v2는 건드리지 않음) | 이전 루프와 같은 방식(커밋 직후 CI 확인). 병합은 오너 몫 | 2026-11-05 | - |
 | 도구 버전 올리기는 루프가 한다 | 오너가 2026-10-13에 도구 업데이트를 위임. 2.1.296의 headless 회귀 | 2026-11-05 | - |
 | train은 발행 5일 이상 지난 최신 안정판으로(claude는 2.1.318이 아니라 2.1.316) | 막 나온 판의 회귀를 피하는 냉각 기간. Bun 1.4.4의 `minimumReleaseAge` 3일보다 넉넉히 | 2026-11-05 | - |
+| codex 토큰 상한(`features.rollout_budget`)은 넣지 않는다 | 개발 중 기능(기본 꺼짐)이라 키가 바뀔 수 있고, 동작 확인에 유료 실행이 필요 | 2026-11-05 | U10 제안 |
+| claude 워커 프롬프트는 인자 그대로 둔다 | `claude -p`의 표준 입력 동작이 도움말에 없고 확인에 유료 실행이 필요 | 2026-11-05 | - |
 | 리눅스 샌드박스(srt), Betterleaks 도입은 제안만 한다 | 새 공급망 의존성은 오너 결정(내부 감사 2절) | 2026-11-05 | U10에서 초안 |
 
 ## Outcomes & Retrospective

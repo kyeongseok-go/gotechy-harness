@@ -37,7 +37,14 @@ export function claudeArgs(req: WorkerRequest): string[] {
     String(req.budgetUsd),
     '--settings',
     // GOTECHY_HOME을 바꾼 경우에도 실제 키 폴더를 막는다
-    JSON.stringify({ permissions: { deny: [...DENY, `Read(${gotechyHome()}/**)`] } }),
+    // block 두 설정(2.1.314 이상): restricted 위에 한 겹 더, 모든 권한 모드에서 작업 폴더 밖 파일 도구를 막는다(U9)
+    JSON.stringify({
+      permissions: {
+        deny: [...DENY, `Read(${gotechyHome()}/**)`],
+        blockWritesOutsideWorkingDirectories: true,
+        blockReadsOutsideWorkingDirectories: true,
+      },
+    }),
   ]
   if (req.model) args.push('--model', req.model)
   if (req.effort) args.push('--effort', req.effort)

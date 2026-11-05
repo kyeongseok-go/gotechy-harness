@@ -43,11 +43,13 @@ export function codexAuditorArgs(req: AuditorRequest): string[] {
     req.cwd,
     '--skip-git-repo-check',
     '--ephemeral',
+    '--ignore-user-config',
     '-c',
     'check_for_update_on_startup=false',
   ]
   if (req.model) args.push('-m', req.model)
-  args.push(req.prompt)
+  // 프롬프트(작업 diff 포함)는 표준 입력으로(TD-028: 리눅스 인자 하나 128KB 한도, U9)
+  args.push('-')
   return args
 }
 
@@ -130,6 +132,7 @@ async function runCodex(req: AuditorRequest): Promise<AuditorResult> {
     env,
     replaceEnv: true,
     group: true,
+    input: req.prompt,
   })
   const out: AuditorResult = {
     exitCode: r.exitCode,

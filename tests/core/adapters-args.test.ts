@@ -17,6 +17,13 @@ describe('claudeArgs', () => {
     expect(a).not.toContain('bypassPermissions')
   })
 
+  test('U9: 작업 폴더 밖 파일 읽기와 쓰기를 모든 권한 모드에서 막는다(Claude Code 2.1.314 이상 설정)', () => {
+    const a = claudeArgs(req)
+    const settings = JSON.parse(a[a.indexOf('--settings') + 1] as string)
+    expect(settings.permissions.blockWritesOutsideWorkingDirectories).toBe(true)
+    expect(settings.permissions.blockReadsOutsideWorkingDirectories).toBe(true)
+  })
+
   test('결정·작업 명세 폴더를 deny한다', () => {
     const a = claudeArgs(req)
     const settings = JSON.parse(a[a.indexOf('--settings') + 1] ?? '{}')
@@ -62,7 +69,9 @@ describe('codexArgs', () => {
     expect(a[a.indexOf('-C') + 1]).toBe('/wt')
     expect(a).toContain('--ephemeral')
     expect(a).not.toContain('--dangerously-bypass-approvals-and-sandbox')
-    expect(a.at(-1)).toBe('P')
+    // 지시문은 명령줄이 아니라 표준 입력으로 넘긴다(U9, TD-028: 리눅스는 인자 하나 128KB 한도)
+    expect(a.at(-1)).toBe('-')
+    expect(a).not.toContain('P')
   })
 
   test('업데이트 확인을 끄고 돈다 (워커는 train 버전 그대로)', () => {
@@ -70,7 +79,10 @@ describe('codexArgs', () => {
     const i = a.indexOf('check_for_update_on_startup=false')
     expect(i).toBeGreaterThan(0)
     expect(a[i - 1]).toBe('-c')
-    expect(a.at(-1)).toBe('P')
+  })
+
+  test('U9: 오너의 codex 설정(~/.codex/config.toml)을 읽지 않는다(워커가 오너 설정에 따라 달라지지 않게)', () => {
+    expect(codexArgs(req)).toContain('--ignore-user-config')
   })
 
   test('effort는 TOML 문자열로 넘긴다', () => {

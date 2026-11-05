@@ -1,4 +1,5 @@
 // 외부 명령 실행. 표준 입력은 항상 닫는다 — codex exec는 stdin이 열려 있으면 무한 대기한다(M0 확인).
+// input을 주면 그 글을 표준 입력으로 넘긴 뒤 닫는다(긴 지시문을 명령줄 대신, TD-028).
 export type ProcResult = { exitCode: number; stdout: string; stderr: string; timedOut: boolean }
 
 export async function runProc(
@@ -15,12 +16,14 @@ export async function runProc(
      * setsid로 그룹을 벗어난 프로세스는 막지 못한다.
      */
     group?: boolean
+    /** 표준 입력으로 넘길 글. 다 넘기면 닫힌다 */
+    input?: string
   },
 ): Promise<ProcResult> {
   const proc = Bun.spawn({
     cmd,
     cwd: opts.cwd,
-    stdin: 'ignore',
+    stdin: opts.input === undefined ? 'ignore' : new Blob([opts.input]),
     stdout: 'pipe',
     stderr: 'pipe',
     detached: opts.group === true,

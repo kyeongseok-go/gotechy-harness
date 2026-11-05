@@ -119,7 +119,10 @@ describe('감사관 실행 인자는 읽기만 허용한다', () => {
     expect(a[a.indexOf('-s') + 1]).toBe('read-only')
     expect(a).not.toContain('workspace-write')
     expect(a).not.toContain('danger-full-access')
-    expect(a.at(-1)).toBe('P')
+    // U9, TD-028: 프롬프트는 표준 입력으로, 오너의 codex 설정은 읽지 않는다
+    expect(a.at(-1)).toBe('-')
+    expect(a).not.toContain('P')
+    expect(a).toContain('--ignore-user-config')
   })
 
   test('claude 감사관은 계획 모드와 쓰기 거부 규칙, 비용 상한으로 돈다', () => {

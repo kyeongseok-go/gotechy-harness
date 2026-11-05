@@ -19,12 +19,15 @@ export function codexArgs(req: WorkerRequest): string[] {
     req.cwd,
     '--skip-git-repo-check',
     '--ephemeral',
+    // 오너의 ~/.codex/config.toml(모델, 메모리, 권한 프로필)이 워커에 섞이지 않게. 로그인은 CODEX_HOME 그대로(0.166 확인)
+    '--ignore-user-config',
   ]
   if (req.model) args.push('-m', req.model)
   if (req.effort) args.push('-c', `model_reasoning_effort="${req.effort}"`)
   // 워커는 train 버전 그대로 돈다(contract.md 10.1절)
   args.push('-c', 'check_for_update_on_startup=false')
-  args.push(req.prompt)
+  // 지시문은 표준 입력으로 넘긴다(`-`). 명령줄은 리눅스에서 인자 하나 128KB 한도가 있고 ps로 보인다(TD-028, U9)
+  args.push('-')
   return args
 }
 
@@ -41,6 +44,7 @@ export const codexAdapter: WorkerAdapter = {
       env,
       replaceEnv: true,
       group: true,
+      input: req.prompt,
     })
     const result: WorkerResult = {
       exitCode: r.exitCode,

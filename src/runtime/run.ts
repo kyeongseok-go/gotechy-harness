@@ -104,23 +104,63 @@ export async function withTaskLock<T>(
   }
 }
 
+/** 경쟁 테스트용: 죽은 잠금을 읽은 뒤 회수 전에 멈춘다. NODE_ENV=test일 때만 듣는다(TD-027 테스트) */
+function testPause(): void {
+  const ms =
+    process.env.NODE_ENV === 'test' ? Number(process.env.GOTECHY_TEST_RECLAIM_PAUSE_MS ?? 0) : 0
+  if (ms > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
 /** 작업별 실행 잠금. 살아 있는 프로세스가 잡고 있으면 사유를, 죽은 run의 잠금이면 회수한 뒤 잡는다 */
 function acquireRunLock(lock: string): true | string {
   mkdirSync(dirname(lock), { recursive: true })
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      mkdirSync(lock)
-      writeFileSync(join(lock, 'pid'), String(process.pid))
-      return true
-    } catch {
-      const pidFile = join(lock, 'pid')
-      const pid = existsSync(pidFile) ? Number(readFileSync(pidFile, 'utf8').trim()) : Number.NaN
-      if (!Number.isInteger(pid) || pid <= 0 || processAlive(pid))
-        return `다른 run이 이 작업을 실행하고 있어요${Number.isInteger(pid) && pid > 0 ? ` (pid ${pid})` : ''}. 끝난 뒤 다시 실행하세요. 멈춘 것이 확실하면 ${lock} 폴더를 지우세요`
-      rmSync(lock, { recursive: true, force: true })
-    }
+  const busy = (pid: number) =>
+    `다른 run이 이 작업을 실행하고 있어요${Number.isInteger(pid) && pid > 0 ? ` (pid ${pid})` : ''}. 끝난 뒤 다시 실행하세요. 멈춘 것이 확실하면 ${lock} 폴더를 지우세요`
+  if (makeLock(lock)) return true
+  const stale = lockPid(lock)
+  if (!Number.isInteger(stale) || stale <= 0 || processAlive(stale)) return busy(stale)
+  testPause()
+  // 죽은 잠금의 회수는 회수 잠금 안에서만 한다. 그 안에서 pid를 다시 읽어, 그 사이 다른 프로세스가 회수하고 새로 잡은
+  // 잠금을 지우지 않는다(TD-027: 둘이 같은 죽은 pid를 보고 차례로 지우고 만들면 둘 다 잡았다)
+  const guard = `${lock}.reclaim`
+  try {
+    mkdirSync(guard)
+  } catch {
+    clearStaleGuard(guard)
+    return busy(stale)
   }
-  return `실행 잠금(${lock})을 잡지 못했어요`
+  try {
+    if (lockPid(lock) !== stale) return busy(lockPid(lock))
+    rmSync(lock, { recursive: true, force: true })
+    return makeLock(lock) ? true : `실행 잠금(${lock})을 잡지 못했어요`
+  } finally {
+    rmSync(guard, { recursive: true, force: true })
+  }
+}
+
+function makeLock(lock: string): boolean {
+  try {
+    mkdirSync(lock)
+  } catch {
+    return false
+  }
+  writeFileSync(join(lock, 'pid'), String(process.pid))
+  return true
+}
+
+function lockPid(lock: string): number {
+  const pidFile = join(lock, 'pid')
+  return existsSync(pidFile) ? Number(readFileSync(pidFile, 'utf8').trim()) : Number.NaN
+}
+
+/** 회수 도중 죽은 프로세스가 남긴 회수 잠금은 1분이 지나면 치운다. 다음 실행이 다시 회수한다 */
+function clearStaleGuard(guard: string): void {
+  try {
+    if (Date.now() - statSync(guard).mtimeMs > 60_000)
+      rmSync(guard, { recursive: true, force: true })
+  } catch {
+    // 이미 없어졌으면 할 일이 없다
+  }
 }
 
 async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Promise<RunOutcome> {

@@ -105,4 +105,9 @@ describe('extractEnglishTerms', () => {
       'worktree에서 Worktree와 MCP를 써요. `bun test`는 코드예요. https://example.com T-001'
     expect(extractEnglishTerms(body).sort()).toEqual(['mcp', 'worktree'])
   })
+
+  test('한글 이름의 파일(문서.md, 회의/정리.ts)은 확장자를 용어로 뽑지 않는다', () => {
+    const body = '문서.md와 회의/정리.ts, 그리고 README.md를 고쳤어요. worktree도 써요.'
+    expect(extractEnglishTerms(body).sort()).toEqual(['worktree'])
+  })
 })

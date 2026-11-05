@@ -5,6 +5,7 @@ import { serializeFrontmatter } from '../../src/core/frontmatter'
 import { hasErrors, lintHandoff } from '../../src/core/lint-handoff'
 import { lintTask } from '../../src/core/lint-task'
 import { HANDOFF_SECTIONS, TASK_SECTIONS } from '../../src/core/schema'
+import { loadKnownTerms } from '../../src/runtime/terms'
 
 const taskFm = (over: Record<string, unknown> = {}) => ({
   id: 'T-001',
@@ -83,10 +84,12 @@ const handoffFixture = readFileSync(
   join(import.meta.dir, '..', 'fixtures', 'fake', 'readme-ok', 'handoff.md'),
   'utf8',
 ).replaceAll('{{TASK}}', 'T-001')
+const knownTerms = loadKnownTerms()
 
 describe('lintHandoff (M1 구조)', () => {
   test('계약 형식의 HANDOFF는 통과한다', () => {
-    expect(hasErrors(lintHandoff(handoffFixture, 'h.md').issues)).toBe(false)
+    // 실제 run처럼 라이브러리 용어 은행(README 등)을 함께 준다
+    expect(hasErrors(lintHandoff(handoffFixture, 'h.md', { knownTerms }).issues)).toBe(false)
   })
 
   test('빠진 절을 알려 준다', () => {
@@ -110,7 +113,7 @@ describe('lintHandoff (M1 구조)', () => {
 
   test('코드 블록 안의 ## 는 절로 보지 않는다', () => {
     const text = handoffFixture.replace('## 다음 단계', '```\n## 가짜 절\n```\n## 다음 단계')
-    expect(hasErrors(lintHandoff(text, 'h.md').issues)).toBe(false)
+    expect(hasErrors(lintHandoff(text, 'h.md', { knownTerms }).issues)).toBe(false)
   })
 
   test('필수 frontmatter 키(status)가 빠지면 실패한다', () => {

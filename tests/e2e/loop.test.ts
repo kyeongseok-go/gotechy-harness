@@ -16,6 +16,7 @@ import { hasErrors, lintHandoff } from '../../src/core/lint-handoff'
 import { runLoop } from '../../src/runtime/loop'
 import { updateFrontmatter } from '../../src/runtime/project'
 import { runTask } from '../../src/runtime/run'
+import { loadKnownTerms } from '../../src/runtime/terms'
 import { FAKE, fm, LIB, makeHome, makeProject, newTask, taskFile } from './helpers'
 
 let root: string
@@ -131,7 +132,10 @@ describe('Validation 8: 아침 보고서와 이어 가기', () => {
     expect(linked.length).toBeGreaterThan(0)
     for (const id of linked) {
       const rel = `orchestration/handoffs/${id}.md`
-      const issues = lintHandoff(readFileSync(join(root, rel), 'utf8'), rel).issues
+      // run과 같은 기준(라이브러리와 프로젝트 용어 은행)으로 본다
+      const issues = lintHandoff(readFileSync(join(root, rel), 'utf8'), rel, {
+        knownTerms: loadKnownTerms(root),
+      }).issues
       expect({ id, errors: hasErrors(issues) }).toEqual({ id, errors: false })
     }
   })

@@ -7,7 +7,9 @@ export const IGNORE_MARKER = /<!--\s*style-ignore-(?:start|end)\s*-->/
 const FENCE = /^\s*(```|~~~)[\s\S]*?^\s*\1\s*$/gm
 const INLINE_CODE = /`[^`\n]*`/g
 const URL = /\bhttps?:\/\/[^\s)>\]]+/g
-const FILE = /\b[\w./-]+\.(md|ts|tsx|js|json|ya?ml|toml|txt|py|sh|lock|html|css)\b/g
+// 파일 이름은 한글 같은 비ASCII 글자로도 시작한다(문서.md). \b는 ASCII 기준이라 앞쪽 경계를 lookbehind로 둔다.
+const FILE =
+  /(?<![\p{L}\p{N}_./-])[\p{L}\p{N}_./-]+\.(md|ts|tsx|js|json|ya?ml|toml|txt|py|sh|lock|html|css)\b/gu
 
 function blank(match: string): string {
   return match.replace(/[^\n]/g, ' ')

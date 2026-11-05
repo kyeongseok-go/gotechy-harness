@@ -25,7 +25,7 @@ branch: upgrade-2026-11
 - [x] (2026-11-05 13:00) 시작 상태 기록: `~/.claude/settings.json` sha256 앞 8자리 `c5551143`, `~/.codex/config.toml` `62b7d579`, `~/.gotechy` 전체 해시 `ac4c41f4`(10-16과 같음). claude 실행 파일은 2.1.318
 - [x] (2026-11-05 13:30) U0 기준선 복구. 시작 때 `bun run check`가 766 pass, 11 fail. 커밋 5d1491d로 778 pass, 커버리지 95.69%
 - [x] (2026-11-05 13:40) U1 조사 두 건(외부 최신 기술, 내부 격차)과 radar 실행, 이 계획
-- [ ] U2 가드 hook을 시간 초과와 실패에도 막게(TD-026)
+- [x] (2026-11-05 14:20) U2 가드 hook을 시간 초과와 실패에도 막게(TD-026 상환). 막을 때 exit 2와 stderr, Claude Code hook에 `onFailure: "block"`. 780 pass. mutation(설정 키 빼기)을 테스트가 잡음
 - [ ] U3 자기 규칙 지키기: 지도와 규칙 문서의 문체 오류 0건, 저장소 위생 테스트, 날짜로 켜지는 규칙 검사
 - [ ] U4 radar 잡음 줄이기와 못 읽는 출처(ears)
 - [ ] U5 도구 고정 버전 올리기(train, mise.toml, mise lock, CI)
@@ -75,6 +75,9 @@ branch: upgrade-2026-11
 
 - 날짜로 켜지는 규칙이 시한폭탄이 됐다. `src/core/style.ts:7`의 `STYLE_ENFORCE_FROM`(2026-10-21 00:00 KST)이 지나자 테스트 11개가 깨졌다. 마지막 CI(10-16)는 그 전이라 초록이었고, 그 뒤로 아무도 돌리지 않아 3주 동안 몰랐다. 원인 둘: (1) `src/core/prose.ts`의 파일 이름 가리기가 `\b`(ASCII 기준)로 시작해 `문서.md`를 못 가리고 `md`를 영어 용어로 뽑았다(진짜 버그, 한글 파일 이름을 쓰는 오너에게 바로 걸림). (2) 테스트 몇 개가 실제 run과 달리 용어 은행 없이 lint했다.
 - radar `--all` 결과(2026-11-05): 출처 136개 중 새 판 6, 바뀜 45, 처음 기록 7, 같음 77, 못 읽음 1. 바뀜 45건은 대부분 페이지 장식 변화로 보인다(ISO 표준 페이지 등). 사람이 볼 수 없는 양이라 잡음을 줄여야 쓸모가 있다.
+
+- `onFailure`의 위치가 문서마다 달라 보였다. 실행 파일 문자열에 SDK용 "hook matcher의 onFailure" 문구가 있어 헷갈렸지만, 2.1.318 설정 스키마에서 command hook 객체에 `timeout`, `onFailure`, `statusMessage`가 나란히 있는 것을 확인했다. 위치가 틀리면 설정 파일이 거부돼 가드가 통째로 꺼질 수 있어서 넣기 전에 확인했다.
+- 연구 에이전트의 추정("감시 타이머가 필요 없어진다")은 Claude Code에만 맞다. Codex의 hook 시간 초과 동작은 문서에 없어 남겨 두었다.
 
 ## Decision Log
 

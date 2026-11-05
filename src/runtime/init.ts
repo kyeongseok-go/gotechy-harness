@@ -199,7 +199,8 @@ function installGuard(
   mergeGuardHook(
     root,
     '.claude/settings.local.json',
-    { matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 120 }] },
+    // onFailure block(Claude Code 2.1.295 이상): 가드가 시작하지 못하거나 시간 초과면 통과가 아니라 막는다(TD-026)
+    { matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 120, onFailure: 'block' }] },
     report,
     note,
   )
@@ -305,6 +306,6 @@ const GUARD_MARK = 'gotechy 가드'
 export function guardHookCommand(bin: string): string {
   const q = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`
   const fix = `라이브러리를 옮겼으면 프로젝트에서 gotechy init을 다시 실행하세요`
-  const script = `[ -x ${q(bin)} ] || { printf '%s\\n' ${q(`${GUARD_MARK}를 실행할 수 없어 명령을 막았어요: ${bin}. ${fix}`)} >&2; exit 2; }; ${q(bin)} guard; rc=$?; [ "$rc" -eq 0 ] && exit 0; printf '%s\\n' ${q(`${GUARD_MARK}가 실패해 명령을 막았어요(코드 `)}"$rc)" >&2; exit 2`
+  const script = `[ -x ${q(bin)} ] || { printf '%s\\n' ${q(`${GUARD_MARK}를 실행할 수 없어 명령을 막았어요: ${bin}. ${fix}`)} >&2; exit 2; }; ${q(bin)} guard; rc=$?; [ "$rc" -eq 0 ] && exit 0; [ "$rc" -eq 2 ] && exit 2; printf '%s\\n' ${q(`${GUARD_MARK}가 실패해 명령을 막았어요(코드 `)}"$rc)" >&2; exit 2`
   return `sh -c ${q(script)}`
 }

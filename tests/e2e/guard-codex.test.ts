@@ -44,7 +44,7 @@ describe('Codex 가드 hook (1b N4)', () => {
 
   test('gotechy guard는 Codex 입력 형식에서도 오너 전용 명령을 막고 일상 명령은 통과시킨다', () => {
     const deny = guard(codexInput('gotechy decide G-001 5분'))
-    expect(deny.code).toBe(0)
+    expect(deny.code).toBe(2) // Codex는 exit 2로 막는다(TD-026)
     expect(JSON.parse(deny.out).hookSpecificOutput.permissionDecision).toBe('deny')
     const ok = guard(codexInput('ls -la'))
     expect(ok).toEqual({ code: 0, out: '' })

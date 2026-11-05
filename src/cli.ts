@@ -615,7 +615,10 @@ program
     'Claude Code PreToolUse hook: 리드의 부작용 명령을 막는다. 표준 입력의 hook JSON을 읽는다 (contract.md 12절)',
   )
   .action(async () => {
-    const deny = (reason: string) =>
+    // 막을 때는 JSON(Claude Code), stderr와 exit 2(Codex, 그리고 JSON을 못 읽는 경우) 둘 다로 막는다(TD-026)
+    let denied = false
+    const deny = (reason: string) => {
+      denied = true
       console.log(
         JSON.stringify({
           hookSpecificOutput: {
@@ -625,6 +628,8 @@ program
           },
         }),
       )
+      console.error(reason)
+    }
     // 무엇이 잘못되든 막는 쪽으로 끝낸다(감사 10차 중간 4, 낮음 8, 9)
     try {
       await (async () => {
@@ -651,7 +656,7 @@ program
       deny(`gotechy 가드에 오류가 나 명령을 막았어요: ${(e as Error).message}`)
     }
     // 닫히지 않은 표준 입력이 프로세스를 붙잡지 않게 판정 뒤 바로 끝낸다
-    process.exit(0)
+    process.exit(denied ? 2 : 0)
   })
 
 program

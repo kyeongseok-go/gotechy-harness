@@ -36,7 +36,9 @@ describe('gotechy guard (Validation 9)', () => {
   test('gotechy decide와 force push는 deny로 답한다', () => {
     for (const cmd of ['gotechy decide G-001 5분', FORCE_PUSH]) {
       const r = cli(['guard'], LIB, hookInput(cmd))
-      expect(r.code).toBe(0)
+      // TD-026: JSON만이 아니라 exit 2와 stderr로도 막는다(Codex hook은 exit 2로 막는다)
+      expect(r.code).toBe(2)
+      expect(r.err.length).toBeGreaterThan(0)
       const o = JSON.parse(r.out)
       expect(o.hookSpecificOutput.hookEventName).toBe('PreToolUse')
       expect(o.hookSpecificOutput.permissionDecision).toBe('deny')
@@ -54,10 +56,11 @@ describe('gotechy guard (Validation 9)', () => {
   test('입력을 읽을 수 없으면 막는다(fail-closed)', () => {
     for (const input of ['not json', '', JSON.stringify({ tool_name: 'Bash' })]) {
       const r = cli(['guard'], LIB, input)
-      expect({ input, decision: JSON.parse(r.out).hookSpecificOutput.permissionDecision }).toEqual({
+      expect({
         input,
-        decision: 'deny',
-      })
+        code: r.code,
+        decision: JSON.parse(r.out).hookSpecificOutput.permissionDecision,
+      }).toEqual({ input, code: 2, decision: 'deny' })
     }
   })
 })
@@ -86,6 +89,15 @@ describe('init이 까는 프로젝트 설정', () => {
     expect(hook.hooks[0].command).toContain(join(LIB, 'bin', 'gotechy'))
     expect(hook.hooks[0].command).toContain('guard')
     expect(readFileSync(join(root, '.gitignore'), 'utf8')).toContain('.claude/settings.local.json')
+  })
+
+  test('TD-026: Claude Code 가드 hook은 시작 실패와 시간 초과에도 막는다(onFailure block), Codex 항목에는 넣지 않는다', () => {
+    initProject(root, { hooks: false })
+    const local = JSON.parse(readFileSync(join(root, '.claude', 'settings.local.json'), 'utf8'))
+    expect(local.hooks.PreToolUse[0].hooks[0].onFailure).toBe('block')
+    // Codex hooks.json 형식에는 onFailure가 없다. 모르는 키로 hook 전체가 무시되지 않게 넣지 않는다
+    const codex = JSON.parse(readFileSync(join(root, '.codex', 'hooks.json'), 'utf8'))
+    expect(codex.hooks.PreToolUse[0].hooks[0].onFailure).toBeUndefined()
   })
 
   test('가드 hook은 gotechy가 없으면 exit 2로 막는다', () => {
@@ -151,6 +163,21 @@ describe('보안 감사 10차', () => {
       })
       expect({ code, exit: r.exitCode }).toEqual({ code, exit: expected })
     }
+  })
+
+  test('TD-026: 가드가 exit 2로 막으면 감싸개는 실패 문구를 덧붙이지 않고 exit 2', () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'gotechy-g26-')))
+    const bin = join(root, 'fake-gotechy-deny')
+    writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' '막은 이유' >&2\nexit 2\n`)
+    chmodSync(bin, 0o755)
+    const r = Bun.spawnSync({
+      cmd: ['sh', '-c', guardHookCommand(bin)],
+      stdin: Buffer.from(hookInput('ls')),
+      stderr: 'pipe',
+      env: { PATH: '/usr/bin:/bin' },
+    })
+    expect(r.exitCode).toBe(2)
+    expect(r.stderr.toString()).toBe('막은 이유\n')
   })
 
   test('중간 4, 낮음 14: 경로에 따옴표, 달러, 공백이 있어도 셸이 해석하지 않는다', () => {

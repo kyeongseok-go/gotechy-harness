@@ -1,0 +1,132 @@
+---
+title: 2026년 11월 업그레이드 루프 (오너 외출 중 자율 실행)
+status: active
+parent: docs/exec-plans/active/2026-10-16-harness-v2-phase2.md
+mode: loop
+branch: upgrade-2026-11
+---
+
+# 하네스를 2026년 11월 기준으로 올리는 업그레이드 루프
+
+## Purpose / Big Picture
+
+오너(고텍이)가 외출하며 맡겼다(2026-11-05 13:00 KST). 지시는 "2026년 11월 기준 최고의 기술과 방법으로 하네스를 업그레이드하는 방안을 제안하고, 루프로 자동 수행"이다.
+
+이 계획이 끝나면 세 가지가 달라진다.
+
+1. 하네스가 다시 자기 규칙을 지킨다. 10월 21일부터 문체 규칙이 오류로 바뀌면서 테스트 11개가 깨져 있었고, 에이전트가 가장 먼저 읽는 지도(AGENTS.md)도 문체 검사에서 오류 52건이었다. 이번에 고치고, 같은 일이 조용히 다시 생기지 않게 검사를 붙인다.
+2. 2026년 7월에서 11월 사이에 나온 도구 기능(Claude Code hook의 `onFailure: "block"`, 작업 폴더 밖 쓰기 차단, Codex 토큰 상한과 표준 입력 프롬프트)으로 오래된 부채(TD-026, TD-015, TD-028, TD-024 일부)를 갚는다.
+3. 고정한 도구 버전을 최신 안정판으로 올린다(claude-code 2.1.296에서 2.1.318, codex 0.162.1에서 0.166.0, apm 0.33.0에서 0.35.0, bun 1.4.3에서 1.4.4, node 24.21.0에서 24.22.2). 2.1.296에는 headless 실행에서 승인된 도구 호출이 두 번 실행될 수 있는 회귀가 있었다(2.1.299에서 고침). 하네스 워커는 headless로 돈다.
+
+비판적으로 먼저 적는다. 2단계 계획(phase2)은 "실제로 써 봐야 무엇을 고칠지 안다"며 첫 실전 프로젝트(P1)를 먼저 하자고 했다. 이 루프는 그 순서를 바꾸지 않는다. 오너 결정이나 유료 실행 없이 할 수 있는 일, 그리고 첫 실전 프로젝트를 시작할 때 걸림돌이 될 일만 한다. 새 기능을 크게 늘리지 않는다(하네스 만들기가 일이 되는 함정, 설계 문서 11절).
+
+## Progress
+
+- [x] (2026-11-05 13:00) 시작 상태 기록: `~/.claude/settings.json` sha256 앞 8자리 `c5551143`, `~/.codex/config.toml` `62b7d579`, `~/.gotechy` 전체 해시 `ac4c41f4`(10-16과 같음). claude 실행 파일은 2.1.318
+- [x] (2026-11-05 13:30) U0 기준선 복구. 시작 때 `bun run check`가 766 pass, 11 fail. 커밋 5d1491d로 778 pass, 커버리지 95.69%
+- [x] (2026-11-05 13:40) U1 조사 두 건(외부 최신 기술, 내부 격차)과 radar 실행, 이 계획
+- [ ] U2 가드 hook을 시간 초과와 실패에도 막게(TD-026)
+- [ ] U3 자기 규칙 지키기: 지도와 규칙 문서의 문체 오류 0건, 저장소 위생 테스트, 날짜로 켜지는 규칙 검사
+- [ ] U4 radar 잡음 줄이기와 못 읽는 출처(ears)
+- [ ] U5 도구 고정 버전 올리기(train, mise.toml, mise lock, CI)
+- [ ] U6 죽은 run 잠금의 원자적 회수(TD-027)
+- [ ] U7 허용 범위 검사가 무시 파일도 보기(TD-007)
+- [ ] U8 CI가 커버리지 기준과 ExecPlan 필수 절을 강제(TD-001 일부)
+- [ ] U9 워커 하드닝: codex는 표준 입력 프롬프트, 사용자 설정 무시, 기억 끔, 토큰 상한(TD-028, TD-015 a). claude는 작업 폴더 밖 쓰기 차단(TD-024 claude 쪽)
+- [ ] U10 오너 결정용 제안서(ADR 초안): 리눅스 샌드박스(srt), Betterleaks, 팩 eval 예산, Agent Skills 검증 도구
+- [ ] U11 최종 검토(보안 감사, 문서 대조), 오너 보고 HANDOFF, 메모리
+
+## 작업 대기열과 완료 판정
+
+위에서부터 한다. 건너뛰면 이유를 Decision Log에 적는다.
+
+| 순서 | 일 | 완료 판정 |
+|---|---|---|
+| U2 | `gotechy init`이 까는 가드 hook 설정에 `onFailure: "block"`을 넣는다(Claude Code 2.1.295부터). 가드가 막을 때 JSON과 함께 stderr와 exit 2도 낸다(Codex hook은 exit 2로 막는다). 감싸개 문구 정리 | 설정 생성 테스트, deny가 exit 2인 e2e, mutation(설정 키를 빼면 테스트가 잡음) |
+| U3 | AGENTS.md, CLAUDE.md, ARCHITECTURE.md, `.claude/rules/`, `.claude/agents/`, README.md의 문체 오류 0건. 이 파일들을 lint하는 테스트. `src/`에 날짜로 켜지는 규칙이 있으면 그 날짜 뒤를 흉내 낸 테스트가 있는지 보는 검사. ARCHITECTURE의 runtime 모듈 목록과 npm 표기를 실제와 맞춤 | `bun run dev -- text lint <파일들>` exit 0, 새 위생 테스트 |
+| U4 | radar 페이지 지문에서 nav, header, footer, script, style과 날짜 모양 문자열을 빼고 정규화. ears 출처를 읽을 수 있는 주소나 방식으로 | 날짜만 다른 두 HTML의 지문이 같고 본문이 다르면 달라지는 테스트. 실제 `radar --all`의 "바뀜"이 45건에서 줄어든 수치 |
+| U5 | train.yaml, mise.toml, mise lock, CI의 버전을 최신 안정판으로. 오너가 2026-10-13에 도구 업데이트를 위임함 | `tests/core/train-lock.test.ts` 통과, `bun run check` 통과, CI 성공 |
+| U6 | 잠금 회수를 이름 바꾸기로 원자적으로 | 죽은 pid 잠금에 동시 회수 N번, 성공 정확히 1개 |
+| U7 | run 시작 때 무시 파일 목록을 남기고 끝에 비교 | 녹화 워커가 무시 경로에 쓴 파일을 허용 밖으로 잡는 e2e |
+| U8 | CI에 `gotechy test`의 커버리지 판정(리눅스는 샌드박스 모듈 제외), ExecPlan 필수 절 검사 | ci-hygiene 테스트, CI 성공 |
+| U9 | 어댑터 인자 변경과 녹화 재생 테스트. `codex sandbox`로 TD-030 무료 실험(모델 호출 없음) | 어댑터 단위 테스트, 실험 기록 |
+| U10 | `docs/decisions/` 초안 상태 ADR과 HANDOFF의 결정 카드 | 오너가 고를 선택지와 추천이 있음 |
+| U11 | security-auditor로 이번 변경 전체 감사, doc-gardener 대조, HANDOFF T-009, 메모리 | 높음 0건, HANDOFF lint 통과 |
+
+## 마일스톤마다 도는 루프
+
+계약 먼저, 실패하는 테스트, 구현, `bun run check`, mutation check(핵심 로직), 기록(이 문서의 Progress와 Surprises), 검사가 통과할 때만 커밋(`&&`로 잇는다), `upgrade-2026-11` 브랜치 푸시, `gh run watch`로 CI 확인. CI가 빨강이면 다음 일 전에 고친다. 시각은 `date`와 `git log`로만 적는다.
+
+## 멈춤 규칙
+
+- 같은 문제로 3번 실패하면 그 일을 멈추고 이유를 적은 뒤 의존하지 않는 다음 일로 넘어간다.
+- 오너만 정할 수 있는 결정은 되돌릴 수 있는 기본값으로 진행하고 보고의 결정 필요에 올린다.
+
+## 하지 않는 것
+
+- `~/.claude`, `~/.codex` 설정 수정, `gotechy setup` 실행
+- 리드가 `gotechy keys`, `decide`, `serve`, `loop` 실행, 확인 창 띄우기, 실제 `~/.gotechy` 아래 수정
+- force push, master나 harness-v2 브랜치 수정, 외부 발행, 위키 적재
+- 유료 실행: 실제 Claude나 Codex 워커, 감사관, `claude plugin eval`
+- 스킬 본문(`skills/*/SKILL.md`) 수정(스펙의 Non-goal), 파일 삭제(저장소 hook이 오너 확인을 요구)
+- 공문서 프로젝트, 첫 실전 프로젝트 시작
+
+## Surprises & Discoveries
+
+- 날짜로 켜지는 규칙이 시한폭탄이 됐다. `src/core/style.ts:7`의 `STYLE_ENFORCE_FROM`(2026-10-21 00:00 KST)이 지나자 테스트 11개가 깨졌다. 마지막 CI(10-16)는 그 전이라 초록이었고, 그 뒤로 아무도 돌리지 않아 3주 동안 몰랐다. 원인 둘: (1) `src/core/prose.ts`의 파일 이름 가리기가 `\b`(ASCII 기준)로 시작해 `문서.md`를 못 가리고 `md`를 영어 용어로 뽑았다(진짜 버그, 한글 파일 이름을 쓰는 오너에게 바로 걸림). (2) 테스트 몇 개가 실제 run과 달리 용어 은행 없이 lint했다.
+- radar `--all` 결과(2026-11-05): 출처 136개 중 새 판 6, 바뀜 45, 처음 기록 7, 같음 77, 못 읽음 1. 바뀜 45건은 대부분 페이지 장식 변화로 보인다(ISO 표준 페이지 등). 사람이 볼 수 없는 양이라 잡음을 줄여야 쓸모가 있다.
+
+## Decision Log
+
+| 결정 | 근거 | 날짜 | ADR 승격 |
+|---|---|---|---|
+| 새 브랜치 `upgrade-2026-11`에서 하고 푸시까지 한다(master, harness-v2는 건드리지 않음) | 이전 루프와 같은 방식(커밋 직후 CI 확인). 병합은 오너 몫 | 2026-11-05 | - |
+| 도구 버전 올리기는 루프가 한다 | 오너가 2026-10-13에 도구 업데이트를 위임. 2.1.296의 headless 회귀 | 2026-11-05 | - |
+| 리눅스 샌드박스(srt), Betterleaks 도입은 제안만 한다 | 새 공급망 의존성은 오너 결정(내부 감사 2절) | 2026-11-05 | U10에서 초안 |
+
+## Outcomes & Retrospective
+
+(완료 시 작성)
+
+## Context and Orientation
+
+- 외부 조사: `docs/references/research/2026-11-05-harness-sota-research.md`(출처와 날짜, 확인한 것과 추정 구분)
+- radar 보고서: `.gotechy/radar/report-2026-11-05.md`(저장소에 커밋하지 않는 로컬 기록)
+- 부채 표: `docs/exec-plans/tech-debt-tracker.md`. 계약: `docs/references/contract.md`
+- 검사: `bun run check`(lint, 타입, 테스트와 커버리지 기준). 문체: `bun run dev -- text lint <파일>`
+
+## Plan of Work
+
+U2에서 U9는 서로 의존하지 않는다. U5(버전 올리기)는 U2의 hook 설정이 2.1.295 이상을 전제하므로 U2 뒤에 둔다. U10과 U11은 마지막이다.
+
+## Concrete Steps
+
+    bun run check                      # 기대: N pass, 0 fail, 커버리지 기준 통과
+    bun run dev -- text lint AGENTS.md # 기대(U3 뒤): exit 0
+    bun run dev -- radar --all         # 기대(U4 뒤): 바뀜이 45보다 적음
+    gh run watch                       # 기대: CI 성공
+
+## Validation and Acceptance
+
+1. `bun run check`가 통과하고 CI가 초록이다.
+2. 대기열의 각 일이 위 표의 완료 판정을 증거와 함께 만족하거나, 건너뛴 이유가 Decision Log에 있다.
+3. 오너 보고 HANDOFF가 lint를 통과하고, 결정 카드마다 추천이 있다.
+
+## Idempotence and Recovery
+
+- 각 마일스톤은 커밋 하나 이상으로 끝난다. 중간에 끊기면 `git log --oneline origin/upgrade-2026-11`과 이 문서의 Progress에서 다음 일을 고른다.
+- radar는 같은 날 다시 돌리면 보고서를 덮어쓴다.
+
+## Artifacts and Notes
+
+- 커밋 5d1491d(기준선 복구)
+
+## Interfaces and Dependencies
+
+- Claude Code hook 설정 `onFailure: "block"`(2.1.295 이상), `permissions.blockWritesOutsideWorkingDirectories`(2.1.314 이상)
+- Codex `exec -`(표준 입력 프롬프트), `--ignore-user-config`, `--ephemeral`, `features.rollout_budget`(개발 중 기능)
+
+## career_signals
+
+- 시한폭탄처럼 날짜로 켜지는 규칙이 CI 공백과 겹쳐 3주 동안 숨은 회귀를 찾아 고치고, 같은 일이 다시 생기지 않게 검사를 붙인 경험(신뢰성, 테스트 설계)
+- 콘텐츠 재료: "AI 에이전트 하네스를 3주 안 돌렸더니 생긴 일" 삽질기

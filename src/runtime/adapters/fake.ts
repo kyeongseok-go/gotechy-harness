@@ -1,6 +1,7 @@
 // 테스트용 워커: 녹화 폴더의 files/를 작업 폴더에 덮어쓰고 handoff.md를 HANDOFF 자리에 둔다. LLM 호출 없이 결과를 재현한다.
 import {
   appendFileSync,
+  chmodSync,
   cpSync,
   existsSync,
   linkSync,
@@ -87,6 +88,12 @@ export const fakeAdapter: WorkerAdapter = {
         mkdirSync(dirname(join(req.cwd, r.to)), { recursive: true })
         renameSync(join(req.cwd, r.from), join(req.cwd, r.to))
       }
+    }
+    // 공격 재현용: modes.json의 [{path, mode}]대로 권한을 바꾼다(읽을 수 없는 파일과 폴더, 보안 감사 16차)
+    const modes = join(dir, 'modes.json')
+    if (existsSync(modes)) {
+      for (const m of JSON.parse(readFileSync(modes, 'utf8')) as { path: string; mode: string }[])
+        chmodSync(join(req.cwd, m.path), Number.parseInt(m.mode, 8))
     }
     // 공격 재현용: commit 파일이 있으면 워커가 직접 커밋한다(셸이 있는 Codex 흉내)
     if (existsSync(join(dir, 'commit'))) {

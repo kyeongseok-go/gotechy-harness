@@ -37,10 +37,10 @@ import {
   differsFromBase,
   discardUncommitted,
   ensureWorktree,
+  gitProc,
   gitSnapshot,
   headCommit,
-  ignoredChanges,
-  ignoredSnapshot,
+  ignoredFiles,
   resetTo,
   restoreFiles,
   restoreGitSnapshot,
@@ -211,6 +211,13 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
   } catch (e) {
     return refuse((e as Error).message)
   }
+  // 워커 전에 작업 폴더를 마지막 커밋으로 비운다(무시 파일까지). 지난 실행이 비정상으로 끝나며 남긴 파일이 기준에 섞이면
+  // 워커 뒤 검사가 그 파일을 "원래 있던 것"으로 넘긴다(보안 감사 16차 중간 2). 비우지 못하면 실행하지 않는다
+  const tip = (await gitProc(['rev-parse', '--verify', '-q', 'HEAD^{commit}'], wt)).stdout.trim()
+  if (!/^[0-9a-f]{40,64}$/.test(tip) || !(await resetTo(wt, tip)))
+    return refuse(
+      `작업 폴더(${wt})를 마지막 커밋으로 비우지 못했어요. 읽을 수 없는 폴더가 있으면 권한을 고치거나 폴더를 지운 뒤 다시 실행하세요.`,
+    )
   updateFrontmatter(taskFile, { status: 'running' })
   appendEvent(p, { type: 'run.start', task: task.id, adapter: adapterName, base })
   log(`${task.id}: ${adapterName} 워커 실행 (worktree ${wt})`)
@@ -233,7 +240,6 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     ...(opts.fixtureDir ? { fixtureDir: opts.fixtureDir } : {}),
   }
   const gitBefore = await gitSnapshot(p.root, wt)
-  const ignoredBefore = await ignoredSnapshot(wt)
   const result = await adapter.run(req)
   saveRawLog(p, task.id, adapterName, result.rawOutput, result.stderr)
 
@@ -256,13 +262,16 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     return finishTampered(p, task, adapterName, result, notes, taskFile, log)
   }
 
-  // 무시 경로에 새로 생기거나 바뀐 파일도 본다. 커밋에는 안 들어가도 verify가 도는 동안 남아 결과를 바꿀 수 있다(TD-007)
-  const changed = [
-    ...new Set([
-      ...(await changedFiles(wt, base)),
-      ...ignoredChanges(ignoredBefore, await ignoredSnapshot(wt)),
-    ]),
-  ].sort()
+  // 무시 파일도 본다. 워커 전에 모두 비웠으므로 지금 있는 무시 파일은 전부 워커가 만든 것이다. 커밋에는 안 들어가도
+  // verify가 도는 동안 남아 결과를 바꿀 수 있다(TD-007). git이 읽지 못한 폴더가 있으면 검사할 수 없으니 실패로 끝낸다
+  let ignored: string[]
+  try {
+    ignored = await ignoredFiles(wt)
+  } catch (e) {
+    notes.push(`${(e as Error).message}. 워커가 읽을 수 없는 폴더를 만들어 검사하지 못했어요`)
+    return finishTampered(p, task, adapterName, result, notes, taskFile, log)
+  }
+  const changed = [...new Set([...(await changedFiles(wt, base)), ...ignored])].sort()
   // 링크와 하드 링크는 ownership 안이라도 허용하지 않는다. 리드가 그 경로를 읽고 쓸 때 링크를 따라가
   // 게이트나 키 같은 다른 파일을 건드리거나, 바깥 파일 내용을 커밋하게 된다(보안 감사 1차 높음 2, 2차 중간 D).
   const links = changed.filter((f) => isSymlink(join(wt, f)))
@@ -286,7 +295,7 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     // 되돌리기가 조용히 실패하면 "되돌렸습니다" 기록이 거짓이 된다. 다시 계산해 남았으면 git을 더 부르지 않고 실패로 끝낸다(보안 감사 13차 중간 3)
     const left = [
       ...(await differsFromBase(wt, base)),
-      ...ignoredChanges(ignoredBefore, await ignoredSnapshot(wt)),
+      ...(await ignoredFiles(wt).catch(() => bad)),
     ].filter((f) => bad.includes(f))
     if (left.length > 0) {
       notes.push(`허용 밖 변경을 되돌리지 못했어요: ${left.join(', ')}`)

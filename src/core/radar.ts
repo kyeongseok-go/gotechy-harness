@@ -56,8 +56,9 @@ export function isPrerelease(label: string): boolean {
 
 const decodeXml = (s: string) =>
   s
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]+>/g, '')
+    // 닫히지 않은 CDATA와 꺾쇠가 많아도 길이에 비례해 끝나게 끝까지(|$) 또는 다음 < 앞까지만 본다(보안 감사 16차 낮음 3)
+    .replace(/<!\[CDATA\[([\s\S]*?)(?:\]\]>|$)/g, '$1')
+    .replace(/<[^<>]+>/g, '')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
@@ -93,7 +94,7 @@ const DATE_LIKE = new RegExp(
   'gi',
 )
 const BLOCK =
-  /<\/?(?:p|div|h[1-6]|li|ul|ol|tr|td|th|table|section|article|br|pre|blockquote|dd|dt|dl)\b[^>]*>/gi
+  /<\/?(?:p|div|h[1-6]|li|ul|ol|tr|td|th|table|section|article|br|pre|blockquote|dd|dt|dl)\b[^<>]*>/gi
 
 /**
  * 페이지에서 사람이 읽는 본문 글만 뽑는다. script, style 등은 끝이 잘려 닫히지 않았어도 뺀다(크기 상한에서 잘린 페이지).
@@ -103,10 +104,14 @@ export function pageText(html: string): string {
   let h = html
     .replace(/<!--[\s\S]*?(?:-->|$)/g, ' ')
     .replace(/<(script|style|noscript|svg|template|iframe)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, ' ')
-  const main = /<main\b[^>]*>([\s\S]*?)<\/main\s*>/i.exec(h)
-  if (main) h = main[1] as string
+  // main은 정규식 대신 위치로 찾는다. 닫히지 않은 <main>이 많으면 정규식이 길이의 제곱으로 느려진다(보안 감사 16차 낮음 3)
+  const lower = h.toLowerCase()
+  const open = lower.search(/<main\b/)
+  const gt = open >= 0 ? h.indexOf('>', open) : -1
+  const close = gt >= 0 ? lower.indexOf('</main', gt) : -1
+  if (close >= 0) h = h.slice(gt + 1, close)
   h = h.replace(/<(nav|header|footer|aside)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, ' ')
-  return decodeXml(h.replace(BLOCK, '\n').replace(/<[^>]*>/g, ' '))
+  return decodeXml(h.replace(BLOCK, '\n').replace(/<[^<>]*>/g, ' '))
     .split('\n')
     .map((l) => l.replace(/\s+/g, ' ').trim())
     .filter((l) => l.length > 0)

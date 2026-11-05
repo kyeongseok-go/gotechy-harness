@@ -86,6 +86,17 @@ describe('해석', () => {
     expect(pageChange('a\nb', 'a\nb')).toEqual({ added: 0, removed: 0 })
   })
 
+  test('보안 감사 16차 낮음 3: 닫히지 않은 꺾쇠나 main이 많아도 본문 뽑기가 길이에 비례해 끝난다', () => {
+    for (const html of ['<'.repeat(400_000), '<main>'.repeat(100_000), '<p '.repeat(200_000)]) {
+      const t = performance.now()
+      pageText(html)
+      expect({ len: html.length, slow: performance.now() - t > 1500 }).toEqual({
+        len: html.length,
+        slow: false,
+      })
+    }
+  })
+
   test('판 비교는 숫자 단위로 한다(v 접두사, 꼬리 글 무시)', () => {
     expect(newerThan('v7.0.3', '7.0.2')).toBe(true)
     expect(newerThan('7.0.2', '7.0.2')).toBe(false)
@@ -248,6 +259,27 @@ describe('gotechy radar', () => {
       }),
     })
     expect(readFileSync(r.report, 'utf8')).toContain('피드에 글이 하나도 없어요')
+  })
+
+  test('보안 감사 16차 낮음 4: 보고서의 웹 글은 마크다운이나 HTML로 그려지지 않게 바꾼다', async () => {
+    const root = lib()
+    const stateDir = join(root, '.gotechy', 'radar')
+    const run = (day: string, body: string) =>
+      runRadar({
+        lib: root,
+        stateDir,
+        now: new Date(day),
+        all: true,
+        fetchText: fetcher({ ...pages, 'https://ex.com/doc': body }),
+      })
+    await run('2026-10-16T00:00:00Z', '<main><p>규칙</p></main>')
+    const r = await run(
+      '2026-11-01T00:00:00Z',
+      '<main><p>규칙</p><p>&lt;img src=https://evil/p&gt; [공지](https://evil)</p></main>',
+    )
+    const report = readFileSync(r.report, 'utf8')
+    expect(report).not.toContain('<img')
+    expect(report).not.toContain('[공지](')
   })
 
   test('U4: 옛 방식 지문만 있는 출처는 바뀜이 아니라 처음 기록으로 다시 잡는다', async () => {

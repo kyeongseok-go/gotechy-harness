@@ -16,7 +16,7 @@ branch: upgrade-2026-11
 
 1. 하네스가 다시 자기 규칙을 지킨다. 10월 21일부터 문체 규칙이 오류로 바뀌면서 테스트 11개가 깨져 있었고, 에이전트가 가장 먼저 읽는 지도(AGENTS.md)도 문체 검사에서 오류 52건이었다. 이번에 고치고, 같은 일이 조용히 다시 생기지 않게 검사를 붙인다.
 2. 2026년 7월에서 11월 사이에 나온 도구 기능(Claude Code hook의 `onFailure: "block"`, 작업 폴더 밖 쓰기 차단, Codex 토큰 상한과 표준 입력 프롬프트)으로 오래된 부채(TD-026, TD-015, TD-028, TD-024 일부)를 갚는다.
-3. 고정한 도구 버전을 최신 안정판으로 올린다(claude-code 2.1.296에서 2.1.318, codex 0.162.1에서 0.166.0, apm 0.33.0에서 0.35.0, bun 1.4.3에서 1.4.4, node 24.21.0에서 24.22.2). 2.1.296에는 headless 실행에서 승인된 도구 호출이 두 번 실행될 수 있는 회귀가 있었다(2.1.299에서 고침). 하네스 워커는 headless로 돈다.
+3. 고정한 도구 버전을 최신 안정판으로 올린다(claude-code 2.1.296에서 2.1.316(발행 5일 냉각 기간 때문에 최신 2.1.318이 아님, Decision Log 참고), codex 0.162.1에서 0.166.0, apm 0.33.0에서 0.35.0, bun 1.4.3에서 1.4.4, node 24.21.0에서 24.22.2). 2.1.296에는 headless 실행에서 승인된 도구 호출이 두 번 실행될 수 있는 회귀가 있었다(2.1.299에서 고침). 하네스 워커는 headless로 돈다.
 
 비판적으로 먼저 적는다. 2단계 계획(phase2)은 "실제로 써 봐야 무엇을 고칠지 안다"며 첫 실전 프로젝트(P1)를 먼저 하자고 했다. 이 루프는 그 순서를 바꾸지 않는다. 오너 결정이나 유료 실행 없이 할 수 있는 일, 그리고 첫 실전 프로젝트를 시작할 때 걸림돌이 될 일만 한다. 새 기능을 크게 늘리지 않는다(하네스 만들기가 일이 되는 함정, 설계 문서 11절).
 
@@ -33,7 +33,7 @@ branch: upgrade-2026-11
 - [x] (2026-11-05 14:19, 커밋 시각) U7 허용 범위 검사가 무시 파일도 보기(TD-007 상환). 무시 경로(node_modules)에 심은 파일이 verify에 닿지 않고 failed로 남는 것을 테스트로 고정
 - [x] (2026-11-05 14:26, 커밋 시각) U8 CI가 `bun src/cli.ts test`로 커버리지 기준까지 본다(리눅스는 macOS 전용 샌드박스 모듈만 뺌). 진행 중 ExecPlan의 필수 절 5개를 테스트로 검사(셸 grep 단계 대신). 끝난 10-16 밤샘 계획에 빠진 절을 채워 completed/로 옮김. `gotechy test`가 커버리지 임시 폴더를 지움. 800 pass
 - [x] (2026-11-05 14:45, 커밋 시각) U9 워커 하드닝: codex 워커와 감사관은 프롬프트를 표준 입력으로(TD-028 일부), `--ignore-user-config`. claude 워커는 `blockWritesOutsideWorkingDirectories`, `blockReadsOutsideWorkingDirectories`(2.1.316 설정 스키마에서 permissions 아래 확인). TD-030 무료 실험: macOS codex 0.166 쓰기 샌드박스가 git 관리 파일 쓰기를 모두 막음. 토큰 상한(`features.rollout_budget`)은 개발 중 기능이고 확인에 유료 실행이 필요해 넣지 않고 U10 제안으로. 803 pass
-- [x] (2026-11-05 U10) 오너 결정용 제안서 `docs/design-docs/2026-11-05-upgrade-proposals.md`: 결정 6가지(첫 프로젝트 먼저, 이 브랜치 병합, 팩 eval 5달러, srt 보류, Betterleaks 보류, codex 토큰 상한 조건부)와 결정이 필요 없는 작은 후보. ADR은 오너가 고른 뒤에 쓴다
+- [x] (2026-11-05 14:52, 커밋 시각) U10 오너 결정용 제안서 `docs/design-docs/2026-11-05-upgrade-proposals.md`: 결정 6가지(첫 프로젝트 먼저, 이 브랜치 병합, 팩 eval 5달러, srt 보류, Betterleaks 보류, codex 토큰 상한 조건부)와 결정이 필요 없는 작은 후보. ADR은 오너가 고른 뒤에 쓴다
 - [ ] U11 최종 검토(보안 감사, 문서 대조), 오너 보고 HANDOFF, 메모리
 
 ## 작업 대기열과 완료 판정
@@ -46,7 +46,7 @@ branch: upgrade-2026-11
 | U3 | AGENTS.md, CLAUDE.md, ARCHITECTURE.md, `.claude/rules/`, `.claude/agents/`, README.md의 문체 오류 0건. 이 파일들을 lint하는 테스트. `src/`에 날짜로 켜지는 규칙이 있으면 그 날짜 뒤를 흉내 낸 테스트가 있는지 보는 검사. ARCHITECTURE의 runtime 모듈 목록과 npm 표기를 실제와 맞춤 | `bun run dev -- text lint <파일들>` exit 0, 새 위생 테스트 |
 | U4 | radar 페이지 지문에서 nav, header, footer, script, style과 날짜 모양 문자열을 빼고 정규화. ears 출처를 읽을 수 있는 주소나 방식으로 | 날짜만 다른 두 HTML의 지문이 같고 본문이 다르면 달라지는 테스트. 실제 `radar --all`의 "바뀜"이 45건에서 줄어든 수치 |
 | U5 | train.yaml, mise.toml, mise lock, CI의 버전을 최신 안정판으로. 오너가 2026-10-13에 도구 업데이트를 위임함 | `tests/core/train-lock.test.ts` 통과, `bun run check` 통과, CI 성공 |
-| U6 | 잠금 회수를 이름 바꾸기로 원자적으로 | 죽은 pid 잠금에 동시 회수 N번, 성공 정확히 1개 |
+| U6 | 죽은 잠금 회수를 회수 잠금(`<잠금>.reclaim`) 안에서만 하고 그 안에서 pid를 다시 읽는다(이름 바꾸기 방식 대신) | 죽은 pid 잠금에 동시 회수 N번, 성공 정확히 1개 |
 | U7 | run 시작 때 무시 파일 목록을 남기고 끝에 비교 | 녹화 워커가 무시 경로에 쓴 파일을 허용 밖으로 잡는 e2e |
 | U8 | CI에 `gotechy test`의 커버리지 판정(리눅스는 샌드박스 모듈 제외), ExecPlan 필수 절 검사 | ci-hygiene 테스트, CI 성공 |
 | U9 | 어댑터 인자 변경과 녹화 재생 테스트. `codex sandbox`로 TD-030 무료 실험(모델 호출 없음) | 어댑터 단위 테스트, 실험 기록 |
@@ -109,6 +109,7 @@ branch: upgrade-2026-11
 | train은 발행 5일 이상 지난 최신 안정판으로(claude는 2.1.318이 아니라 2.1.316) | 막 나온 판의 회귀를 피하는 냉각 기간. Bun 1.4.4의 `minimumReleaseAge` 3일보다 넉넉히 | 2026-11-05 | - |
 | codex 토큰 상한(`features.rollout_budget`)은 넣지 않는다 | 개발 중 기능(기본 꺼짐)이라 키가 바뀔 수 있고, 동작 확인에 유료 실행이 필요 | 2026-11-05 | U10 제안 |
 | claude 워커 프롬프트는 인자 그대로 둔다 | `claude -p`의 표준 입력 동작이 도움말에 없고 확인에 유료 실행이 필요 | 2026-11-05 | - |
+| U10은 ADR 초안 대신 제안서(`docs/design-docs/2026-11-05-upgrade-proposals.md`)로 낸다 | ADR은 결정의 기록이라 오너가 고르기 전에 쓰지 않는다 | 2026-11-05 | 오너 선택 뒤 |
 | 리눅스 샌드박스(srt), Betterleaks 도입은 제안만 한다 | 새 공급망 의존성은 오너 결정(내부 감사 2절) | 2026-11-05 | 제안서로(ADR은 오너가 고른 뒤) |
 
 ## Outcomes & Retrospective

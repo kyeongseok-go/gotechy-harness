@@ -1,15 +1,5 @@
 // 워커 격리용 git 조작. 워커는 작업 브랜치의 별도 worktree에서만 일한다(contract.md 0절).
-import { createHash } from 'node:crypto'
-import {
-  existsSync,
-  lstatSync,
-  readdirSync,
-  readFileSync,
-  readlinkSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { runProc } from './proc'
 
@@ -163,38 +153,18 @@ export async function changedFiles(wt: string, base: string): Promise<string[]> 
 }
 
 /**
- * 무시 파일(.gitignore 대상)의 목록과 내용 지문. changedFiles는 무시 파일을 보지 않으므로, 워커 전후를 이것으로 비교해
- * 무시 경로에 새로 생기거나 바뀐 파일을 허용 범위 검사에 넣는다(TD-007). 링크는 가리키는 곳을, 폴더(중첩 저장소)는 표시만 남긴다
+ * 지금 있는 무시 파일(.gitignore 대상) 목록. 내용은 읽지 않는다. 읽을 수 없는 파일(실행 권한만, 아주 큰 파일)이 목록에서
+ * 빠지지 않게(보안 감사 16차 중간 1). run은 워커 전에 무시 파일을 모두 비우므로, 워커 뒤의 목록은 전부 워커가 만든 것이다(TD-007).
+ * git이 읽지 못한 폴더가 있으면 그 안은 목록에 없으므로 예외를 던진다(fail-closed)
  */
-export async function ignoredSnapshot(wt: string): Promise<Map<string, string>> {
-  const out = new Map<string, string>()
-  const status = (await git(['status', '--porcelain=v1', '--ignored', '-uall', '-z'], wt)).split(
-    '\0',
-  )
-  for (const entry of status) {
-    if (!entry.startsWith('!! ')) continue
-    const rel = entry.slice(3)
-    const abs = join(wt, rel)
-    try {
-      const st = lstatSync(abs)
-      out.set(
-        rel,
-        st.isSymbolicLink()
-          ? `link:${readlinkSync(abs)}`
-          : st.isFile()
-            ? createHash('sha256').update(readFileSync(abs)).digest('hex')
-            : 'dir',
-      )
-    } catch {
-      // 목록을 읽은 뒤 사라진 파일은 비교할 것이 없다
-    }
-  }
-  return out
-}
-
-/** 워커 전(before)에 없었거나 내용이 바뀐 무시 파일 */
-export function ignoredChanges(before: Map<string, string>, after: Map<string, string>): string[] {
-  return [...after].filter(([rel, sum]) => before.get(rel) !== sum).map(([rel]) => rel)
+export async function ignoredFiles(wt: string): Promise<string[]> {
+  const r = await gitProc(['status', '--porcelain=v1', '--ignored', '-uall', '-z'], wt)
+  if (r.exitCode !== 0 || /could not open directory/i.test(r.stderr))
+    throw new Error(`무시 파일을 모두 볼 수 없어요: ${r.stderr.trim().slice(0, 300)}`)
+  return r.stdout
+    .split('\0')
+    .filter((e) => e.startsWith('!! '))
+    .map((e) => e.slice(3))
 }
 
 /**

@@ -65,9 +65,15 @@ export const defaultFetch: FetchText = async (url, accept) => {
 
 /** 보고서에 남길 웹 글: 제어 문자를 지우고 한 줄로 펴고 80자에서 자른다 */
 const clean = (s: string | undefined) => {
+  // 보고서를 마크다운이나 HTML로 열어도 웹 글이 태그, 링크, 코드로 그려지지 않게 비슷한 글자로 바꾼다(보안 감사 16차 낮음 4)
   const one = displayText(s ?? '')
     .replace(/\s+/g, ' ')
     .replace(/\|/g, '/')
+    .replace(/</g, '‹')
+    .replace(/>/g, '›')
+    .replace(/\[/g, '(')
+    .replace(/\]/g, ')')
+    .replace(/`/g, "'")
     .trim()
   return [...one].length > 80 ? `${[...one].slice(0, 80).join('')}…` : one
 }

@@ -100,5 +100,5 @@
 - **검사**: `bun run check`(lint, 타입, `gotechy test`의 테스트와 커버리지 기준). 레이어는 `bun run check:boundaries`, 생성 문서는 `bun run gen:docs`
 - **실행**: 오너는 `bin/gotechy <명령>`(부트스트랩이 처음에 `~/.gotechy`로 train 도구를 받는다). 에이전트는 확인할 때 `bin/gotechy`를 쓰지 않고 `bun run dev -- <명령>`(소스로 바로 실행)을 쓴다. 개발 서버는 없다(명령줄 도구)
 - **배포**: 없다. 공개 저장소의 커밋이 배포이고, 프로젝트는 train의 `packs.ref` 커밋으로 팩을 받는다(`docs/DEPLOYMENT.md`)
-- **스택**: TypeScript 7, Bun 1.4.3(ADR 0001). 차선은 Python 3.14와 uv
+- **스택**: TypeScript 7, Bun(판은 `train.yaml`이 원천, ADR 0001). 차선은 Python 3.14와 uv
 - 온보딩 검사: `bash scripts/init.sh`(검사만. `--fix`는 v1.5 템플릿용이라 이 저장소에서는 거부한다). 교체 표시가 남아 있으면 지도가 거짓말을 하는 상태다

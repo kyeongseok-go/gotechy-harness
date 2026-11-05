@@ -76,6 +76,7 @@ HANDOFF 화면은 결정 카드가 맨 위에 있어요. 선택지를 누르면 
 | 결정이 반영 안 됨 | `gotechy gate verify` |
 | 같은 작업이 또 충돌 | `gotechy task restart T-###` |
 | 스킬이 안 보임 | `apm.lock.yaml`과 `.claude/skills/` 확인, `gotechy init --packs <팩>` 다시 |
+| 셸에서 `bun`, `node`, `claude`가 `too many levels of symbolic links`로 멈춤 | `~/.gotechy/bin/mise reshim --force` 뒤 `~/.gotechy/bin/mise install`(TD-032) |
 
 ## 5. 지금 알려진 한계 (2026-10-16)
 

@@ -15,6 +15,7 @@ import {
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { OWNER_KEY_ID, ownerKeyId } from '../core/gate'
+import { ensureOwnerTool, ownerToolPath } from './ownertool'
 
 export function gotechyHome(): string {
   const v = process.env.GOTECHY_HOME
@@ -28,7 +29,6 @@ const ownerDir = (home: string) => join(home, 'owner')
 const activeFile = (home: string) => join(ownerDir(home), 'active')
 const blobFile = (home: string, id: string) => join(ownerDir(home), `${id}.blob`)
 const pubFile = (home: string, id: string) => join(ownerDir(home), `${id}.pub`)
-export const ownerToolPath = (home: string) => join(home, 'bin', 'gotechy-ownerkey')
 
 /** 서명 도구 종료 코드(native/ownerkey.swift) */
 const EXIT_NO_ENCLAVE = 3
@@ -86,34 +86,6 @@ export function loadOwnerKey(home: string): OwnerKey {
       problem: `공개 키 파일(${pubFile(home, id)})이 키 id와 맞지 않아요. 누군가 바꿨을 수 있어요`,
     }
   return { ok: true, id, pub }
-}
-
-/**
- * native/ownerkey.swift를 swiftc로 빌드한다. rebuild면 이미 있어도 다시 빌드한다(keys init과 rotate.
- * 남아 있던 테스트 빌드나 낡은 도구로 키를 만들지 않게, 보안 감사 6차 낮음 3). 테스트는 rebuild 없이 가짜 도구를 쓴다.
- */
-export function ensureOwnerTool(home: string, libRoot: string, rebuild = false): string {
-  const tool = ownerToolPath(home)
-  if (existsSync(tool) && !rebuild) return tool
-  if (process.platform !== 'darwin')
-    throw new Error('오너 키는 macOS(Secure Enclave)에서만 만들 수 있어요')
-  const swiftc = Bun.which('swiftc', { PATH: process.env.PATH ?? '' })
-  if (!swiftc)
-    throw new Error(
-      'swiftc가 없어요. Xcode Command Line Tools를 설치하세요: xcode-select --install',
-    )
-  mkdirSync(join(home, 'bin'), { recursive: true, mode: 0o700 })
-  const tmp = `${tool}.build-${randomBytes(4).toString('hex')}`
-  const r = Bun.spawnSync({
-    cmd: [swiftc, '-O', '-o', tmp, join(libRoot, 'native', 'ownerkey.swift')],
-    stdout: 'pipe',
-    stderr: 'pipe',
-    env: process.env,
-  })
-  if (r.exitCode !== 0)
-    throw new Error(`서명 도구를 빌드하지 못했어요: ${r.stderr.toString().trim()}`)
-  renameSync(tmp, tool)
-  return tool
 }
 
 export type KeyOptions = { rebuildTool?: boolean }
@@ -229,3 +201,6 @@ export async function signWithOwnerKey(
     throw new Error('서명 도구의 출력이 서명 배열이 아니에요')
   return sigs as [string, string]
 }
+
+// 테스트와 다른 모듈이 keys에서 가져다 쓴다
+export { ensureOwnerTool, ownerToolPath }

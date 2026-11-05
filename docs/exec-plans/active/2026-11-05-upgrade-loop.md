@@ -94,6 +94,8 @@ branch: upgrade-2026-11
 
 - TD-007의 실제 위험은 "커밋에 들어감"이 아니라 "verify가 도는 동안 남아 있음"이었다. 무시 파일은 `git add -A`에 안 잡혀 커밋되지 않지만, verify 샌드박스는 작업 폴더를 그대로 쓰므로 node_modules에 심은 가짜 모듈이 verify 결과를 바꿀 수 있었다. 처음 쓴 테스트는 허용 밖 변경이 있으면 failed라는 기존 계약을 잊고 done을 기대해 고쳤다.
 
+- U8에서 CI가 커버리지 기준을 보자마자 리눅스에서 `src/runtime/keys.ts`가 88.30%로 걸렸다. 서명 도구를 swiftc로 빌드하는 부분(macOS 전용)이 리눅스에서 돌 수 없어서였다. 파일 전체를 빼면 리눅스에서도 도는 검증 로직의 기준까지 잃으므로, 빌드 부분만 `src/runtime/ownertool.ts`로 떼어 냈다(keys.ts는 다시 내보내 쓰는 쪽은 그대로). macOS에서 keys.ts 98.00%.
+
 ## Decision Log
 
 | 결정 | 근거 | 날짜 | ADR 승격 |

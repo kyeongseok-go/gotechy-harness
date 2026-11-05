@@ -38,7 +38,7 @@ UI      → 컴포넌트·페이지
 | 경로 | 담당 |
 |---|---|
 | `src/core/` | 계약 스키마, HANDOFF와 작업 명세 lint, 문체 규칙, 게이트 서명 대상과 판정, 인박스 카드, 화면 HTML(`view/`), 커버리지 기준, apm 매니페스트와 락 판정 |
-| `src/runtime/` | 프로젝트 파일 접근(`project`, `fsutil`, `library`, `account`), 작업 만들기(`task-new`), 워커 실행과 격리(`run`, `restart`, `sandbox`, `git`, `proc`, `adapters/`), 결정(`gates`, `keys`), 인박스(`inbox`), 용어 은행(`terms`), 병합과 병합 전 비밀 값 검사(`accept`, `secrets`), 다른 계열 모델 감사(`audit`, `auditors`), 화면 서버(`serve`), 무인 루프(`loop`), 최신화 출처 감시(`radar`), 설치(`init`, `packs`, `setup`, `doctor`) |
+| `src/runtime/` | 프로젝트 파일 접근(`project`, `fsutil`, `library`, `account`), 작업 만들기(`task-new`), 워커 실행과 격리(`run`, `restart`, `sandbox`, `git`, `proc`, `adapters/`), 결정(`gates`, `keys`, 서명 도구 빌드 `ownertool`), 인박스(`inbox`), 용어 은행(`terms`), 병합과 병합 전 비밀 값 검사(`accept`, `secrets`), 다른 계열 모델 감사(`audit`, `auditors`), 화면 서버(`serve`), 무인 루프(`loop`), 최신화 출처 감시(`radar`), 설치(`init`, `packs`, `setup`, `doctor`) |
 | `src/cli.ts` | `gotechy` 명령과 종료 코드 |
 | `native/ownerkey.swift` | Secure Enclave 서명 도구 원본(`keys init`이 빌드) |
 | `bin/gotechy` | 부트스트랩(POSIX sh): train의 mise를 체크섬으로 받아 CLI로 넘김 |

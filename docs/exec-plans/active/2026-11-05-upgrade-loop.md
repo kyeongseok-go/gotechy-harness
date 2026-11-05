@@ -28,7 +28,7 @@ branch: upgrade-2026-11
 - [x] (2026-11-05 13:27, 커밋 시각) U2 가드 hook을 시간 초과와 실패에도 막게(TD-026 상환). 막을 때 exit 2와 stderr, Claude Code hook에 `onFailure: "block"`. 780 pass. mutation(설정 키 빼기)을 테스트가 잡음
 - [x] (2026-11-05 13:33, 커밋 시각) U3 자기 규칙 지키기: AGENTS.md, CLAUDE.md, ARCHITECTURE.md, README.md, `.claude/rules`, `.claude/agents`의 문체 오류 130건에서 0건. `tests/core/self-style.test.ts`(지금 시각과 2030년 시각 둘 다, 스킬과 템플릿 포함, mutation으로 확인). ARCHITECTURE 모듈 목록 동기화와 검사. TD-017 상환. 784 pass
 - [x] (2026-11-05 13:44, 커밋 시각) U4 radar 지문 2판(본문만, 닫히지 않은 script 제거, 날짜 가림), 바뀐 페이지는 새 줄과 첫 줄을 보고서에, 옛 지문은 처음 기록으로 다시 잡음, 빈 피드 알림, ears 출처를 page로. 실측: 바로 다시 돌리면 바뀜 0, 못 읽음 1에서 0. 791 pass. mutation 2종 잡음(main 추출 테스트는 처음에 못 잡아 보강)
-- [x] (2026-11-05 U5) train 2026.11.0: claude 2.1.316, codex 0.166.0, apm 0.35.0, bun 1.4.4, node 24.22.2, uv 0.13.6, gh 2.103.3(gitleaks 8.30.1은 그대로 최신). 발행 5일 이상 지난 판만 골랐다. 격리 폴더(MISE_DATA_DIR)에서 `mise lock`과 `mise install`(락 고정)으로 8개 도구가 10초에 깔리고 각 `--version`이 맞는 것을 확인. 새 툴체인으로 793 pass, 커버리지 기준 통과
+- [x] (2026-11-05 14:03, 커밋 시각) U5 train 2026.11.0: claude 2.1.316, codex 0.166.0, apm 0.35.0, bun 1.4.4, node 24.22.2, uv 0.13.6, gh 2.103.3(gitleaks 8.30.1은 그대로 최신). 발행 5일 이상 지난 판만 골랐다. 격리 폴더(MISE_DATA_DIR)에서 `mise lock`과 `mise install`(락 고정)으로 8개 도구가 10초에 깔리고 각 `--version`이 맞는 것을 확인. 새 툴체인으로 793 pass, 커버리지 기준 통과
 - [ ] U6 죽은 run 잠금의 원자적 회수(TD-027)
 - [ ] U7 허용 범위 검사가 무시 파일도 보기(TD-007)
 - [ ] U8 CI가 커버리지 기준과 ExecPlan 필수 절을 강제(TD-001 일부)
@@ -87,7 +87,7 @@ branch: upgrade-2026-11
 
 - apm 0.35부터 `apm install --frozen`이 손댄 팩 파일을 "Kept user-edited file"로 남기고 exit 0으로 끝난다. doctor가 권하던 고치는 법이 더는 고치지 못했다. `--force`는 "치명적 보안 경고가 있어도 깐다"는 뜻이 함께 있어 권하지 않고, 바뀐 파일을 지운 뒤 `--frozen`으로 다시 까도록 안내를 바꿨다(실험으로 확인). 감지(`apm audit --ci`)는 그대로 잡는다.
 - Bun 1.4.4는 커버리지 줄을 더 엄격하게 센다(`if (...)` 다음 줄의 `return`을 따로 셈). 같은 테스트로 전체 95.69%에서 94.42%, `accept.ts`가 96.84%에서 94.59%로 내려갔다. 기준을 내리지 않고, 그 줄들이 가리키는 실제로 테스트하지 않던 거부 경로(번호 형식, HANDOFF 없음, verify 기록, 브랜치 없음, 메인의 커밋하지 않은 변경과 겹침)에 테스트를 더했다.
-- 부작용: mise.toml을 bun 1.4.4로 바꾸자 `bun`을 부르는 mise shim이 오너의 실제 mise 폴더(`~/.local/share/mise/installs/bun/1.4.4`)에 bun 1.4.4를 자동으로 깔았다. 지우거나 바꾼 것은 없고 더해진 것만 있다. 이 브랜치를 병합하지 않으면 그 폴더는 쓰이지 않는다.
+- **사고(13:55~14:06)**: mise.toml을 새 버전으로 바꾼 뒤 이 폴더에서 `bun`을 부르자, mise shim이 없는 판(bun 1.4.4)을 오너의 실제 mise 폴더에 자동으로 깔고 shim 14개(bun, node, npm, gh, uv, gitleaks, apm, claude, codex 등)를 다시 만들었다. 이때 mise(2026.10.8)가 자기 위치를 shim 경로로 잘못 잡아 모든 shim이 `shims/bun`을 가리키는 고리가 됐고, mise로 깐 도구가 셸에서 "too many levels of symbolic links"로 모두 멈췄다. `mise reshim --force`로 고쳤지만, 이 폴더에서 다시 shim을 부르자 node 자동 설치가 같은 고장을 또 냈다. 마지막으로 shim이 아니라 mise 실행 파일을 직접 불러 train 판 8개를 락대로 깔고(`~/.gotechy/bin/mise install`, 부트스트랩과 같은 길) shim을 다시 만들어 끝냈다. 확인: 저장소 안에서 8개 shim이 모두 train 판을 내고, 홈에서도 고리가 없다. 오너의 실제 mise 폴더에는 새 판 8개가 더해졌다(지운 것은 없음). 교훈: train을 올린 뒤에는 shim을 부르기 전에 mise 실행 파일로 먼저 깔아야 한다(TD-032).
 - 새 mise.lock에는 18개 항목에 `provenance = "github-attestations"`가 기록됐다(mise가 GitHub 증명으로 출처를 확인). 공급망 쪽으로 좋아진 점이다.
 
 ## Decision Log

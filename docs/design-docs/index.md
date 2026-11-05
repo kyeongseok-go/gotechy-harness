@@ -7,6 +7,7 @@
 |---|---|---|
 | [core-beliefs.md](core-beliefs.md) | 에이전트 우선 운영 원칙 | ✅ 2026-09-18 |
 | [2026-10-13-expert-library-v0.md](2026-10-13-expert-library-v0.md) | 전문가 라이브러리 + 오케스트레이션 설계 (D1~D14, D3 미결과 D12 방향만 합의) | 1a, 1b 완료(2026-10-16, 알림과 mod는 2단계). 전문가 팩 v1과 radar 감지는 1b 기간에 완료, 최신화 반영(delta PR)은 2단계 |
+| [2026-11-05-upgrade-proposals.md](2026-11-05-upgrade-proposals.md) | 11월 업그레이드 루프 뒤 오너가 정할 것 6가지(첫 프로젝트, 병합, 팩 eval, srt, Betterleaks, codex 토큰 상한) | ⚠️ 오너 검토 전 |
 
 ## 작성 규칙
 

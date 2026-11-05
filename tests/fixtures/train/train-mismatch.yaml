@@ -1,6 +1,6 @@
 # gotechy train: 함께 검증한 도구 버전 묶음 (contract.md 10.1절, ADR 0004)
-# 버전은 2026-10-14 M0 실험(macOS arm64, 격리 설치)에서 확인한 값이다.
-train: 2026.10.0
+# 라이브러리 train과 gh만 다르다(doctor 불일치 테스트용). train을 올릴 때 함께 올린다.
+train: 2026.11.0
 mise:
   version: 2026.10.8
   sha256:
@@ -10,14 +10,14 @@ mise:
     linux-x64: c72477ae6c3a8e7d817a322f43da70e4643e75ee5c21265f1c19c894273b7428
 tools:
   mise: { version: 2026.10.8, pin: A, check: mise --version }
-  bun: { version: 1.4.3, pin: A, check: bun --version, mise: bun }
-  node: { version: 24.21.0, pin: A, check: node --version, mise: node }
-  uv: { version: 0.13.0, pin: A, check: uv --version, mise: uv }
+  bun: { version: 1.4.4, pin: A, check: bun --version, mise: bun }
+  node: { version: 24.22.2, pin: A, check: node --version, mise: node }
+  uv: { version: 0.13.6, pin: A, check: uv --version, mise: uv }
   gh: { version: 2.101.0, pin: A, check: gh --version, mise: "aqua:cli/cli" }
-  apm: { version: 0.33.0, pin: A, check: apm --version, mise: "github:microsoft/apm" }
+  apm: { version: 0.35.0, pin: A, check: apm --version, mise: "github:microsoft/apm" }
   gitleaks: { version: 8.30.1, pin: A, check: gitleaks version, mise: "aqua:gitleaks/gitleaks" }
-  claude: { version: 2.1.296, pin: A, check: claude --version, mise: "aqua:anthropics/claude-code" }
-  codex: { version: 0.162.1, pin: A, check: codex --version, mise: "aqua:openai/codex" }
+  claude: { version: 2.1.316, pin: A, check: claude --version, mise: "aqua:anthropics/claude-code" }
+  codex: { version: 0.166.0, pin: A, check: codex --version, mise: "aqua:openai/codex" }
   orca: { version: 1.4.209, pin: C, check: orca --version }
 packs:
   source: kyeongseok-go/gotechy-harness

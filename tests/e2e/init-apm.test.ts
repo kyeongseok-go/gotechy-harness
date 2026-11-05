@@ -424,7 +424,7 @@ describe('gotechy init (CLI, 실제 train)', () => {
 })
 
 describe('doctor의 프로젝트 팩 검사', () => {
-  test('깔린 팩을 고치면 실패하고, apm install --frozen으로 되돌리면 통과한다', async () => {
+  test('깔린 팩을 고치면 실패하고, 바뀐 파일을 지운 뒤 apm install --frozen으로 되돌리면 통과한다', async () => {
     const root = newProject()
     expect((await initWithPacks(root)).errors).toEqual([])
     expect((await checkPacks(root, env, src()))?.status).toBe('ok')
@@ -433,7 +433,11 @@ describe('doctor의 프로젝트 팩 검사', () => {
     const bad = await checkPacks(root, env, src())
     expect(bad?.status).toBe('fail')
     expect(bad?.fix).toContain('apm install --frozen')
+    expect(bad?.fix).toContain('지운 뒤')
+    expect(bad?.fix).not.toContain('--force')
 
+    // apm 0.35부터 install --frozen은 손댄 파일을 남긴다(2026-11-05 실험). 지운 뒤 다시 깔아야 돌아온다
+    rmSync(join(root, '.claude', 'skills', 'owner-protocol', 'SKILL.md'))
     const fix = Bun.spawnSync({ cmd: [APM as string, 'install', '--frozen'], cwd: root, env })
     expect(fix.exitCode).toBe(0)
     expect((await checkPacks(root, env, src()))?.status).toBe('ok')

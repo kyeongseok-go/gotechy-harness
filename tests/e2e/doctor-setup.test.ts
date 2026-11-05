@@ -27,14 +27,14 @@ const MISMATCH = join(LIB, 'tests', 'fixtures', 'train', 'train-mismatch.yaml')
 const FULL = fullPolicyTrain()
 const VERSIONS: Record<string, string> = {
   mise: '2026.10.8 macos-arm64 (2026-10-11)',
-  bun: '1.4.3',
-  node: 'v24.21.0',
-  uv: 'uv 0.13.0',
-  gh: 'gh version 2.102.0 (2026-09-30)',
-  apm: '0.33.0',
+  bun: '1.4.4',
+  node: 'v24.22.2',
+  uv: 'uv 0.13.6',
+  gh: 'gh version 2.103.3 (2026-10-26)',
+  apm: '0.35.0',
   gitleaks: '8.30.1',
-  claude: '2.1.296 (Claude Code)',
-  codex: 'codex-cli 0.162.1',
+  claude: '2.1.316 (Claude Code)',
+  codex: 'codex-cli 0.166.0',
 }
 const tmp = (p: string) => realpathSync(mkdtempSync(join(tmpdir(), p)))
 const sha = (f: string) =>

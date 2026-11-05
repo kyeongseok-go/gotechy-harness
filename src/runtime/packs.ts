@@ -382,7 +382,8 @@ export async function checkPacks(
   if (r.exitCode !== 0)
     return fail(
       `깔린 팩이 apm.lock.yaml과 달라요 (apm audit --ci exit ${r.exitCode})`,
-      '프로젝트 폴더에서 `apm install --frozen`으로 락대로 다시 까세요',
+      // apm 0.35부터 install --frozen은 손댄 파일을 남겨 둔다(2026-11-05 실험). --force는 보안 경고도 무시해 권하지 않는다
+      '프로젝트 폴더에서 `apm audit --ci`가 보여 주는 바뀐 팩 파일을 지운 뒤 `apm install --frozen`으로 락대로 다시 까세요',
     )
   const manifestText = hasManifest ? readFileSync(join(root, 'apm.yml'), 'utf8') : ''
   const plan = planManifest(manifestText, basename(root), [], allowedDeps(src))

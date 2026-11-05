@@ -15,7 +15,7 @@ jobs:
           fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: 1.4.3
+          bun-version: 1.4.4
       - run: bun install --frozen-lockfile
       # 팩 설치 테스트에 train의 apm이 필요하다(contract.md 10.6절). 부트스트랩으로 mise를 체크섬 검증해 받고,
       # 다른 도구는 설치하지 않은 채 mise 락 그대로 apm 하나만 설치한다

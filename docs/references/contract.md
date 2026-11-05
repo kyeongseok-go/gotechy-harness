@@ -405,7 +405,7 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 - `GOTECHY_TRAIN`으로 다른 train 파일을 줄 수 있다(테스트에서 불일치를 주입할 때). train의 `check` 명령을 셸로 실행하므로 라이브러리 안의 파일만 받는다. 부트스트랩이 둔 `$GOTECHY_HOME/bin/mise`가 있으면 train 체크섬과 대조한다.
 - `--history`: 라이브러리의 gitleaks 설정으로 저장소 전체 이력을 검사한다(저장소의 `.gitleaks.toml`은 쓰지 않는다). 찾으면 exit 1. 9.4절과 달리 저장소의 `.gitleaksignore`와 `gitleaks:allow` 주석은 따른다(오너가 일부러 남긴 오탐 예외. 9.4절처럼 막을지는 TD-031).
 - 프로젝트 안에서 실행하면 `.claude/settings.json`, `.claude/settings.local.json`의 `env`에 `PATH`, `NODE_ENV`, `GOTECHY_*`, `GITLEAKS_*`가 있는지 본다. 있으면 실패다. 남의 저장소가 커밋한 설정이 리드 세션의 판단(검사기 경로, 테스트용 주입)을 바꾸지 못하게 한다(보안 감사 15차 중간 2).
-- 프로젝트 안에서 실행하면(`orchestration/tasks/`가 있는 폴더) 팩 검사를 더한다. `apm.lock.yaml`이 있으면 그 폴더에서 `apm audit --ci`를 돌려 exit 0이어야 하고, 10.7절의 라이브러리 커밋 대조와 `apm.yml` 규칙도 통과해야 한다. 실패하면 고치는 법은 `apm install --frozen`(락대로 다시 깔기)이다. `apm.yml`은 있는데 `apm.lock.yaml`이 없으면 실패다. 둘 다 없으면 검사하지 않는다(팩 없이 쓰는 프로젝트).
+- 프로젝트 안에서 실행하면(`orchestration/tasks/`가 있는 폴더) 팩 검사를 더한다. `apm.lock.yaml`이 있으면 그 폴더에서 `apm audit --ci`를 돌려 exit 0이어야 하고, 10.7절의 라이브러리 커밋 대조와 `apm.yml` 규칙도 통과해야 한다. 실패하면 고치는 법은 바뀐 팩 파일(`apm audit --ci`가 보여 줌)을 지운 뒤 `apm install --frozen`(락대로 다시 깔기)이다. apm 0.35부터 `install --frozen`은 손댄 파일을 그대로 두고 exit 0으로 끝나서(2026-11-05 실험), 지우지 않으면 돌아오지 않는다. `--force`는 보안 경고까지 무시하고 까므로 권하지 않는다. `apm.yml`은 있는데 `apm.lock.yaml`이 없으면 실패다. 둘 다 없으면 검사하지 않는다(팩 없이 쓰는 프로젝트).
 
 ### 10.3 `gotechy setup [--dry-run] [--restore <시각>]`
 

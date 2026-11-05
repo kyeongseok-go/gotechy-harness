@@ -1,9 +1,10 @@
 // contract.md 9.4, 9.5절 accept와 용어 누적의 수용 테스트(Validation 11b).
 import { beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { acceptTask } from '../../src/runtime/accept'
 import { decideGate } from '../../src/runtime/gates'
+import { updateFrontmatter } from '../../src/runtime/project'
 import {
   fm,
   handoffFile,
@@ -94,6 +95,47 @@ describe('accept', () => {
     expect(pending.messages.join('\n')).toContain('G-001')
     await decideGate({ root }, home, 'G-001', { choice: '승인', confirm: yes })
     expect((await accept(g)).status).toBe('accepted')
+  })
+
+  test('U5: 번호 형식, 파일, HANDOFF의 verify 기록, 작업 브랜치가 맞지 않으면 각각 사유와 함께 거부한다', async () => {
+    const t = newTask(root, { ownership: ['a.txt'], verify: 'test -f a.txt' })
+    expect((await runFake(root, home, t, 'write-a')).status).toBe('done')
+    const why = async (id = t) => {
+      const r = await accept(id)
+      return { status: r.status, msg: r.messages.join(' ') }
+    }
+    expect(await why('T-1')).toEqual({ status: 'rejected', msg: expect.stringContaining('형식') })
+
+    // verify 기록이 0이 아니면 병합하지 않는다
+    updateFrontmatter(handoffFile(root, t), {
+      verified: { ...(fm(handoffFile(root, t)).verified as object), exit_code: 1 },
+    })
+    expect(await why()).toEqual({ status: 'rejected', msg: expect.stringContaining('verify') })
+    updateFrontmatter(handoffFile(root, t), {
+      verified: { ...(fm(handoffFile(root, t)).verified as object), exit_code: 0 },
+    })
+
+    // 작업 브랜치가 없으면 병합하지 않는다
+    sh(['git', 'branch', '-m', `gotechy/${t}`, 'gotechy/elsewhere'], root)
+    expect(await why()).toEqual({ status: 'rejected', msg: expect.stringContaining('브랜치') })
+    sh(['git', 'branch', '-m', 'gotechy/elsewhere', `gotechy/${t}`], root)
+
+    // HANDOFF가 없으면 병합하지 않는다
+    rmSync(handoffFile(root, t))
+    expect(await why()).toEqual({
+      status: 'rejected',
+      msg: expect.stringContaining('HANDOFF가 없어요'),
+    })
+  })
+
+  test('U5: 메인 체크아웃의 커밋하지 않은 변경과 겹치면 반영하지 않고 메인을 그대로 둔다', async () => {
+    const t = newTask(root, { ownership: ['a.txt'], verify: 'test -f a.txt' })
+    expect((await runFake(root, home, t, 'write-a')).status).toBe('done')
+    writeFileSync(join(root, 'a.txt'), '오너가 쓰던 글\n')
+    const r = await accept(t)
+    expect(r.status).toBe('ff-refused')
+    expect(readFileSync(join(root, 'a.txt'), 'utf8')).toBe('오너가 쓰던 글\n')
+    expect(fm(taskFile(root, t)).status).toBe('done')
   })
 
   test('다시를 고른 작업은 병합하지 않는다', async () => {

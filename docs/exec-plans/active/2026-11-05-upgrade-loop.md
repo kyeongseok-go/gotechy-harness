@@ -23,9 +23,9 @@ branch: upgrade-2026-11
 ## Progress
 
 - [x] (2026-11-05 13:00) 시작 상태 기록: `~/.claude/settings.json` sha256 앞 8자리 `c5551143`, `~/.codex/config.toml` `62b7d579`, `~/.gotechy` 전체 해시 `ac4c41f4`(10-16과 같음). claude 실행 파일은 2.1.318
-- [x] (2026-11-05 13:30) U0 기준선 복구. 시작 때 `bun run check`가 766 pass, 11 fail. 커밋 5d1491d로 778 pass, 커버리지 95.69%
-- [x] (2026-11-05 13:40) U1 조사 두 건(외부 최신 기술, 내부 격차)과 radar 실행, 이 계획
-- [x] (2026-11-05 14:20) U2 가드 hook을 시간 초과와 실패에도 막게(TD-026 상환). 막을 때 exit 2와 stderr, Claude Code hook에 `onFailure: "block"`. 780 pass. mutation(설정 키 빼기)을 테스트가 잡음
+- [x] (2026-11-05 13:12, 커밋 시각) U0 기준선 복구. 시작 때 `bun run check`가 766 pass, 11 fail. 커밋 5d1491d로 778 pass, 커버리지 95.69%
+- [x] (2026-11-05 13:14, 커밋 시각) U1 조사 두 건(외부 최신 기술, 내부 격차)과 radar 실행, 이 계획
+- [x] (2026-11-05 13:27, 커밋 시각) U2 가드 hook을 시간 초과와 실패에도 막게(TD-026 상환). 막을 때 exit 2와 stderr, Claude Code hook에 `onFailure: "block"`. 780 pass. mutation(설정 키 빼기)을 테스트가 잡음
 - [ ] U3 자기 규칙 지키기: 지도와 규칙 문서의 문체 오류 0건, 저장소 위생 테스트, 날짜로 켜지는 규칙 검사
 - [ ] U4 radar 잡음 줄이기와 못 읽는 출처(ears)
 - [ ] U5 도구 고정 버전 올리기(train, mise.toml, mise lock, CI)

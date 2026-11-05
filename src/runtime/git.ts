@@ -1,5 +1,15 @@
 // 워커 격리용 git 조작. 워커는 작업 브랜치의 별도 worktree에서만 일한다(contract.md 0절).
-import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import { runProc } from './proc'
 
@@ -153,6 +163,41 @@ export async function changedFiles(wt: string, base: string): Promise<string[]> 
 }
 
 /**
+ * 무시 파일(.gitignore 대상)의 목록과 내용 지문. changedFiles는 무시 파일을 보지 않으므로, 워커 전후를 이것으로 비교해
+ * 무시 경로에 새로 생기거나 바뀐 파일을 허용 범위 검사에 넣는다(TD-007). 링크는 가리키는 곳을, 폴더(중첩 저장소)는 표시만 남긴다
+ */
+export async function ignoredSnapshot(wt: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const status = (await git(['status', '--porcelain=v1', '--ignored', '-uall', '-z'], wt)).split(
+    '\0',
+  )
+  for (const entry of status) {
+    if (!entry.startsWith('!! ')) continue
+    const rel = entry.slice(3)
+    const abs = join(wt, rel)
+    try {
+      const st = lstatSync(abs)
+      out.set(
+        rel,
+        st.isSymbolicLink()
+          ? `link:${readlinkSync(abs)}`
+          : st.isFile()
+            ? createHash('sha256').update(readFileSync(abs)).digest('hex')
+            : 'dir',
+      )
+    } catch {
+      // 목록을 읽은 뒤 사라진 파일은 비교할 것이 없다
+    }
+  }
+  return out
+}
+
+/** 워커 전(before)에 없었거나 내용이 바뀐 무시 파일 */
+export function ignoredChanges(before: Map<string, string>, after: Map<string, string>): string[] {
+  return [...after].filter(([rel, sum]) => before.get(rel) !== sum).map(([rel]) => rel)
+}
+
+/**
  * 지금 작업 트리(스테이지 포함)가 base와 다른 파일과 추적되지 않은 파일. 되돌린 뒤 다시 볼 때 쓴다.
  * 커밋 기준(base..HEAD)으로 보면 아직 커밋하지 않은 되돌리기(스테이지한 삭제)를 남은 것으로 잘못 본다
  */
@@ -181,8 +226,8 @@ export async function restoreFiles(wt: string, base: string, files: string[]): P
       // 워커가 직접 커밋한 새 파일은 추적 중이라 clean으로 지워지지 않는다
       const inHead = (await gitProc(['cat-file', '-e', `HEAD:${f}`], wt)).exitCode === 0
       if (inHead) await gitProc(['rm', '-fq', '--', f], wt)
-      // -ff: 중첩 저장소 폴더도 지운다(보안 감사 13차 중간 3)
-      else await gitProc(['clean', '-ffq', '--', f], wt)
+      // -ff: 중첩 저장소 폴더도 지운다(보안 감사 13차 중간 3). -x: 무시 파일도 지운다(TD-007). 경로를 지정하므로 다른 무시 파일은 건드리지 않는다
+      else await gitProc(['clean', '-ffxq', '--', f], wt)
     }
   }
 }

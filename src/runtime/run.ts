@@ -39,6 +39,8 @@ import {
   ensureWorktree,
   gitSnapshot,
   headCommit,
+  ignoredChanges,
+  ignoredSnapshot,
   resetTo,
   restoreFiles,
   restoreGitSnapshot,
@@ -231,6 +233,7 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     ...(opts.fixtureDir ? { fixtureDir: opts.fixtureDir } : {}),
   }
   const gitBefore = await gitSnapshot(p.root, wt)
+  const ignoredBefore = await ignoredSnapshot(wt)
   const result = await adapter.run(req)
   saveRawLog(p, task.id, adapterName, result.rawOutput, result.stderr)
 
@@ -253,7 +256,13 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     return finishTampered(p, task, adapterName, result, notes, taskFile, log)
   }
 
-  const changed = await changedFiles(wt, base)
+  // 무시 경로에 새로 생기거나 바뀐 파일도 본다. 커밋에는 안 들어가도 verify가 도는 동안 남아 결과를 바꿀 수 있다(TD-007)
+  const changed = [
+    ...new Set([
+      ...(await changedFiles(wt, base)),
+      ...ignoredChanges(ignoredBefore, await ignoredSnapshot(wt)),
+    ]),
+  ].sort()
   // 링크와 하드 링크는 ownership 안이라도 허용하지 않는다. 리드가 그 경로를 읽고 쓸 때 링크를 따라가
   // 게이트나 키 같은 다른 파일을 건드리거나, 바깥 파일 내용을 커밋하게 된다(보안 감사 1차 높음 2, 2차 중간 D).
   const links = changed.filter((f) => isSymlink(join(wt, f)))
@@ -275,7 +284,10 @@ async function runTaskLocked(p: Project, taskId: string, opts: RunOptions): Prom
     if (leaks.length > 0)
       notes.push(`워커에 넘긴 로그인 값이 들어 있어 되돌렸습니다: ${leaks.join(', ')}`)
     // 되돌리기가 조용히 실패하면 "되돌렸습니다" 기록이 거짓이 된다. 다시 계산해 남았으면 git을 더 부르지 않고 실패로 끝낸다(보안 감사 13차 중간 3)
-    const left = (await differsFromBase(wt, base)).filter((f) => bad.includes(f))
+    const left = [
+      ...(await differsFromBase(wt, base)),
+      ...ignoredChanges(ignoredBefore, await ignoredSnapshot(wt)),
+    ].filter((f) => bad.includes(f))
     if (left.length > 0) {
       notes.push(`허용 밖 변경을 되돌리지 못했어요: ${left.join(', ')}`)
       return finishTampered(p, task, adapterName, result, notes, taskFile, log)

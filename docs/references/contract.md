@@ -212,7 +212,7 @@ frontmatter:
 - git 연결과 설정 검사: 워커 실행 전에 worktree의 `.git` 파일, worktree 메타 파일(gitdir, commondir, config.worktree), 저장소 설정(`.git/config`)과 포함 파일까지 합친 설정 목록을 찍어 둔다. 워커가 끝나면 git을 한 번이라도 부르기 전에 비교해, 바뀌었으면 되돌리고 그 실행에서는 git을 더 부르지 않고 실패로 처리한다(verify도 돌리지 않음, `verified.exit_code` -1).
 - 실행 순서: 워커가 끝나면 변경 범위를 검사하고, 워커 HANDOFF를 읽고, 워커 변경을 커밋한 뒤 verify를 돌린다. verify가 끝나면 커밋하지 않은 모든 것(무시 파일과 중첩 저장소 포함)을 지우고, 확정한 HANDOFF 하나만 커밋한다. verify가 만든 파일은 작업 브랜치에 들어가지 않는다.
 - 변경 범위 검사는 git의 이름 바꾸기 감지를 끄고(`--no-renames`) 옛 이름과 새 이름을 모두 본다. 켜 두면 보호 파일을 허용 범위 안으로 옮긴 커밋에서 옛 이름이 빠진다(보안 감사 7차 중간 3).
-- 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크, 워커에 넘긴 로그인 값(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`의 16자 이상 값)이 들어 있는 파일은 되돌리고 실행을 실패로 처리한다. 워커가 직접 커밋한 새 파일도 지운다. (1a의 "서명 키 값이 든 파일" 검사는 비밀 키 파일이 없어져 로그인 값 검사로 바꿨다. 보안 감사 6차 낮음 6) `accept`는 병합 전에 작업 브랜치 전체 변경(링크, 하위 저장소 포함)을 다시 검사한다.
+- 변경 범위 검사: ownership 밖 파일, 보호 경로, 심볼릭 링크, 하드 링크, 워커에 넘긴 로그인 값(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`의 16자 이상 값)이 들어 있는 파일은 되돌리고 실행을 실패로 처리한다. 워커가 직접 커밋한 새 파일도 지운다. 무시 파일(.gitignore 대상)도 본다: 워커 실행 전후의 무시 파일 목록과 내용 지문을 비교해 새로 생기거나 바뀐 파일을 검사에 넣고, 허용 밖이면 verify 전에 그 경로만 지운다(TD-007, 2026-11-05). (1a의 "서명 키 값이 든 파일" 검사는 비밀 키 파일이 없어져 로그인 값 검사로 바꿨다. 보안 감사 6차 낮음 6) `accept`는 병합 전에 작업 브랜치 전체 변경(링크, 하위 저장소 포함)을 다시 검사한다.
 - 리드의 git: 전역, 시스템 설정을 읽지 않고(`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`) 훅과 fsmonitor를 끈 채로 실행한다. 오너 셸의 다른 `GIT_*` 변수(`GIT_DIR`, `GIT_CONFIG_COUNT` 등)는 넘기지 않는다.
 - 워커 환경 변수: 워커(claude, codex)에는 허용 목록만 넘긴다. PATH, HOME, 사용자 이름, 셸, 언어, 터미널, TMPDIR, 프록시와 인증서 변수, 그리고 어댑터별 로그인 변수(claude는 `ANTHROPIC_API_KEY`, `CLAUDE_CONFIG_DIR`, codex는 `OPENAI_API_KEY`, `CODEX_HOME`)다. 오너 셸의 다른 토큰은 넘기지 않는다. 셸이 있는 codex 워커가 받은 값을 파일에 써서 메인에 들여오지 못하게 하려는 것이다(보안 감사 5차 중간 1). claude와 codex의 로그인은 HOME 아래 설정과 키체인을 쓰므로 이것으로 충분하다(2026-10-14 `claude auth status`, `codex login status`로 확인).
 - 리드는 HANDOFF를 읽고 쓸 때 링크를 따라가지 않는다(경로의 모든 요소 검사, `O_NOFOLLOW`).
@@ -225,7 +225,6 @@ frontmatter:
   - `decide`의 TTY 검사는 실수를 막는 장치다. `script` 같은 명령으로 우회해도 Touch ID 없이는 서명이 나오지 않는다.
   - 리드가 serve를 실행하지 못하게 하는 장치는 Claude Code 정책의 접두어 deny(`Bash(gotechy serve:*)`)와 serve의 TTY 검사뿐이다. 다른 이름으로 부르거나(`bin/gotechy serve`, `bun src/cli.ts serve`) Codex를 리드로 쓰면 deny가 걸리지 않는다. 최종 방어선은 Touch ID 창의 확인 코드다(보안 감사 8차 중간 4).
   - `project.yaml`이 커밋되므로 저장소를 통째로 복사해 만든 프로젝트는 id가 같다.
-  - 무시 파일(.gitignore 대상)의 변경은 허용 범위 검사에 잡히지 않는다. verify를 샌드박스에 넣고 verify 뒤 무시 파일까지 지워 피해를 줄였다.
   - verify가 띄운 백그라운드 프로세스는 verify가 끝난 뒤에도 남을 수 있다. 샌드박스 안이라 작업 폴더 밖을 쓰거나 네트워크를 쓰지는 못한다.
   - Codex 워커가 저장소의 `.git` 폴더(설정 말고 훅, 정보 파일)를 쓸 수 있는지는 확인하지 않았다. 리드의 git은 훅을 끄고 돌며, 설정 변경은 검사한다.
   - Secure Enclave가 없는 컴퓨터(리눅스, 일부 인텔 맥)에서는 결정할 수 없다. 서명 검증 자체는 공개 키만 있으면 되지만, 게이트 검증에는 결정한 맥의 장부(git 밖)와 그 폴더의 장부 끝 기록이 필요하다. 그래서 결정한 맥과 그 폴더에서만 `ok`가 나온다.

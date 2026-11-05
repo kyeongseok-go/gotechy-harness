@@ -12,7 +12,6 @@
 | TD-003 | 2026-09-18 | 문서 다이어트 (2,700줄 → 900줄 목표): `docs/references/research/`·`gotekie-blog-writer`를 원본 저장소/사용자 레벨로 분리, DESIGN+FRONTEND·RELIABILITY+DEPLOYMENT 병합, AI_PLAYBOOK+evals를 옵션 팩화 | docs/ 전반 | 🟡 | core-beliefs #4("지도는 짧게")를 하네스 자신이 위반. 복사본마다 무관한 42% 동반 | TD-002와 함께 |
 | TD-004 | 2026-09-18 | 커밋·브랜치·PR 규약 부재 — career evidence의 1차 원천이 PR/커밋 링크인데 그걸 만드는 규약이 없음 | AGENTS.md 또는 신설 | 🟢 | evidence 품질이 그때그때 달라짐 | 첫 PR 작성 시 |
 | TD-005 | 2026-10-14 | (2026-11-05 일부 상환: 지도, 규칙, 서브에이전트, README는 0건이고 `tests/core/self-style.test.ts`가 스킬, 템플릿과 함께 지킨다. 남은 것은 docs/ 아래) 문체 규칙(contract.md 7절) 이전에 쓴 문서에 경고가 약 1,700건 남아 있다. `gotechy text lint` 기준 docs 1,321건(research 제외), .claude 316건, AGENTS.md 71건, ARCHITECTURE.md 8건. 대부분 가운데점, 화살표, em-dash. 이 표의 심각도 칸에 쓰는 색 원 이모지도 걸리는데, 바꾸려면 `/gotechy-ship` 스킬과 이 문서의 규칙을 함께 고쳐야 한다 | docs/, .claude/, AGENTS.md | 🟡 | 에이전트가 기존 문서를 본보기로 삼아 같은 문체를 다시 만든다. 2026-10-21부터 문체 규칙이 오류가 되면 이 문서들을 고칠 때마다 검사가 막는다 | 손대는 문서부터 고친다. 에이전트가 가장 자주 읽는 AGENTS.md와 .claude 규칙, 스킬을 10-20 전에 먼저. 분량은 TD-003(문서 다이어트)으로 먼저 줄인다 |
-| TD-007 | 2026-10-14 | 허용 범위 검사(`changedFiles`)가 무시 파일(.gitignore 대상)의 변경을 보지 않는다 | src/runtime/git.ts | 🟡 | 워커가 node_modules 같은 무시 경로에 코드를 심을 수 있다. verify 샌드박스로 피해는 작업 폴더 안에 갇힌다 | 2단계 P8: 기준 시점의 무시 파일 목록과 비교 |
 | TD-009 | 2026-10-14 | verify 샌드박스가 macOS 전용이다. 다른 OS에서는 기록만 남긴다 | src/runtime/sandbox.ts | 🟡 | 리눅스 CI나 2단계 다른 아키텍처에서 격리 약속이 깨진다 | 2단계: bubblewrap 등 리눅스 샌드박스 |
 | TD-010 | 2026-10-14 | `src/runtime/run.ts` 줄 커버리지 90.7%, 2026-10-14 18:22에 92.1%(핵심 모듈 목록 밖. 타임아웃, 게이트 열기 실패, 샌드박스 없음 분기). 같은 밤에 `usage.ts`(100%)와 `pages.tsx`(95.0%)는 기준을 넘겼다 | src/runtime/run.ts | 🟢 | 드문 실패 경로가 깨져도 모른다 | 2단계 P8(1a 완료 게이트 전에 갚지 못하고 넘김). 2026-10-16 전체 커버리지 95.68%로 핵심 모듈 밖이라 게이트는 통과 |
 | TD-015 | 2026-10-15 | Codex 워커와 codex 감사관(contract.md 13절, 시간 상한 5분)에는 비용 상한(`budget_usd`)이 걸리지 않는다. codex CLI에 옵션이 없고 시간 상한만 있다(보안 감사 7차 낮음 7) | src/runtime/adapters/codex.ts | 🟡 | 오염된 입력이 Codex를 시간 상한까지 돌게 하면 비용이 쌓인다 | 지금은 무인 루프가 Codex 작업을 돌리지 않는다(2026-10-15). 갚을 때: `--json` 이벤트의 사용량을 실시간으로 더해 상한에서 중단 |
@@ -34,6 +33,7 @@
 
 | ID | 내용 | 상환일 | 증거 |
 |---|---|---|---|
+| TD-007 | 허용 범위 검사가 무시 파일(.gitignore 대상)도 본다. 워커 실행 전후의 무시 파일 목록과 내용 지문을 비교해 새로 생기거나 바뀐 파일을 넣고, 허용 밖이면 verify 전에 지운다(`git clean -x`를 그 경로에만). 되돌린 뒤 다시 볼 때도 무시 파일을 본다 | 2026-11-05 | `tests/e2e/ignored-files.test.ts`(node_modules에 심은 파일은 verify 전에 지워지고 failed, 허용 범위 안의 dist/는 그대로. 비교를 빼는 mutation을 잡음) |
 | TD-027 | 죽은 run의 잠금 회수를 회수 잠금(`<잠금>.reclaim`) 안에서만 하고, 그 안에서 pid를 다시 읽어 그 사이 다른 프로세스가 새로 잡은 잠금을 지우지 않는다. 회수 도중 죽은 프로세스의 회수 잠금은 1분 뒤 치운다 | 2026-11-05 | `tests/e2e/run-lock.test.ts`(프로세스 8개 동시 회수, 고치기 전 6개가 동시에 잡음, 고친 뒤 5회 연속 1개. 다시 읽기를 빼는 mutation을 잡음) |
 | TD-017 | `.claude/rules/testing.md`의 예외 규칙에 "실험 증거(명령과 출력)가 없으면 외부 경계를 건드리는 기능을 커밋하지 않는다"를 넣었다 | 2026-11-05 | `.claude/rules/testing.md` |
 | TD-026 | 가드가 막을 때 JSON과 함께 stderr와 exit 2로도 막고, Claude Code 가드 hook에 `onFailure: "block"`(2.1.295 이상)을 넣어 시작 실패와 시간 초과도 막는다. 감싸개의 감시 타이머는 필요 없어졌다. Codex는 시간 초과 동작이 문서에 없어 남김(실제 Codex 세션 확인은 오너) | 2026-11-05 | `tests/e2e/guard-cli.test.ts`(TD-026 테스트 2개, 기존 2개 수정), 2.1.318 실행 파일의 설정 스키마 |

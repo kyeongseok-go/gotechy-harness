@@ -21,8 +21,8 @@ sources:
     title: EARS (Alistair Mavin)
     url: https://alistairmavin.com/ears/
     trust: paper
-    watch: rss
-    feed: https://alistairmavin.com/feed/
+    # 2026-11-05: 사이트 RSS에 글이 하나도 없어 페이지 변경으로 본다
+    watch: page
     cadence: quarterly
     covers: [references/requirements.md, references/templates/20-features.md]
   - id: github-spec-kit

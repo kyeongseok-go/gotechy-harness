@@ -79,16 +79,70 @@ export function latestFeedItem(xml: string): Observation | undefined {
   return { label: decodeXml(title), ...(date ? { date: decodeXml(date) } : {}) }
 }
 
-/** 페이지 글의 요약값. 스크립트, 스타일, 태그, 공백 차이는 무시한다(그래도 날짜나 광고가 바뀌면 잡음이 생긴다) */
+// 날짜와 시각 모양: 페이지의 "최근 수정" 같은 줄만 바뀌는 잡음을 지운다(U4, 2026-11-05 radar에서 바뀜 45건)
+const MONTH =
+  '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)'
+const DATE_LIKE = new RegExp(
+  [
+    '\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}(?:T[\\d:.]+Z?)?',
+    '\\d{4}년\\s*\\d{1,2}월(?:\\s*\\d{1,2}일)?',
+    `${MONTH}\\.?\\s+\\d{1,2},?\\s+\\d{4}`,
+    `\\d{1,2}\\s+${MONTH}\\.?,?\\s+\\d{4}`,
+    '\\d{1,2}:\\d{2}(?::\\d{2})?',
+  ].join('|'),
+  'gi',
+)
+const BLOCK =
+  /<\/?(?:p|div|h[1-6]|li|ul|ol|tr|td|th|table|section|article|br|pre|blockquote|dd|dt|dl)\b[^>]*>/gi
+
+/**
+ * 페이지에서 사람이 읽는 본문 글만 뽑는다. script, style 등은 끝이 잘려 닫히지 않았어도 뺀다(크기 상한에서 잘린 페이지).
+ * main이 있으면 그 안만 보고, 장식(nav, header, footer, aside)은 뺀다. 블록 태그는 줄로 나눈다.
+ */
+export function pageText(html: string): string {
+  let h = html
+    .replace(/<!--[\s\S]*?(?:-->|$)/g, ' ')
+    .replace(/<(script|style|noscript|svg|template|iframe)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, ' ')
+  const main = /<main\b[^>]*>([\s\S]*?)<\/main\s*>/i.exec(h)
+  if (main) h = main[1] as string
+  h = h.replace(/<(nav|header|footer|aside)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, ' ')
+  return decodeXml(h.replace(BLOCK, '\n').replace(/<[^>]*>/g, ' '))
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter((l) => l.length > 0)
+    .join('\n')
+}
+
+/** 지문을 만들 때만 날짜와 시각을 가린다. 보고서에 보여 줄 글(pageText)은 그대로 둔다 */
+export function maskDates(text: string): string {
+  return text.replace(DATE_LIKE, '#')
+}
+
+/** 페이지 글의 지문(2판). 본문만, 날짜와 시각은 가린 뒤 sha256 앞 16자 */
 export function pageDigest(html: string): string {
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return createHash('sha256').update(text).digest('hex').slice(0, 16)
+  return createHash('sha256')
+    .update(maskDates(pageText(html)))
+    .digest('hex')
+    .slice(0, 16)
+}
+
+/** 지문 방식의 판. 바뀌면 옛 지문과 비교하지 않고 처음 기록으로 다시 잡는다 */
+export const PAGE_DIGEST_VERSION = 2
+
+export type PageChange = { added: number; removed: number; firstAdded?: string }
+
+/** 두 본문 글의 줄 단위 차이. 날짜만 바뀐 줄은 차이로 세지 않는다 */
+export function pageChange(before: string, after: string): PageChange {
+  const key = (l: string) => maskDates(l)
+  const old = new Set(before.split('\n').map(key))
+  const now = new Set(after.split('\n').map(key))
+  const addedLines = after.split('\n').filter((l) => !old.has(key(l)))
+  const removed = [...old].filter((k) => !now.has(k)).length
+  return {
+    added: addedLines.length,
+    removed,
+    ...(addedLines[0] !== undefined ? { firstAdded: addedLines[0] } : {}),
+  }
 }
 
 const versionParts = (s: string): number[] | undefined =>

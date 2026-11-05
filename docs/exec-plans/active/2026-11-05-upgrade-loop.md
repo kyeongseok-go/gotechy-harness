@@ -26,8 +26,8 @@ branch: upgrade-2026-11
 - [x] (2026-11-05 13:12, 커밋 시각) U0 기준선 복구. 시작 때 `bun run check`가 766 pass, 11 fail. 커밋 5d1491d로 778 pass, 커버리지 95.69%
 - [x] (2026-11-05 13:14, 커밋 시각) U1 조사 두 건(외부 최신 기술, 내부 격차)과 radar 실행, 이 계획
 - [x] (2026-11-05 13:27, 커밋 시각) U2 가드 hook을 시간 초과와 실패에도 막게(TD-026 상환). 막을 때 exit 2와 stderr, Claude Code hook에 `onFailure: "block"`. 780 pass. mutation(설정 키 빼기)을 테스트가 잡음
-- [x] (2026-11-05 U3 커밋 시각은 Artifacts 참고) U3 자기 규칙 지키기: AGENTS.md, CLAUDE.md, ARCHITECTURE.md, README.md, `.claude/rules`, `.claude/agents`의 문체 오류 130건에서 0건. `tests/core/self-style.test.ts`(지금 시각과 2030년 시각 둘 다, 스킬과 템플릿 포함, mutation으로 확인). ARCHITECTURE 모듈 목록 동기화와 검사. TD-017 상환. 784 pass
-- [ ] U4 radar 잡음 줄이기와 못 읽는 출처(ears)
+- [x] (2026-11-05 13:33, 커밋 시각) U3 자기 규칙 지키기: AGENTS.md, CLAUDE.md, ARCHITECTURE.md, README.md, `.claude/rules`, `.claude/agents`의 문체 오류 130건에서 0건. `tests/core/self-style.test.ts`(지금 시각과 2030년 시각 둘 다, 스킬과 템플릿 포함, mutation으로 확인). ARCHITECTURE 모듈 목록 동기화와 검사. TD-017 상환. 784 pass
+- [x] (2026-11-05 U4) radar 지문 2판(본문만, 닫히지 않은 script 제거, 날짜 가림), 바뀐 페이지는 새 줄과 첫 줄을 보고서에, 옛 지문은 처음 기록으로 다시 잡음, 빈 피드 알림, ears 출처를 page로. 실측: 바로 다시 돌리면 바뀜 0, 못 읽음 1에서 0. 791 pass. mutation 2종 잡음(main 추출 테스트는 처음에 못 잡아 보강)
 - [ ] U5 도구 고정 버전 올리기(train, mise.toml, mise lock, CI)
 - [ ] U6 죽은 run 잠금의 원자적 회수(TD-027)
 - [ ] U7 허용 범위 검사가 무시 파일도 보기(TD-007)
@@ -81,6 +81,9 @@ branch: upgrade-2026-11
 
 - 문체 고치기 중 `git checkout AGENTS.md`로 mutation을 되돌리다 고친 내용까지 날렸다. 변환 스크립트로 다시 적용했다. mutation은 파일 복사본으로 되돌리는 편이 안전하다.
 - README의 브랜드 슬로건(영어 문장)과 doc-gardener가 인용하는 색인 상태 표시(이모지)는 규칙을 설명하거나 원문을 지키는 자리라 `style-ignore` 표지로 감쌌다. 심각도 이모지는 높음, 중간, 낮음 말로 바꿨다.
+
+- radar의 "바뀜 45건"은 대부분 순간 잡음이 아니었다. 35개 페이지를 1.5초 간격으로 두 번 받아 1판 지문을 비교하니 34개가 같았다. 매번 달라진 하나(anthropic-develop-tests)는 200만 글자 상한에서 잘리며 닫히지 않은 `<script>`가 남은 것이었다. 3주 동안 실제로 글이 바뀐 것을 보고서가 "무엇이 바뀌었는지" 말해 주지 못한 것이 진짜 문제라 본문 글을 남겨 차이를 보여 주게 했다.
+- zsh는 따옴표 없는 변수를 낱말로 나누지 않는다. 실험 스크립트에 출처 35개가 한 인자로 넘어가 아무것도 안 돌았다(`${=ids}`로 해결).
 
 ## Decision Log
 

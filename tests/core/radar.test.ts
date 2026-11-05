@@ -10,7 +10,9 @@ import {
   latestFeedItem,
   latestRelease,
   newerThan,
+  pageChange,
   pageDigest,
+  pageText,
   releaseFromUrl,
 } from '../../src/core/radar'
 import { runRadar } from '../../src/runtime/radar'
@@ -50,6 +52,38 @@ describe('해석', () => {
     const b = '<html><script>var t=2</script><p>WCAG   2.2</p></html>'
     expect(pageDigest(a)).toBe(pageDigest(b))
     expect(pageDigest(a)).not.toBe(pageDigest('<p>WCAG 3.0</p>'))
+  })
+
+  test('U4: 페이지 글은 본문(main)만 보고 nav, header, footer, aside는 뺀다. 블록은 줄로 나눈다', () => {
+    const html =
+      '<header>메뉴 A</header><nav>목록</nav><div>main 밖 추천 글</div><main><h1>제목</h1><p>첫 문단</p><aside>광고</aside><p>둘째 &amp; 문단</p></main><footer>바닥</footer>'
+    expect(pageText(html)).toBe('제목\n첫 문단\n둘째 & 문단')
+    // main이 없으면 body 전체에서 장식만 뺀다
+    expect(pageText('<nav>목록</nav><div>본문</div><footer>바닥</footer>')).toBe('본문')
+  })
+
+  test('U4: 크기 상한에서 잘려 닫히지 않은 script와 style도 뺀다(2026-11-05 실측: 2MB 넘는 페이지의 지문이 매번 달랐다)', () => {
+    const a = '<p>본문</p><script>var nonce="abc123"; var big='
+    const b = '<p>본문</p><script>var nonce="zz9"; var other='
+    expect(pageDigest(a)).toBe(pageDigest(b))
+  })
+
+  test('U4: 날짜와 시각만 바뀐 페이지는 같은 지문이다', () => {
+    const page = (d: string) => `<main><p>보안 지침</p><p>Last updated: ${d}</p></main>`
+    for (const [x, y] of [
+      ['November 5, 2026', 'October 16, 2026'],
+      ['2026-11-05', '2026-10-16'],
+      ['2026년 11월 5일 13:20', '2026년 10월 16일 09:05'],
+      ['5 Nov 2026', '16 Oct 2026'],
+    ])
+      expect(pageDigest(page(x as string))).toBe(pageDigest(page(y as string)))
+    expect(pageDigest(page('2026-11-05'))).not.toBe(pageDigest('<main><p>새 지침</p></main>'))
+  })
+
+  test('U4: 바뀐 곳 요약은 새로 생긴 줄과 사라진 줄의 수, 새 줄의 앞부분을 준다', () => {
+    const c = pageChange('제목\n그대로\n사라질 줄', '제목\n그대로\nASVS 5.0.1 추가\n두 번째 새 줄')
+    expect(c).toEqual({ added: 2, removed: 1, firstAdded: 'ASVS 5.0.1 추가' })
+    expect(pageChange('a\nb', 'a\nb')).toEqual({ added: 0, removed: 0 })
   })
 
   test('판 비교는 숫자 단위로 한다(v 접두사, 꼬리 글 무시)', () => {
@@ -178,6 +212,67 @@ describe('gotechy radar', () => {
       fetchText: fetcher({ ...pages, 'https://ex.com/doc': '<p>바뀐 글</p>' }),
     })
     expect(later.counts.changed).toBe(1)
+  })
+
+  test('U4: 바뀐 페이지는 보고서에 새로 생긴 줄을 보여 주고, 날짜만 바뀌면 같음으로 센다', async () => {
+    const root = lib()
+    const stateDir = join(root, '.gotechy', 'radar')
+    const doc = (body: string) => ({ ...pages, 'https://ex.com/doc': body })
+    const run = (day: string, map: Record<string, string>) =>
+      runRadar({ lib: root, stateDir, now: new Date(day), all: true, fetchText: fetcher(map) })
+    await run('2026-10-16T00:00:00Z', doc('<main><p>규칙 하나</p><p>Updated 2026-10-16</p></main>'))
+    const dateOnly = await run(
+      '2026-10-24T00:00:00Z',
+      doc('<main><p>규칙 하나</p><p>Updated 2026-10-24</p></main>'),
+    )
+    expect(dateOnly.counts.changed).toBe(0)
+    const real = await run(
+      '2026-11-01T00:00:00Z',
+      doc('<main><p>규칙 하나</p><p>규칙 둘이 새로 생김</p><p>Updated 2026-11-01</p></main>'),
+    )
+    expect(real.counts.changed).toBe(1)
+    const report = readFileSync(real.report, 'utf8')
+    expect(report).toContain('규칙 둘이 새로 생김')
+    expect(report).toContain('새 줄 1')
+  })
+
+  test('U4: 글이 없는 피드는 형식 오류가 아니라 비었다고 알린다(2026-11-05 ears 출처)', async () => {
+    const root = lib()
+    const r = await runRadar({
+      lib: root,
+      stateDir: join(root, '.gotechy', 'radar'),
+      now: new Date('2026-10-16T00:00:00Z'),
+      fetchText: fetcher({
+        ...pages,
+        'https://nodejs.org/feed.xml': '<rss><channel><title>t</title></channel></rss>',
+      }),
+    })
+    expect(readFileSync(r.report, 'utf8')).toContain('피드에 글이 하나도 없어요')
+  })
+
+  test('U4: 옛 방식 지문만 있는 출처는 바뀜이 아니라 처음 기록으로 다시 잡는다', async () => {
+    const root = lib()
+    const stateDir = join(root, '.gotechy', 'radar')
+    mkdirSync(stateDir, { recursive: true })
+    writeFileSync(
+      join(stateDir, 'state.json'),
+      JSON.stringify({
+        'gotechy-build/page': {
+          at: '2026-10-16T00:00:00.000Z',
+          ok: true,
+          digest: 'old1234567890abc',
+        },
+      }),
+    )
+    const r = await runRadar({
+      lib: root,
+      stateDir,
+      now: new Date('2026-11-05T00:00:00Z'),
+      all: true,
+      fetchText: fetcher(pages),
+    })
+    expect(r.counts.changed).toBe(0)
+    expect(r.counts.baseline).toBe(1)
   })
 
   test('보고서에 웹 글의 제어 문자와 긴 글은 남기지 않는다', async () => {

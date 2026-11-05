@@ -10,7 +10,10 @@ import {
   latestFeedItem,
   newerThan,
   type Observation,
+  PAGE_DIGEST_VERSION,
+  pageChange,
   pageDigest,
+  pageText,
   RadarFile,
   type RadarSource,
   releaseFromUrl,
@@ -31,7 +34,8 @@ export type RadarOptions = {
 }
 export type RadarStatus = 'newer' | 'changed' | 'baseline' | 'same' | 'failed' | 'skipped'
 export type RadarCounts = Record<Exclude<RadarStatus, never>, number> & { checked: number }
-type Entry = { at: string; ok: boolean; label?: string; digest?: string }
+/** v: 페이지 지문 방식의 판(core PAGE_DIGEST_VERSION). 없으면 1판 */
+type Entry = { at: string; ok: boolean; label?: string; digest?: string; v?: number }
 type Result = {
   skill: string
   source: RadarSource
@@ -106,8 +110,9 @@ export async function runRadar(o: RadarOptions): Promise<{ report: string; count
     if (!o.all && prev?.ok && !isDue(source.cadence, prev.at, now))
       return { skill, source, status: 'skipped' }
     let obs: Observation | undefined
+    let text: string | undefined
     try {
-      obs = await observe(source, fetchText)
+      ;({ obs, text } = await observe(source, fetchText))
     } catch (e) {
       state[key] = { ...(prev ?? {}), at: now.toISOString(), ok: false }
       return { skill, source, status: 'failed', error: clean((e as Error).message) }
@@ -116,7 +121,10 @@ export async function runRadar(o: RadarOptions): Promise<{ report: string; count
       state[key] = { ...(prev ?? {}), at: now.toISOString(), ok: false }
       return { skill, source, status: 'failed', error: '형식을 읽지 못했어요' }
     }
-    const seen = prev && (prev.label !== undefined || prev.digest !== undefined)
+    // 지문 방식이 바뀐 페이지는 옛 지문과 비교하지 않는다(모두 바뀜으로 보이는 일을 막음, U4)
+    const stale =
+      obs.digest !== undefined && prev?.digest !== undefined && prev.v !== PAGE_DIGEST_VERSION
+    const seen = prev && !stale && (prev.label !== undefined || prev.digest !== undefined)
     const status: RadarStatus =
       obs.label &&
       !isPrerelease(obs.label) &&
@@ -132,7 +140,23 @@ export async function runRadar(o: RadarOptions): Promise<{ report: string; count
       at: now.toISOString(),
       ok: true,
       ...(obs.label !== undefined ? { label: obs.label } : {}),
-      ...(obs.digest !== undefined ? { digest: obs.digest } : {}),
+      ...(obs.digest !== undefined ? { digest: obs.digest, v: PAGE_DIGEST_VERSION } : {}),
+    }
+    if (text !== undefined) {
+      // 다음 실행이 무엇이 바뀌었는지 보여 줄 수 있게 본문 글을 남긴다(로컬 상태 폴더, 커밋하지 않음)
+      const file = pageFile(o.stateDir, key)
+      const before =
+        status === 'changed' && existsSync(file) ? readFileSync(file, 'utf8') : undefined
+      mkdirSync(join(o.stateDir, 'pages'), { recursive: true })
+      writeAtomic(file, text)
+      if (before !== undefined) {
+        const c = pageChange(before, text)
+        const head = `새 줄 ${c.added}, 사라진 줄 ${c.removed}`
+        obs = {
+          ...obs,
+          label: c.firstAdded ? `${head}: ${c.firstAdded}` : `${head} (순서나 꾸밈만 바뀜)`,
+        }
+      }
     }
     return { skill, source, status, obs }
   }
@@ -158,20 +182,30 @@ export async function runRadar(o: RadarOptions): Promise<{ report: string; count
   return { report, counts }
 }
 
-async function observe(s: RadarSource, fetchText: FetchText): Promise<Observation | undefined> {
+/** 출처의 본문 글을 남기는 파일. 키의 / 와 이상한 글자는 _로 바꾼다 */
+const pageFile = (stateDir: string, key: string) =>
+  join(stateDir, 'pages', `${key.replace(/[^\w.-]/g, '_')}.txt`)
+
+async function observe(
+  s: RadarSource,
+  fetchText: FetchText,
+): Promise<{ obs: Observation | undefined; text?: string }> {
   if (s.watch === 'github-releases') {
     if (!s.feed || !/^[\w.-]+\/[\w.-]+$/.test(s.feed)) throw new Error('feed에 owner/repo가 없어요')
     // API(인증 없이 시간당 60회) 대신 웹 주소의 리다이렉트로 최신 정식 릴리스 태그를 읽는다(2026-10-16 실측: API 403)
     const r = await fetchText(`https://github.com/${s.feed}/releases/latest`, 'text/html')
-    return releaseFromUrl(r.url)
+    return { obs: releaseFromUrl(r.url) }
   }
   if (s.watch === 'rss') {
     if (!s.feed?.startsWith('https://')) throw new Error('feed에 https 주소가 없어요')
-    return latestFeedItem(
-      (await fetchText(s.feed, 'application/rss+xml, application/atom+xml, */*')).text,
-    )
+    const xml = (await fetchText(s.feed, 'application/rss+xml, application/atom+xml, */*')).text
+    const item = latestFeedItem(xml)
+    if (!item && /<(rss|feed)[\s>]/i.test(xml))
+      throw new Error('피드에 글이 하나도 없어요. 출처의 watch를 page로 바꾸세요')
+    return { obs: item }
   }
-  return { digest: pageDigest((await fetchText(s.url, 'text/html, */*')).text) }
+  const html = (await fetchText(s.url, 'text/html, */*')).text
+  return { obs: { digest: pageDigest(html) }, text: pageText(html) }
 }
 
 function renderReport(day: string, results: Result[], broken: string[], c: RadarCounts): string {
@@ -193,7 +227,7 @@ function renderReport(day: string, results: Result[], broken: string[], c: Radar
       row(r, `${clean(String(r.source.version))}, ${clean(r.obs?.label)}`),
     ),
     '',
-    '## 바뀜 (지난번과 다름. 페이지는 잡음일 수 있어요)',
+    '## 바뀜 (지난번과 다름. 날짜만 바뀐 페이지는 빼고, 페이지는 새로 생긴 첫 줄을 보여 줘요)',
     '',
     '| 스킬 | 출처 | 찾은 것 | 다시 볼 파일 |',
     '|---|---|---|---|',

@@ -34,7 +34,7 @@ branch: upgrade-2026-11
 - [x] (2026-11-05 14:26, 커밋 시각) U8 CI가 `bun src/cli.ts test`로 커버리지 기준까지 본다(리눅스는 macOS 전용 샌드박스 모듈만 뺌). 진행 중 ExecPlan의 필수 절 5개를 테스트로 검사(셸 grep 단계 대신). 끝난 10-16 밤샘 계획에 빠진 절을 채워 completed/로 옮김. `gotechy test`가 커버리지 임시 폴더를 지움. 800 pass
 - [x] (2026-11-05 14:45, 커밋 시각) U9 워커 하드닝: codex 워커와 감사관은 프롬프트를 표준 입력으로(TD-028 일부), `--ignore-user-config`. claude 워커는 `blockWritesOutsideWorkingDirectories`, `blockReadsOutsideWorkingDirectories`(2.1.316 설정 스키마에서 permissions 아래 확인). TD-030 무료 실험: macOS codex 0.166 쓰기 샌드박스가 git 관리 파일 쓰기를 모두 막음. 토큰 상한(`features.rollout_budget`)은 개발 중 기능이고 확인에 유료 실행이 필요해 넣지 않고 U10 제안으로. 803 pass
 - [x] (2026-11-05 14:52, 커밋 시각) U10 오너 결정용 제안서 `docs/design-docs/2026-11-05-upgrade-proposals.md`: 결정 6가지(첫 프로젝트 먼저, 이 브랜치 병합, 팩 eval 5달러, srt 보류, Betterleaks 보류, codex 토큰 상한 조건부)와 결정이 필요 없는 작은 후보. ADR은 오너가 고른 뒤에 쓴다
-- [ ] U11 최종 검토(보안 감사, 문서 대조), 오너 보고 HANDOFF, 메모리
+- [x] (2026-11-05 15:12, 커밋 시각) U11 최종 검토: 보안 감사 16차(높음 0, 중간 2와 낮음 2 모두 고침, 중간 2건은 U7의 빈틈), 문서 대조 24건 중 높음 4와 중간 대부분 반영, 오너 보고 HANDOFF T-009(lint 통과), 메모리. 끝 상태: 808 pass, 전역 설정 해시 시작과 같음
 
 ## 작업 대기열과 완료 판정
 
@@ -100,6 +100,9 @@ branch: upgrade-2026-11
 
 - 조사가 경고한 Bun 1.4.4의 glob 의미 변화(`*(a|b)`, `{1..3}`)는 하네스에 해당하지 않는다. `src/`에 Bun.Glob이나 glob 라이브러리를 쓰는 곳이 없고 ownership 비교는 자체 경로 접두 비교다(grep으로 확인).
 
+- 보안 감사 16차가 U7(무시 파일 검사)의 빈틈 두 개를 찾았다. 내용 지문을 읽다 권한 오류가 나면 파일이 목록에서 조용히 빠졌고, 기준 스냅샷이 지난 실행의 잔여물을 정상으로 받아들였다. 고친 방식은 더 단순하다. 워커 전에 작업 폴더를 비우면 비교가 필요 없고, 워커 뒤의 무시 파일은 내용을 읽지 않고 전부 워커 것으로 본다. git이 읽지 못한 폴더(`could not open directory`, exit 0)도 실험으로 찾아 실패로 처리했다. 처음 쓴 "잔여물" 테스트는 새 설계에서 비우기를 빼도 통과해, 비우기가 실제로 막는 것(남이 남긴 파일로 이 실행이 허용 밖 실패가 되는 일)을 단언하도록 고쳤다.
+- radar 본문 뽑기에 닫히지 않은 꺾쇠 40만 개를 넣자 41.7초가 걸렸다(감사 낮음 3). 정규식을 고친 뒤 테스트 파일 전체가 125ms.
+
 ## Decision Log
 
 | 결정 | 근거 | 날짜 | ADR 승격 |
@@ -114,7 +117,15 @@ branch: upgrade-2026-11
 
 ## Outcomes & Retrospective
 
-(완료 시 작성)
+대기열 U0~U11을 모두 끝냈다(2026-11-05 13:00~15:15 KST). 시작 때 `bun run check`는 766 pass, 11 fail이었고 끝에 808 pass, 0 fail이다. 브랜치 `upgrade-2026-11`에 커밋 17개, CI는 커밋마다 확인했다. 오너 결정은 HANDOFF T-009(`docs/references/evidence/2026-11-05-upgrade/orchestration/handoffs/T-009.md`)와 제안서(`docs/design-docs/2026-11-05-upgrade-proposals.md`)에 있다.
+
+갚은 부채: TD-007, TD-017, TD-026, TD-027. 일부: TD-001, TD-005, TD-028, TD-030(macOS 실험). 새 부채: TD-032(mise shim 고리).
+
+잘된 것: 테스트를 먼저 쓰고 mutation으로 확인하는 순서가 세 번 효과를 냈다(main 추출, 잠금 재검사, 비우기 테스트가 처음엔 잡지 못하던 것을 찾음). 실험의 대조군이 잘못된 실험 두 번을 바로 드러냈다(TD-030 필수 인자, `/private/tmp` 배치).
+
+못한 것: 오너의 mise shim을 10분 동안 망가뜨렸다. 원인은 mise 동작이었지만, train을 바꾼 뒤 shim을 부르기 전에 실행 파일로 먼저 깔았어야 했다(이제 계약 10.1절과 안내 문서에 있음). 계획의 진행 시각을 처음에 추정으로 적었다가 커밋 시각으로 고쳤다(지난 루프와 같은 실수).
+
+다음: 오너가 첫 실전 프로젝트를 정하면 그 프로젝트로 하네스를 쓴다. 이 계획은 오너가 브랜치 병합을 정한 뒤 completed/로 옮긴다.
 
 ## Context and Orientation
 
@@ -147,7 +158,11 @@ U2에서 U9는 서로 의존하지 않는다. U5(버전 올리기)는 U2의 hook
 
 ## Artifacts and Notes
 
-- 커밋 5d1491d(기준선 복구)
+- 커밋: 5d1491d(U0), 1fbae23(U2), 1eb4957(U3), 2e3db87(U4), a5d4f49(U5), a6d2566(U6), f91f2b5(U7), 274d727(U8), 74da0ef(U9), 3386708(U10), 5c0251b(U11 감사 반영)
+- 오너 보고: `docs/references/evidence/2026-11-05-upgrade/orchestration/handoffs/T-009.md`
+- 제안서: `docs/design-docs/2026-11-05-upgrade-proposals.md`
+- 외부 조사: `docs/references/research/2026-11-05-harness-sota-research.md`
+- TD-030 실험: `docs/references/evidence/2026-11-05-upgrade/td030-codex-sandbox.md`
 
 ## Interfaces and Dependencies
 

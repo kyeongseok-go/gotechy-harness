@@ -80,3 +80,12 @@ test('src의 Bun.which는 PATH를 명시한다', () => {
   }
   expect(missing).toEqual([])
 })
+
+test('ARCHITECTURE.md의 디렉터리 지도가 src/runtime의 모듈을 모두 적고 있다(낡은 지도 방지, U3)', () => {
+  const arch = readFileSync(join(ROOT, 'ARCHITECTURE.md'), 'utf8')
+  const missing = readdirSync(join(ROOT, 'src', 'runtime'))
+    .filter((f) => f.endsWith('.ts'))
+    .map((f) => f.replace(/\.ts$/, ''))
+    .filter((m) => !arch.includes(`\`${m}\``))
+  expect(missing).toEqual([])
+})

@@ -1,6 +1,9 @@
 # Gotechy Harness v2
 
+<!-- style-ignore-start -->
+<!-- 브랜드 슬로건은 원문 그대로 둔다 -->
 > **Go, Build the technology, more easier.**
+<!-- style-ignore-end -->
 > 고텍이(고경석)의 개인 작업 시스템. Claude Code와 Codex 같은 AI 워커에게 같은 파일 약속으로 일을 맡기고, 사람이 이해하고 서명한 결정만 다음 일과 병합으로 이어지게 한다.
 
 ## 무엇인가

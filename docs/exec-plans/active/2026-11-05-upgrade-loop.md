@@ -26,7 +26,7 @@ branch: upgrade-2026-11
 - [x] (2026-11-05 13:12, 커밋 시각) U0 기준선 복구. 시작 때 `bun run check`가 766 pass, 11 fail. 커밋 5d1491d로 778 pass, 커버리지 95.69%
 - [x] (2026-11-05 13:14, 커밋 시각) U1 조사 두 건(외부 최신 기술, 내부 격차)과 radar 실행, 이 계획
 - [x] (2026-11-05 13:27, 커밋 시각) U2 가드 hook을 시간 초과와 실패에도 막게(TD-026 상환). 막을 때 exit 2와 stderr, Claude Code hook에 `onFailure: "block"`. 780 pass. mutation(설정 키 빼기)을 테스트가 잡음
-- [ ] U3 자기 규칙 지키기: 지도와 규칙 문서의 문체 오류 0건, 저장소 위생 테스트, 날짜로 켜지는 규칙 검사
+- [x] (2026-11-05 U3 커밋 시각은 Artifacts 참고) U3 자기 규칙 지키기: AGENTS.md, CLAUDE.md, ARCHITECTURE.md, README.md, `.claude/rules`, `.claude/agents`의 문체 오류 130건에서 0건. `tests/core/self-style.test.ts`(지금 시각과 2030년 시각 둘 다, 스킬과 템플릿 포함, mutation으로 확인). ARCHITECTURE 모듈 목록 동기화와 검사. TD-017 상환. 784 pass
 - [ ] U4 radar 잡음 줄이기와 못 읽는 출처(ears)
 - [ ] U5 도구 고정 버전 올리기(train, mise.toml, mise lock, CI)
 - [ ] U6 죽은 run 잠금의 원자적 회수(TD-027)
@@ -78,6 +78,9 @@ branch: upgrade-2026-11
 
 - `onFailure`의 위치가 문서마다 달라 보였다. 실행 파일 문자열에 SDK용 "hook matcher의 onFailure" 문구가 있어 헷갈렸지만, 2.1.318 설정 스키마에서 command hook 객체에 `timeout`, `onFailure`, `statusMessage`가 나란히 있는 것을 확인했다. 위치가 틀리면 설정 파일이 거부돼 가드가 통째로 꺼질 수 있어서 넣기 전에 확인했다.
 - 연구 에이전트의 추정("감시 타이머가 필요 없어진다")은 Claude Code에만 맞다. Codex의 hook 시간 초과 동작은 문서에 없어 남겨 두었다.
+
+- 문체 고치기 중 `git checkout AGENTS.md`로 mutation을 되돌리다 고친 내용까지 날렸다. 변환 스크립트로 다시 적용했다. mutation은 파일 복사본으로 되돌리는 편이 안전하다.
+- README의 브랜드 슬로건(영어 문장)과 doc-gardener가 인용하는 색인 상태 표시(이모지)는 규칙을 설명하거나 원문을 지키는 자리라 `style-ignore` 표지로 감쌌다. 심각도 이모지는 높음, 중간, 낮음 말로 바꿨다.
 
 ## Decision Log
 

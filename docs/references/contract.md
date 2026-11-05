@@ -436,7 +436,7 @@ accept가 충돌이나 병합 뒤 verify 실패로 멈춘 작업을 지금 메�
 - 라이브러리 폴더에서 `bun test --coverage`를 돌리고, lcov 결과로 커버리지 기준을 본다. 테스트가 하나라도 실패하면 기준을 보지 않고 exit 1.
 - 기준: 전체 줄 커버리지 80% 이상, 핵심 모듈은 파일마다 95% 이상. 핵심 모듈 목록은 `src/core/coverage.ts`의 `CORE_MODULES`(lint, 결정, 검증, 반영, 어댑터)이고 `ARCHITECTURE.md`에도 적는다.
 - 핵심 모듈이 측정에 없으면(테스트가 그 파일을 불러오지 않으면) 실패다. 측정에서 빠지는 것으로 기준을 피하지 못하게 한다.
-- 기준은 macOS에서 잰다. 리눅스 CI에서는 verify 샌드박스 경로가 달라 `bun test --coverage`만 돌린다.
+- 기준은 macOS와 리눅스 CI 모두에서 본다(U8, 2026-11-05). 리눅스에서는 macOS 전용 핵심 모듈(`MACOS_ONLY`, 지금은 verify 샌드박스 `src/runtime/sandbox.ts`)만 핵심 모듈 기준에서 뺀다. CI는 `bun src/cli.ts test`를 돌린다. 진행 중인 ExecPlan의 필수 절 검사는 `tests/core/ci-hygiene.test.ts`가 한다(Progress, Surprises & Discoveries, Decision Log, Outcomes & Retrospective, Validation and Acceptance).
 - 팩 설치 테스트에는 train의 apm이 필요하다. 없으면 건너뛰지 않고 실패한다. `gotechy test`는 mise 안에서 돌아 apm이 PATH에 있다. CI는 부트스트랩으로 mise를 받고 락 그대로 apm 하나만 설치한다.
 
 ### 10.7 팩 설치 `gotechy init --packs <팩들>`

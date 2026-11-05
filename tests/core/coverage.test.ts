@@ -1,6 +1,6 @@
 // gotechy test의 커버리지 판정(contract.md 10.6절, Validation 17): 전체 줄 80% 이상, 핵심 모듈은 파일마다 95% 이상.
 import { describe, expect, test } from 'bun:test'
-import { CORE_MODULES, judgeCoverage, parseLcov } from '../../src/core/coverage'
+import { CORE_MODULES, judgeCoverage, MACOS_ONLY, parseLcov } from '../../src/core/coverage'
 
 const lcov = (rows: [string, number, number][]) =>
   rows
@@ -62,5 +62,21 @@ describe('judgeCoverage', () => {
       'src/runtime/adapters/codex.ts',
     ])
       expect(CORE_MODULES).toContain(f)
+  })
+})
+
+describe('U8: 리눅스 CI에서도 커버리지 기준을 본다', () => {
+  test('macOS 전용 모듈(verify 샌드박스)은 다른 OS에서 측정에 없어도 실패가 아니다', () => {
+    const files = parseLcov(lcov(allCore(96).filter(([f]) => !MACOS_ONLY.includes(f as string))))
+    expect(judgeCoverage(files, 'linux').ok).toBe(true)
+    // macOS에서는 여전히 필요하다
+    expect(judgeCoverage(files, 'darwin').ok).toBe(false)
+  })
+
+  test('다른 OS라도 macOS 전용이 아닌 핵심 모듈이 기준 아래면 실패다', () => {
+    const rows: [string, number, number][] = allCore(96).map(([f, h, n]) =>
+      f === 'src/runtime/accept.ts' ? [f, 100, 90] : [f, h, n],
+    )
+    expect(judgeCoverage(parseLcov(lcov(rows)), 'linux').ok).toBe(false)
   })
 })

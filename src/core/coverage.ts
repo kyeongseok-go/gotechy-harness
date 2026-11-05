@@ -31,6 +31,8 @@ export const CORE_MODULES = [
   'src/runtime/adapters/fake.ts',
   'src/runtime/adapters/index.ts',
 ]
+/** macOS에서만 도는 핵심 모듈(verify 샌드박스는 sandbox-exec). 다른 OS의 CI에서는 측정이 의미 없어 기준에서 뺀다(U8) */
+export const MACOS_ONLY = ['src/runtime/sandbox.ts']
 export const TOTAL_MIN = 80
 export const CORE_MIN = 95
 
@@ -55,13 +57,17 @@ export function parseLcov(text: string, root?: string): FileCoverage[] {
 const pct = (hit: number, found: number) => (found === 0 ? 100 : (hit / found) * 100)
 const fmt = (n: number) => n.toFixed(2)
 
-export function judgeCoverage(files: FileCoverage[]): CoverageJudgement {
+export function judgeCoverage(
+  files: FileCoverage[],
+  platform: string = 'darwin',
+): CoverageJudgement {
   const found = files.reduce((a, f) => a + f.found, 0)
   const hit = files.reduce((a, f) => a + f.hit, 0)
   const totalPct = pct(hit, found)
   const failures: string[] = []
   if (totalPct < TOTAL_MIN) failures.push(`전체 줄 커버리지 ${fmt(totalPct)}% (기준 ${TOTAL_MIN}%)`)
-  const core = CORE_MODULES.map((file) => {
+  const modules = CORE_MODULES.filter((f) => platform === 'darwin' || !MACOS_ONLY.includes(f))
+  const core = modules.map((file) => {
     const f = files.find((x) => x.file === file)
     if (!f) {
       // 테스트가 불러오지 않은 핵심 모듈은 0%와 같다. 측정에서 빠져 기준을 피하지 못하게 한다

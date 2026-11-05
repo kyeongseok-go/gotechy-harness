@@ -39,13 +39,8 @@ jobs:
       - run: gitleaks version
       - run: bun run lint
       - run: bun run typecheck
-      - run: bun test --coverage
+      # 테스트와 커버리지 기준(전체 80%, 핵심 모듈 95%, macOS 전용 샌드박스 모듈만 뺌)을 함께 본다(U8, contract.md 10.6절)
+      - run: bun src/cli.ts test
       # 생성 문서(CLI 참조)가 코드와 같은지(완료 게이트 3단계)
       # untracked 파일도 잡도록 diff 대신 status를 본다(doc-gardener 2026-10-15)
       - run: bun run gen:docs && test -z "$(git status --porcelain docs/generated/)"
-      - name: exec-plan hygiene
-        run: |
-          for f in docs/exec-plans/active/*.md; do
-            [ -e "$f" ] || continue
-            grep -q "## Validation" "$f" || { echo "$f 에 Validation 섹션 없음"; exit 1; }
-          done

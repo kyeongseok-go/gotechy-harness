@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // gotechy CLI. 종료코드: 0 성공, 1 검사 실패(고칠 수 있는 문제), 2 환경 문제(도구·경로·상태).
 import { randomBytes } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, realpathSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
@@ -796,11 +796,15 @@ program
       // env를 생략하면 bun은 지운 GOTECHY_CWD까지 넘긴다(Surprises)
       { cwd: lib, stdin: 'ignore', stdout: 'inherit', stderr: 'inherit', env: process.env },
     )
-    if ((await proc.exited) !== 0) {
+    const code = await proc.exited
+    const lcovText = code === 0 ? readFileSync(join(dir, 'lcov.info'), 'utf8') : ''
+    rmSync(dir, { recursive: true, force: true })
+    if (code !== 0) {
       console.error('테스트가 실패했어요. 커버리지 기준은 보지 않았어요.')
       process.exit(1)
     }
-    const j = judgeCoverage(parseLcov(readFileSync(join(dir, 'lcov.info'), 'utf8'), lib))
+    // 리눅스 CI에서도 기준을 본다. macOS 전용 모듈만 뺀다(contract.md 10.6절, U8)
+    const j = judgeCoverage(parseLcov(lcovText, lib), process.platform)
     console.log(`전체 줄 커버리지 ${j.totalPct.toFixed(2)}% (기준 ${TOTAL_MIN}%)`)
     const low = j.core.filter((c) => c.pct !== null).sort((a, b) => (a.pct ?? 0) - (b.pct ?? 0))
     console.log(

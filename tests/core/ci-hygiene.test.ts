@@ -1,6 +1,6 @@
 // 보안 감사 7차 낮음 6: CI 토큰의 범위를 좁힌다. 워크플로 파일을 읽어 규칙을 단언한다.
 import { expect, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 
@@ -47,4 +47,27 @@ test('테스트 안에서는 claude, codex, orca가 가짜 실행 파일로 잡�
     const r = Bun.spawnSync({ cmd: [name, '--version'], env: process.env, stderr: 'pipe' })
     expect({ name, exit: r.exitCode }).toEqual({ name, exit: 97 })
   }
+})
+
+test('U8: CI는 커버리지 기준까지 보는 gotechy test를 돌린다(맨 bun test --coverage가 아니라)', () => {
+  const runs = steps.map((x) => x.run ?? '')
+  expect(runs.some((r) => /bun src\/cli\.ts test\b/.test(r))).toBe(true)
+  expect(runs.some((r) => /^bun test --coverage\s*$/.test(r.trim()))).toBe(false)
+})
+
+test('U8: 진행 중인 ExecPlan은 살아 있는 문서의 필수 절을 모두 가진다(docs/PLANS.md)', () => {
+  const dir = join(import.meta.dir, '..', '..', 'docs', 'exec-plans', 'active')
+  const required = [
+    '## Progress',
+    '## Surprises & Discoveries',
+    '## Decision Log',
+    '## Outcomes & Retrospective',
+    '## Validation and Acceptance',
+  ]
+  const missing: string[] = []
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.md'))) {
+    const text = readFileSync(join(dir, f), 'utf8')
+    for (const h of required) if (!text.includes(`\n${h}`)) missing.push(`${f}: ${h}`)
+  }
+  expect(missing).toEqual([])
 })

@@ -77,4 +77,4 @@ related: harness-v2.md, ../design-docs/2026-10-13-expert-library-v0.md
 | 날짜 | 바뀐 것 | 근거 |
 |---|---|---|
 | 2026-10-15 | 첫 판정 | 밤샘 루프 2 결과(`docs/references/evidence/2026-10-15-night/README.md`) |
-| 2026-10-16 | R1 1에서 2, R2 1에서 3(감지까지), R4 2에서 3, R9 2에서 3, 성공 기준 "서명과 위조 거부" 통과 | 밤샘 마무리 루프(`docs/exec-plans/active/2026-10-16-overnight-final.md`), 리드 자체 판정 |
+| 2026-10-16 | R1 1에서 2, R2 1에서 3(감지까지), R4 2에서 3, R9 2에서 3, 성공 기준 "서명과 위조 거부" 통과 | 밤샘 마무리 루프(`docs/exec-plans/completed/2026-10-16-overnight-final.md`), 리드 자체 판정 |

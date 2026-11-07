@@ -24,8 +24,8 @@ branch: skill-cycle/2026-11-08-print
 
 - [x] (2026-11-07 10:02 KST) 준비: 설계 문서, 이 계획, 평가 재료를 커밋 d6f2f3c로 `skill-cycle/2026-11-08-print`에 푸시. 그 전 `bun run check` 811 pass, 0 fail
 - [x] (2026-11-07 10:12 KST) 클라우드 시험 실행(읽기 전용, 352초) 끝. 통과: 브랜치 받기(43abf90), bun 1.4.4, claude 2.1.319, API 키 변수 0개, 푸시 dry-run, 하위 `claude plugin eval` 구독 로그인(1문제 47초). 막힘 2가지는 Surprises에 적었다: 평가가 스킬을 싣지 않음, 클라우드에서만 테스트 45개 실패. gh 로그인 오류는 문제가 아니다(아래).
-- [ ] C0 사전 점검(01:00 시작)
-- [ ] C1 평가 문제 작성과 업그레이드 전 평가
+- [x] C0 사전 점검(2026-11-08 01:02~01:04 KST). 로컬 리드 세션에서 실행(클라우드 1회 실행은 만들지 않았고 세션 예약이 01:02에 시작). API 키 변수 0개, claude 2.1.319. 평가가 스킬을 싣도록 저장소 루트에 `.claude-plugin/plugin.json`(이름 gotechy)을 더했다. `claude plugin validate .` 통과(README 설치 줄 경고만). 시험 1문제(regression-no-flow, `--runs 1 --ablation none`)가 `suite.plugins`에 gotechy를 싣고 22초, 점수 1. `runsPerCase`는 문제 기본값(3)을 보여 줄 뿐 실제 실행은 1번이었다. `evals/results/`는 .gitignore에 넣었다
+- [ ] C1 평가 문제 작성과 업그레이드 전 평가 (01:04 평가 문제 5개 작성, 문체 검사 통과)
 - [ ] C2 출처 수집과 분야 문서, 합격선, 직원 카드, SKILL.md 게이트 조정
 - [ ] C3 업그레이드 후 평가와 비교
 - [ ] C4 검사, 커밋, 브랜치 푸시, 초안 PR, CI 확인
@@ -81,7 +81,7 @@ C5 보고. 목표: 주간 자동화 설계의 입력. 일: HANDOFF(`docs/referen
     TZ=Asia/Seoul date; env | grep -cE '^(ANTHROPIC_API_KEY|OPENAI_API_KEY)='   # 로컬이면 0이어야 함
     git switch skill-cycle/2026-11-08-print || git switch -c skill-cycle/2026-11-08-print origin/skill-cycle/2026-11-08-print
     git worktree add ../wt-before HEAD                              # 업그레이드 전 기준
-    claude plugin eval <C0에서 정한 대상> --case 'print-*' --runs 3 --no-publish --trust-plugin --json > before.json
+    claude plugin eval ../wt-before --case '*print*' --runs 3 --ablation none -j 3 --no-publish --trust-plugin --json before.json   # 대상은 저장소 루트(.claude-plugin/plugin.json), C0에서 확정
     bun run check && bun run dev -- text lint skills/gotechy-design/**/*.md
     gh api repos/kyeongseok-go/gotechy-harness/pulls -f title="..." -f head=skill-cycle/2026-11-08-print -f base=upgrade-2026-11 -F draft=true -F body=@pr-body.md   # gh pr은 클라우드에서 403
 

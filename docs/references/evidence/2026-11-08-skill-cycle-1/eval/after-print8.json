@@ -1,0 +1,1284 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T16:25:22.416Z",
+  "durationSeconds": 425,
+  "costUsd": 4.614015,
+  "partial": false,
+  "suite": {
+    "root": "~/orca/workspaces/gotechy-harness/Gotehcy-harness",
+    "ablation": "none",
+    "caseFilter": "*print*",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "gotechy",
+        "version": "0.1.0",
+        "path": "~/orca/workspaces/gotechy-harness/Gotehcy-harness"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "print-capacity",
+      "dir": "evals/gotechy-design/print-capacity",
+      "source": "prose",
+      "promptMarkdown": "이름 100개를 벽돌 모양 카드로 출력해서 현수막에 붙일 거야. 프린터 여백은 사방 5mm로 잡아 줘.\n\n1. 카드가 140 × 60mm면 A4 한 장에 몇 개, 총 몇 장이야?\n2. 카드를 190 × 90mm로 키우면 A4 세로로 놓았을 때 한 장에 몇 개, 총 몇 장이야?\n3. 190 × 90mm 카드를 A3 가로로 뽑으면 한 장에 몇 개, 총 몇 장이야?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "a4-large-34",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "34\\s*장",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "a4-small-17",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "17\\s*장",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "정답(사방 여백 5mm, 카드를 돌려 놓는 것도 허용):\n- 140 × 60mm를 A4에: 한 장 6개(예: A4 가로 2 × 3), 100개는 17장.\n- 190 × 90mm를 A4 세로에: 한 장 3개(1 × 3), 100개는 34장.\n- 190 × 90mm를 A3 가로에: 한 장 6개(2 × 3), 100개는 17장.\n\nPASS if 세 질문의 한 장당 개수와 총 장수가 모두 위와 같고, 여백을 뺀 인쇄 가능 크기로 계산한 근거가 보인다.\n\nFAIL if 하나라도 숫자가 틀리거나, 여백을 무시하고 종이 전체 크기로 계산했다.",
+          "config": {
+            "criteria": "정답(사방 여백 5mm, 카드를 돌려 놓는 것도 허용):\n- 140 × 60mm를 A4에: 한 장 6개(예: A4 가로 2 × 3), 100개는 17장.\n- 190 × 90mm를 A4 세로에: 한 장 3개(1 × 3), 100개는 34장.\n- 190 × 90mm를 A3 가로에: 한 장 6개(2 × 3), 100개는 17장.\n\nPASS if 세 질문의 한 장당 개수와 총 장수가 모두 위와 같고, 여백을 뺀 인쇄 가능 크기로 계산한 근거가 보인다.\n\nFAIL if 하나라도 숫자가 틀리거나, 여백을 무시하고 종이 전체 크기로 계산했다.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.11142629999999999,
+            "judgeCostUsd": 0.0032376999999999996,
+            "durationSeconds": 31,
+            "startedAt": "2026-11-07T16:25:22.518Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-QIi14m/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "a4-large-34",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 34\\s*장",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "a4-small-17",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 17\\s*장",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "A4는 210×297mm, A3는 297×420mm입니다. 사방 5mm 여백을 빼면 실제로 찍을 수 있는 영역은 다음과 같습니다.\n- A4: 200 × 287mm\n- A3: 410 × 287mm (가로 놓기)\n\n## 1. 140 × 60mm 카드, A4: **한 장에 6개, 총 17장**\n- A4를 가로로 놓고(287 × 200mm) 가로 2개 × 세로 3개를 넣으면 280 × 180mm가 됩니다.\n- 세로로 놓으면 1 × 4 = 4개밖에 안 들어가니 가로 배치가 낫습니다. 가로·세로를 섞어 배치해도 6개가 최대입니다.\n- 100 ÷ 6 = 16.7이라서 17장이 필요하고, 마지막 장에는 4개가 들어갑니다.\n\n## 2. 190 × 90mm 카드, A4 세로: **한 장에 3개, 총 34장**\n- 가로 1개 × 세로 3개를 넣으면 190 × 270mm가 됩니다.\n- 100 ÷ 3 = 33.3이라서 34장이 필요하고, 마지막 장에는 1개만 들어갑니다.\n\n## 3. 190 × 90mm 카드, A3 가로: **한 장에 6개, 총 17장**\n- 가로 2개 × 세로 3개를 넣으면 380 × 270mm가 됩니다.\n- 카드를 돌려 넣으면 4 × 1 = 4개라서 더 적게 들어갑니다.\n- 100 ÷ 6 = 16.7이라서 17장이 필요하고, 마지막 장에는 4개가 들어갑니다.\n\n## 참고\n- 위 계산은 카드끼리 붙여 배치한 기준입니다. 자르기 편하게 카드 사이를 3~5mm 띄워도 세 경우 모두 장당 개수는 그대로입니다. 남는 공간이 가장 빠듯한 1번(가로 7mm 남음)도 간격 5mm까지는 들어갑니다.\n- 카드를 키우면 A4로는 종이가 두 배(17장 → 34장)가 듭니다. A3 출력이 된다면 큰 카드도 17장으로 뽑을 수 있습니다.\n- 마지막 장의 남는 자리(1번과 3번은 2칸, 2번은 2칸)에는 여분 카드나 빈 카드를 넣어 두면 오탈자를 고치거나 벽돌 끝단을 채울 때 쓸 수 있습니다."
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1087374,
+            "judgeCostUsd": 0.0036247999999999996,
+            "durationSeconds": 31,
+            "startedAt": "2026-11-07T16:25:22.519Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-s8DEqL/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "a4-large-34",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 34\\s*장",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "a4-small-17",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 17\\s*장",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "여백을 빼면 실제로 인쇄되는 영역은 **A4가 200 × 287mm**, **A3가 410 × 287mm**입니다. 아래 계산은 카드 사이에 간격 없이 붙여 배치했을 때 기준입니다.\n\n| | 배치 | 한 장에 | 총 장수 (100개) |\n|---|---|---|---|\n| 1. 140×60, A4 | 가로로 놓은 A4에 2열 × 3행 | **6개** | **17장** (마지막 장 4개) |\n| 2. 190×90, A4 세로 | 1열 × 3행 | **3개** | **34장** (마지막 장 1개) |\n| 3. 190×90, A3 가로 | 2열 × 3행 | **6개** | **17장** (마지막 장 4개) |\n\n**확인한 내용**\n- **1번:** A4를 세로로 쓰면 기본 4개(1열 × 4행)지만, 오른쪽 남는 폭 60mm에 카드를 돌려서 2개를 더 넣으면 역시 6개가 됩니다. 인쇄 영역 넓이를 카드 넓이로 나누면 6.8이라 7개는 들어가지 않습니다. 6개가 최대입니다.\n- **2번:** 카드를 돌려 놓으면 2개뿐이라 3개가 최대입니다. 남는 공간은 세로 17mm입니다.\n- **3번:** 넓이로 나누면 6.9라 6개가 최대입니다. 남는 공간은 가로 30mm, 세로 17mm입니다.\n\n**주의할 점**\n- **1번 세로 배치:** A4를 세로로 쓰면 폭 200mm가 140 + 60으로 꽉 차서 재단 여유가 0mm입니다. 가로 배치(2열 × 3행)를 쓰면 가로 7mm, 세로 20mm가 남습니다.\n- **재단 간격:** 칼질용 간격(예: 2~3mm)을 넣으면 1번 가로 배치는 가로 여유가 7mm뿐이라 빠듯합니다. 2번과 3번은 세로 여유 17mm 안에서 행 사이 간격을 넣을 수 있습니다.\n- **비교:** 같은 190 × 90mm 카드라면 A3 가로로 뽑을 때 장수가 절반(34장 → 17장)입니다."
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.11611600000000001,
+            "judgeCostUsd": 0.004143399999999999,
+            "durationSeconds": 34,
+            "startedAt": "2026-11-07T16:25:22.519Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-WUYh9q/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "a4-large-34",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 34\\s*장",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "a4-small-17",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 17\\s*장",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# 100장 기준 출력 매수\n\n여백을 사방 5mm 빼면 실제로 인쇄되는 영역은 다음과 같습니다.\n- **A4**: 210×297mm에서 200×287mm\n- **A3**: 420×297mm에서 410×287mm\n\n## 1. 140 × 60mm 카드를 A4에 출력\n\n**한 장에 6개, 총 17장**입니다.\n\n- **A4 세로, 카드 가로 방향**: 1열 × 4행으로 4개\n- **A4 세로, 카드를 세워서 60×140**: 3열 × 2행으로 6개\n- **A4 가로(287×200), 카드 가로 방향**: 2열 × 3행으로 6개. 가로 방향으로 놓아야 글자를 읽기 편해서 이 배치를 추천합니다.\n\n인쇄 영역 넓이를 카드 넓이로 나누면 6.8이 나옵니다. 그래서 어떻게 섞어 배치해도 7개는 들어가지 않습니다.\n100 ÷ 6이므로 16장에 6개씩 채우고 마지막 장에 4개를 넣어 **17장**입니다.\n\n## 2. 190 × 90mm 카드를 A4 세로에 출력\n\n**한 장에 3개, 총 34장**입니다.\n\n- 가로: 190mm 카드 1열이 200mm 안에 들어갑니다.\n- 세로: 90mm 카드 3행이 270mm라서 287mm 안에 들어갑니다.\n\n100 ÷ 3이므로 33장에 3개씩 채우고 마지막 장에 1개를 넣어 **34장**입니다.\n마지막 장에 1개만 들어가니, 99개로 줄이거나 102개로 늘릴 수 있는지도 생각해 보세요.\n\n## 3. 190 × 90mm 카드를 A3 가로에 출력\n\n**한 장에 6개, 총 17장**입니다.\n\n- 가로: 2열이 380mm라서 410mm 안에 들어갑니다.\n- 세로: 3행이 270mm라서 287mm 안에 들어갑니다.\n- 카드를 세워서 놓으면 4개밖에 안 들어가서 손해입니다. 넓이로 계산해도 6.9라서 6개가 최대입니다.\n\n100 ÷ 6이므로 16장에 6개씩 채우고 마지막 장에 4개를 넣어 **17장**입니다.\n\n## 요약\n\n| 경우 | 장당 | 총 매수 |\n|---|---|---|\n| 140×60, A4 (가로로 놓기) | 6 | 17 |\n| 190×90, A4 세로 | 3 | 34 |\n| 190×90, A3 가로 | 6 | 17 |\n\n**자를 틈:** 위 계산은 카드끼리 틈 없이 붙인 기준입니다. 자르기 편하게 카드 사이에 3mm 틈을 두어도 세 경우 모두 개수는 그대로입니다.\n- A4 가로: 283×186mm\n- A4 세로: 190×276mm\n- A3 가로: 383×276mm\n\n세 경우 모두 인쇄 영역 안에 들어갑니다."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "print-pdf-weight",
+      "dir": "evals/gotechy-design/print-pdf-weight",
+      "source": "prose",
+      "promptMarkdown": "현수막 부품 본(A4 22장)을 HTML과 SVG로 만들어 크롬에서 PDF로 저장했는데 30MB가 나와서 메신저로 못 보내. 배경에 SVG 질감 필터(feTurbulence)랑 큰 그라데이션을 깔았고, 글자는 웹 폰트야. 집 프린터로 실제 크기 출력할 거야. 파일을 어떻게 줄이지?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 용량의 주원인을 SVG 필터(feTurbulence)나 그라데이션, 투명 효과가 PDF 안에서 페이지마다 큰 비트맵으로 바뀌는 것으로 짚는다.\n2. 실제로 줄이는 방법을 하나 이상 구체적으로 낸다: 질감을 미리 그린 이미지 한 장으로 바꿔 재사용하기, 필터 빼기, 또는 페이지를 150~300dpi 이미지로 래스터화해 다시 PDF로 묶기. 어느 것이든 실제 크기(배율)를 바꾸지 않는다.\n\nFAIL if 원인을 웹 폰트로만 보거나, 온라인 압축만 권하거나, 해상도를 72dpi 이하로 낮추라고 한다.",
+          "config": {
+            "criteria": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 용량의 주원인을 SVG 필터(feTurbulence)나 그라데이션, 투명 효과가 PDF 안에서 페이지마다 큰 비트맵으로 바뀌는 것으로 짚는다.\n2. 실제로 줄이는 방법을 하나 이상 구체적으로 낸다: 질감을 미리 그린 이미지 한 장으로 바꿔 재사용하기, 필터 빼기, 또는 페이지를 150~300dpi 이미지로 래스터화해 다시 PDF로 묶기. 어느 것이든 실제 크기(배율)를 바꾸지 않는다.\n\nFAIL if 원인을 웹 폰트로만 보거나, 온라인 압축만 권하거나, 해상도를 72dpi 이하로 낮추라고 한다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "rasterize",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.1929617,
+            "judgeCostUsd": 0.0022079000000000014,
+            "durationSeconds": 40,
+            "startedAt": "2026-11-07T16:25:53.311Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-I3H03M/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "제가 파일을 직접 열어 보진 못했어요. 그래서 아래 내용은 말씀하신 구성(feTurbulence 질감, 큰 그라데이션, 웹 폰트)으로 추정한 거예요. 파일 경로를 알려 주시면 실제로 줄이고 확인까지 해 드릴게요.\n\n## 왜 30MB가 됐나\n\n- **원인은 거의 확실히 질감 필터예요.** 크롬은 PDF로 저장할 때 `feTurbulence` 같은 SVG 필터를 그대로 담지 못하고 고해상도 그림으로 바꿔 넣어요. 노이즈 질감은 압축이 거의 안 돼서 장마다 몇 MB씩 붙어요.\n- **나눠 출력하는 방식 때문에 더 커졌을 수 있어요.** 각 장에 현수막 전체 SVG를 놓고 위치만 옮겨 잘라 보이게 했다면, 22장마다 현수막 전체 질감이 들어가 있을 수 있어요.\n- **웹 폰트는 원인일 가능성이 낮아요.** 크롬은 실제로 쓴 글자만 골라 넣어서 보통 수백 KB 정도예요.\n\n어느 쪽인지는 이렇게 확인할 수 있어요.\n```bash\npdfimages -list 현수막.pdf | head -30   # 그림 크기와 개수 (poppler)\npdffonts 현수막.pdf                      # 폰트가 일부 글자만 들어갔는지(subset)\n```\n\n## 줄이는 법 (빠른 것부터)\n\n**1. 5분 해결: Ghostscript로 그림만 줄이기**\n글자는 선명한 벡터로 남고, 안에 든 그림만 150dpi로 낮춰요.\n```bash\ngs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -dNOPAUSE -dBATCH -dQUIET \\\n   -sOutputFile=현수막_작게.pdf 현수막.pdf\n```\n질감은 원래 흐릿한 노이즈라서 150dpi로 낮춰도 집 프린터 출력에서 거의 차이가 없어요.\n\n**2. 근본 해결: 질감을 작은 반복 이미지로 바꾸기 (추천)**\n- `feTurbulence` 필터 대신 256~512px짜리 노이즈 PNG 한 장을 만들어서 `background-image`로 반복해 깔아요.\n- 그라데이션은 필터 없이 CSS `linear-gradient`로만 그려요. 그래야 크롬이 그림이 아닌 벡터로 저장할 가능성이 높아요.\n- 22장이 같은 작은 그림 하나를 반복해 쓰게 돼서 전체가 보통 몇 MB 아래로 내려갈 거라고 봐요. 다만 실제 크기는 만들어서 재 봐야 알아요.\n\n**3. 최후 수단: 페이지 전체를 이미지로 바꿔 다시 묶기**\n```bash\npdftoppm -r 150 -jpeg -jpegopt quality=80 현수막.pdf p\nimg2pdf --pagesize A4 p-*.jpg -o 현수막_jpg.pdf\n```\n크기는 확실히 줄지만 글자 가장자리가 조금 흐려져요. 그래서 1번이나 2번이 안 될 때만 쓰세요.\n\n## 줄인 뒤 꼭 확인할 것\n\n- **페이지 크기가 A4 그대로인지 보세요.** `pdfinfo`에서 `Page size: 595 x 842 pts`로 나와야 해요. 다르면 실제 크기 출력에서 비율이 틀어져요.\n- **한 장을 실제 크기(100%)로 뽑아서 기준 자(50mm 표시)를 자로 재 보세요.** 겹침 띠와 맞춤 표시가 잘리지 않았는지도 같이 봐요.\n- **22장이 모두 있고 빈 페이지가 없는지 확인하세요.**\n\n메신저로 보내는 게 목적이면, 줄인 파일을 보내거나 구글 드라이브 같은 링크로 공유해도 돼요. 이름 명단 같은 개인정보가 들어 있으면 공개 링크는 피하세요."
+              },
+              {
+                "name": "rasterize",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.1915689,
+            "judgeCostUsd": 0.0016409000000000007,
+            "durationSeconds": 37,
+            "startedAt": "2026-11-07T16:25:53.318Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-sfDDSD/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "30MB의 대부분은 웹 폰트가 아니라 **feTurbulence 질감 필터** 때문일 가능성이 큽니다. 크롬은 SVG 필터를 PDF 벡터로 옮기지 못해서, 필터가 걸린 영역을 페이지마다 고해상도 비트맵으로 바꿔 넣습니다. 노이즈 질감은 압축도 잘 안 됩니다. 글자는 크롬이 쓰인 글자만 골라 넣기 때문에 보통 수백 KB 수준입니다. CSS 그라데이션도 PDF에서 벡터로 들어가 가볍지만, 필터 안에 들어 있으면 함께 비트맵이 됩니다.\n\n## 방법 1 (추천): 질감을 작은 이미지 하나로 바꾸기\n글자는 벡터로 남아 선명하고, 파일은 가장 작아집니다.\n\n1. feTurbulence 질감을 512×512px 정도의 타일 이미지(PNG나 JPEG) 하나로 저장합니다. 브라우저에서 그 영역만 스크린샷해도 됩니다.\n2. 배경의 SVG 필터를 지우고 CSS로 바꿉니다.\n   ```css\n   .page {\n     background-image: url(texture.jpg), linear-gradient(...);\n     background-repeat: repeat, no-repeat;\n     background-size: 60mm 60mm, cover;\n   }\n   ```\n3. 크롬에서 다시 PDF로 저장합니다. 크롬은 같은 이미지를 대개 한 번만 넣고 여러 페이지에서 다시 씁니다. 그래서 수 MB 이하로 줄어들 걸로 예상합니다. 직접 재 본 값은 아닙니다.\n\n## 방법 2 (가장 빠름): 지금 PDF를 페이지 그림으로 바꿔 다시 묶기\nHTML을 고치지 않아도 됩니다. 글자도 그림이 되지만, 현수막 글자는 커서 150dpi면 충분합니다.\n\n```bash\nbrew install poppler img2pdf\nmkdir pages\npdftoppm -r 150 -jpeg -jpegopt quality=80 banner.pdf pages/p\nimg2pdf --pagesize A4 pages/p-*.jpg -o banner-small.pdf\n```\n- A4를 150dpi로 바꾸면 한 장이 1240×1754px입니다. 질감 때문에 장당 0.3~0.8MB쯤 되어 22장이면 약 7~15MB로 예상합니다. 더 줄이려면 `-r 120`이나 `quality=70`으로 낮춥니다.\n- 페이지 비율이 A4와 정확히 같아서 실제 크기가 그대로 유지됩니다.\n\n(간단한 대안: `gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -o out.pdf banner.pdf`. 글자는 벡터로 남지만, 크롬이 넣은 비트맵 구조에 따라 효과가 들쭉날쭉합니다.)\n\n## 줄인 뒤 꼭 확인할 것\n- **한 장만 먼저 \"실제 크기(100%)\"로 출력**해서 기준 자(예: 50mm)를 실제 자로 재 보세요. \"용지에 맞춤\"으로 출력하면 겹침 띠가 어긋납니다.\n- 겹침 띠와 맞춤 표시가 흐려지지 않았는지 봅니다. 방법 2에서 흐리면 `-r 200`으로 올립니다.\n- 메신저마다 파일 크기 제한이 다르니, 쓰는 메신저의 제한과 비교하세요. 그래도 크면 11장씩 두 파일로 나눠 보내면 됩니다.\n- 실명 명단이 들어 있다면 공개 링크 대신 1:1로 보내세요.\n\nPDF나 HTML 파일 경로를 알려 주시면 제가 직접 방법 1이나 2를 돌리고, 줄어든 크기와 페이지 잘림을 확인해 드릴게요. 위의 예상 크기는 계산으로 추정한 값이고 아직 실제 파일로 확인하지 않았습니다."
+              },
+              {
+                "name": "rasterize",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1219082,
+            "judgeCostUsd": 0.0017436000000000005,
+            "durationSeconds": 33,
+            "startedAt": "2026-11-07T16:25:56.218Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-nNvN79/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "30MB가 나온 원인은 거의 확실히 **feTurbulence 필터**예요. 크롬은 PDF로 저장할 때 SVG 필터를 벡터로 남기지 못하고, 필터가 걸린 영역을 페이지마다 고해상도 이미지로 바꿔 넣어요. 22장이면 큰 이미지가 22개 들어가는 셈이에요. 그라데이션과 웹 폰트는 보통 원인이 아니에요. 그라데이션은 벡터로 남고, 폰트는 쓴 글자만 골라 넣어서 몇백 KB 수준이에요.\n\n## 먼저 원인 확인 (1분)\n```bash\nbrew install poppler\npdfimages -list 파일.pdf | head -30\n```\n페이지마다 수천 px짜리 이미지가 하나씩 나오면 필터가 원인이 맞아요.\n\n## 해결 방법 (효과 큰 순서)\n\n**1. 질감을 작은 타일 이미지로 바꾸기 (가장 효과 큼)**\n- 브라우저에서 feTurbulence 질감만 512×512px 정도로 띄워 스크린샷을 찍거나 PNG로 저장해요. 경계가 자연스럽게 이어지게 하려면 `stitchTiles=\"stitch\"`를 넣어요.\n- CSS를 이렇게 바꿔요:\n  ```css\n  .page { background: url(noise.png) repeat, linear-gradient(...); }\n  ```\n- 같은 이미지 파일을 모든 페이지에서 쓰면 크롬이 PDF에 한 번만 넣어서, 질감 때문에 늘어나는 용량이 수백 KB 안으로 줄어요.\n- 질감을 반투명으로 얹을 거면 투명도를 PNG 자체에 넣어 두세요. CSS의 `mix-blend-mode`나 `filter`를 같이 쓰면 다시 페이지 전체가 이미지로 바뀔 수 있어요.\n\n**2. 그라데이션은 CSS로만 그리기**\n`linear-gradient`나 `radial-gradient`만 쓰면 벡터로 남아서 용량이 거의 안 들어요. 그라데이션 요소에 필터, blur, 블렌드 모드가 걸려 있으면 빼세요.\n\n**3. 질감을 아예 빼 보기**\n집 잉크젯으로 뽑으면 은은한 노이즈는 종이 결에 묻혀 잘 안 보여요. 한 장만 질감 있는 버전과 없는 버전으로 뽑아서 비교해 보고, 차이가 없으면 빼는 게 가장 깔끔해요.\n\n**4. 이미 만든 PDF를 압축하기 (급할 때)**\n```bash\nbrew install ghostscript\ngs -sDEVICE=pdfwrite -dPDFSETTINGS=/printer -dNOPAUSE -dBATCH -dQUIET \\\n   -sOutputFile=작은파일.pdf 원본.pdf\n```\n- `/printer`는 이미지를 300dpi로 줄여요. 그래도 크면 `/ebook`(150dpi)을 쓰세요. 배경 질감은 150dpi로도 출력물에서 차이가 거의 안 나요.\n- 글자와 벡터는 그대로 남아서 선명함은 유지돼요.\n- 맥 미리보기의 \"파일 크기 줄이기\"는 화질을 너무 많이 떨어뜨려서 출력용으로는 추천하지 않아요.\n\n## 실제 크기 출력할 때 주의\n- 인쇄 대화상자에서 배율을 **100% / 실제 크기**로 두세요. \"용지에 맞추기\"로 뽑으면 이어 붙일 때 어긋나요.\n- 압축한 뒤에도 한 장을 뽑아서 자로 크기를 확인하세요. gs는 페이지 크기를 바꾸지 않지만 확인해 두면 안전해요.\n\n1번과 2번을 하면 22장이어도 보통 몇 MB 안으로 들어와요. 위 숫자는 이런 PDF에서 흔히 나오는 결과를 바탕으로 한 예상이고, 이 파일로 직접 확인한 건 아니에요. 원하면 HTML/SVG 파일을 알려 주세요. 필터 부분을 타일 방식으로 직접 바꿔 드릴게요."
+              },
+              {
+                "name": "rasterize",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "print-render-strips",
+      "dir": "evals/gotechy-design/print-render-strips",
+      "source": "prose",
+      "promptMarkdown": "현수막 시안을 HTML로 1px = 1mm(3500 × 2300)로 그렸어. 인쇄소에 넘길 큰 이미지를 만들려고 헤드리스 크롬으로 `--window-size=3500,2300 --force-device-scale-factor=3` 해서 한 번에 스크린샷을 찍었더니, 결과 이미지 곳곳에 검은 사각형 조각이 생겨. 어떻게 해야 깨끗한 10500 × 6900 이미지를 얻을 수 있어?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 원인을 한 번에 그리는 크기가 브라우저나 GPU의 그리기 한도(타일, 텍스처, 메모리)를 넘는 것으로 설명한다.\n2. 해법으로 영역을 띠나 타일로 나눠 같은 배율로 여러 번 찍고(clip, 스크롤, 뷰포트 이동 등) 이미지 도구로 이어 붙여 목표 해상도(10500 × 6900)를 그대로 얻는 방법을 구체적으로 낸다.\n\nFAIL if 배율을 낮춰 목표 해상도를 포기하게 하거나, 원인 설명 없이 다른 브라우저나 프로그램을 쓰라고만 한다.",
+          "config": {
+            "criteria": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 원인을 한 번에 그리는 크기가 브라우저나 GPU의 그리기 한도(타일, 텍스처, 메모리)를 넘는 것으로 설명한다.\n2. 해법으로 영역을 띠나 타일로 나눠 같은 배율로 여러 번 찍고(clip, 스크롤, 뷰포트 이동 등) 이미지 도구로 이어 붙여 목표 해상도(10500 × 6900)를 그대로 얻는 방법을 구체적으로 낸다.\n\nFAIL if 배율을 낮춰 목표 해상도를 포기하게 하거나, 원인 설명 없이 다른 브라우저나 프로그램을 쓰라고만 한다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "split-stitch",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.18482700000000002,
+            "judgeCostUsd": 0.0007986,
+            "durationSeconds": 35,
+            "startedAt": "2026-11-07T16:26:29.619Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-91saE0/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "**원인:** 한 번에 찍는 영역이 너무 큽니다. 3500×2300에 배율 3을 곱하면 10500×6900, 약 7,200만 픽셀입니다. 크롬은 화면을 작은 조각(타일)으로 나눠 GPU에서 그리는데, 이 크기면 GPU가 한 번에 다룰 수 있는 이미지 크기(보통 한 변 8192 또는 16384px)와 메모리 한도를 넘습니다. 미처 그리지 못한 조각이 검은 사각형으로 남는 것입니다. 옵션을 조금 바꾸는 정도로는 잘 해결되지 않습니다.\n\n**해결:** 작은 조각으로 나눠 찍고 이어 붙이세요. 조각 하나를 1750×400(실제 5250×1200px)으로 잡으면 GPU 한도보다 훨씬 작아서 깨지지 않습니다.\n\n### 1) 조각으로 나눠 찍기 (Puppeteer)\n\n```js\n// shoot.mjs  — node shoot.mjs banner.html\nimport puppeteer from 'puppeteer';\nimport path from 'node:path';\n\nconst W = 3500, H = 2300, SCALE = 3;\nconst TW = 1750, TH = 400;              // 조각 크기(CSS px = mm)\n\nconst browser = await puppeteer.launch();\nconst page = await browser.newPage();\nawait page.setViewport({ width: TW, height: TH, deviceScaleFactor: SCALE });\nawait page.goto('file://' + path.resolve(process.argv[2]), { waitUntil: 'networkidle0' });\nawait page.evaluate(() => document.fonts.ready);   // 웹폰트 로딩 대기\n\nfor (let y = 0; y < H; y += TH) {\n  for (let x = 0; x < W; x += TW) {\n    const w = Math.min(TW, W - x), h = Math.min(TH, H - y);\n    await page.screenshot({\n      path: `tile_${y}_${x}.png`,\n      clip: { x, y, width: w, height: h },\n      captureBeyondViewport: true,\n    });\n  }\n}\nawait browser.close();\n```\n\n### 2) 이어 붙이기 (Pillow)\n\n```python\n# stitch.py\nfrom PIL import Image\nimport glob, re\nS = 3\nout = Image.new(\"RGB\", (3500*S, 2300*S), \"white\")\nfor f in glob.glob(\"tile_*.png\"):\n    y, x = map(int, re.findall(r\"\\d+\", f))\n    out.paste(Image.open(f).convert(\"RGB\"), (x*S, y*S))\nout.save(\"banner_10500x6900.png\", dpi=(76.2, 76.2))\nprint(out.size)   # (10500, 6900)\n```\n\n### 확인할 것\n- **이음매:** 400이나 1750이 3으로 나눠떨어지는 정수라서 조각 경계가 정확한 픽셀에 떨어집니다. 그래도 붙인 결과를 100%로 확대해 경계선 근처를 한 번 살펴보세요.\n- **`position: fixed` 요소나 `100vh`를 쓴 요소:** 뷰포트 크기가 바뀌면 조각마다 위치가 달라집니다. 시안의 바깥 틀을 `width: 3500px; height: 2300px`처럼 고정 크기로 잡아 두세요.\n- **해상도:** 10500px ÷ (3500mm ÷ 25.4) = **약 76 DPI**입니다. 몇 미터 떨어져서 보는 현수막 실사 출력에는 보통 50~100 DPI면 충분합니다. 다만 인쇄소마다 요구 해상도, 색 모드(RGB인지 CMYK인지), 재단 여유가 다르니 미리 물어보세요. 재단 여유가 필요하면 시안 둘레에 그만큼 배경을 넓혀서 다시 찍어야 합니다.\n- **다른 방법:** 시안이 글자와 도형 위주라면 `page.pdf({ width: '3500mm', height: '2300mm', printBackground: true })`로 벡터 PDF를 만드는 것도 좋습니다. 이렇게 하면 해상도 문제 자체가 없어집니다. 많은 인쇄소가 PDF를 더 반깁니다.\n\n위 스크립트는 제가 직접 실행해 보지는 않았습니다. 돌려 보고 결과 이미지에 문제가 남아 있으면 알려 주세요."
+              },
+              {
+                "name": "split-stitch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.14877449999999998,
+            "judgeCostUsd": 0.0016059000000000004,
+            "durationSeconds": 47,
+            "startedAt": "2026-11-07T16:26:29.838Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-aVnHc6/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n검은 조각은 디자인 문제가 아니에요. 크롬이 화면을 한 번에 그릴 수 있는 크기를 넘어서 생기는 현상이에요.\n\n3500 × 2300 창에 배율 3을 주면 크롬은 10500 × 6900, 약 7,200만 픽셀짜리 화면을 한 장으로 그려야 해요. 크롬은 화면을 작은 타일로 나눠 GPU에서 그리는데, GPU 메모리와 텍스처 크기에는 한도가 있어요. 한도를 넘으면 일부 타일이 그려지기 전에 캡처가 끝나고, 그 자리가 검은색으로 남아요. `--disable-gpu` 같은 플래그로 줄어들 때도 있지만 확실하지 않아요.\n\n## 해결: 작은 창으로 나눠 찍고 이어 붙이기\n\n창을 작게 잡고 스크롤하면서 여러 장을 찍은 뒤 이어 붙이면 돼요. 아래는 Puppeteer와 sharp로 만든 예시예요.\n\n```js\n// shoot.mjs  —  npm i puppeteer sharp\nimport puppeteer from 'puppeteer';\nimport sharp from 'sharp';\n\nconst W = 3500, H = 2300, S = 3;      // 시안 크기(CSS px = mm), 배율\nconst TW = 875, TH = 1150;             // 타일 크기: 3500/875=4, 2300/1150=2 → 4×2장, 딱 나눠떨어짐\n\nconst browser = await puppeteer.launch({ args: ['--hide-scrollbars'] });\nconst page = await browser.newPage();\nawait page.setViewport({ width: TW, height: TH, deviceScaleFactor: S });\nawait page.goto('file:///절대경로/banner.html', { waitUntil: 'networkidle0' });\nawait page.evaluate(() => document.fonts.ready);\n\nconst tiles = [];\nfor (let y = 0; y < H; y += TH) {\n  for (let x = 0; x < W; x += TW) {\n    await page.evaluate((x, y) => window.scrollTo(x, y), x, y);\n    // 스크롤 후 두 프레임 기다려 그리기가 끝나게 함\n    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));\n    const input = await page.screenshot({ captureBeyondViewport: false });\n    tiles.push({ input, left: x * S, top: y * S });\n  }\n}\n\nawait sharp({ create: { width: W * S, height: H * S, channels: 3, background: '#ffffff' } })\n  .composite(tiles)\n  .png()\n  .toFile('banner_10500x6900.png');\n\nawait browser.close();\n```\n\n장마다 2625 × 3450 픽셀이라 크롬이 무리 없이 그리고, 8장을 붙이면 10500 × 6900이 돼요.\n\n## 시안 HTML에서 확인할 것\n\n- **크기 고정:** `html, body { margin: 0; width: 3500px; height: 2300px; }`처럼 페이지 크기를 정확히 맞춰 주세요. 크기가 다르면 스크롤 위치가 어긋나 이음새가 생겨요.\n- **`vw`, `vh`, 미디어 쿼리:** 창 크기가 875 × 1150으로 바뀌니까 이런 단위를 쓴 요소는 배치가 달라져요. 전부 `px`로 바꿔야 해요.\n- **`position: fixed`:** 고정 요소는 타일마다 반복해서 찍혀요. `absolute`로 바꿔 주세요.\n- **스크롤바:** `--hide-scrollbars`로 숨겼어요. 그래도 보이면 `html { overflow: hidden; }`을 넣어 주세요. 이렇게 해도 `scrollTo`는 그대로 작동해요.\n\n다 만든 뒤에는 결과 이미지를 100%로 확대해서 타일 경계(가로 2625, 5250, 7875px, 세로 3450px)에 이음새나 어긋남이 없는지 확인해 주세요.\n\n## 참고\n\n- **해상도:** 10500 × 6900은 1mm당 3픽셀, 약 76dpi예요. 멀리서 보는 현수막에는 보통 충분하지만, 인쇄소마다 요구하는 dpi가 다르니 미리 물어보세요. 더 높이려면 `S`만 올리면 돼요. 배율 4면 14000 × 9200이에요.\n- **PDF 출력:** 글자와 도형이 대부분이면 `page.pdf({ width: '3500mm', height: '2300mm', printBackground: true })`로 PDF를 넘기는 것도 방법이에요. 글자가 벡터로 들어가서 어떤 크기로 뽑아도 선명해요. 다만 인쇄소가 PDF를 받는지 먼저 확인해 주세요.\n\n이 스크립트는 제가 직접 돌려 보지는 않았어요. 실행했는데 오류가 나거나 이음새가 보이면 알려 주세요."
+              },
+              {
+                "name": "split-stitch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.20368439999999996,
+            "judgeCostUsd": 0.0019176000000000002,
+            "durationSeconds": 45,
+            "startedAt": "2026-11-07T16:26:32.846Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-U35Fxq/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n10500 × 6900은 약 7,200만 픽셀이고, 메모리로는 약 290MB입니다. 한 번에 찍으면 크롬이 화면을 타일 단위로 나눠 GPU로 그리는데, 이 크기에서는 메모리나 텍스처 한도를 넘기 쉽습니다. 그러면 일부 타일이 그려지지 않은 채 검은 사각형으로 남습니다. 시안은 문제가 없고, 크게 한 장으로 찍는 방식이 원인입니다.\n\n## 해결: 가로 띠로 나눠 찍고 이어 붙이기\n\n창 높이를 줄여서(예: 460px × 3배 = 1380px 높이, 약 1,450만 픽셀) 띠 하나씩 스크롤하며 찍습니다. 그다음 세로로 붙이면 됩니다. 460은 2300을 정확히 5등분하고, 오프셋이 3배해도 정수라서 이음매가 생기지 않습니다.\n\n```js\n// shoot.mjs — 사용: node shoot.mjs banner.html\nimport puppeteer from 'puppeteer';\nimport path from 'node:path';\n\nconst W = 3500, H = 2300, S = 3, STRIP = 460;   // 5개 띠\nconst browser = await puppeteer.launch({ args: ['--disable-gpu'] });\nconst page = await browser.newPage();\nawait page.setViewport({ width: W, height: STRIP, deviceScaleFactor: S });\nawait page.goto('file://' + path.resolve(process.argv[2]), { waitUntil: 'networkidle0' });\nawait page.evaluate(() => document.fonts.ready);   // 웹폰트 로딩 대기\n\nfor (let i = 0; i * STRIP < H; i++) {\n  const y = i * STRIP;\n  const got = await page.evaluate(y => { window.scrollTo(0, y); return window.scrollY; }, y);\n  if (got !== y) throw new Error(`스크롤 ${y} 요청, 실제 ${got}: 페이지 높이가 2300인지 확인`);\n  await new Promise(r => setTimeout(r, 300));\n  await page.screenshot({ path: `strip_${String(i).padStart(2, '0')}.png` });\n}\nawait browser.close();\n```\n\n```sh\nmagick strip_*.png -append banner_10500x6900.png\nmagick identify banner_10500x6900.png   # 10500x6900 인지 확인\n```\n\n찍기 전에 HTML에서 확인할 것:\n- `html, body { margin:0; width:3500px; height:2300px; }`로 두고, `overflow:hidden`은 없애야 합니다. 스크롤이 안 되면 띠가 모두 같은 부분을 찍습니다. 위 스크립트는 이 경우 오류로 멈춥니다.\n- `position: fixed`나 `sticky` 요소는 띠마다 반복해서 찍히니 `absolute`로 바꿉니다.\n- 다 붙인 뒤에는 이음매 부근(높이 1380, 2760, 4140, 5520px)을 확대해서 한 번 봐 주세요.\n\n## 함께 알아둘 것\n\n- **해상도 계산**: 10500px ÷ (3500mm ÷ 25.4) = **약 76dpi**(실제 크기 기준)입니다. 멀리서 보는 현수막 실사 출력에는 보통 충분합니다. 다만 인쇄소가 요구하는 dpi(72, 100, 150 등)는 직접 확인해야 합니다. 150dpi를 요구하면 배율이 약 6배(20670 × 13583)가 되어야 하고, 이때도 같은 방식으로 띠를 더 잘게 나누면 됩니다.\n- **PDF도 방법입니다**: 인쇄소가 PDF를 받으면 `page.pdf({ width:'3500px', height:'2300px', printBackground:true })`로 벡터 PDF를 만들어 넘기는 게 더 깨끗할 수 있습니다. 가로세로 비율이 같아서 인쇄소가 3500 × 2300mm로 확대해도 글자와 도형이 깨지지 않습니다. 단, 시안 안에 넣은 사진 같은 비트맵 이미지는 원본 해상도를 따릅니다.\n- **확인하지 못한 것**: 시안 파일을 직접 실행해 보지는 않았습니다. 인쇄소의 색 모드(RGB인지 CMYK인지)와 재단 여유(사방 몇 mm)도 따로 물어봐야 합니다."
+              },
+              {
+                "name": "split-stitch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "print-resolution",
+      "dir": "evals/gotechy-design/print-resolution",
+      "source": "prose",
+      "promptMarkdown": "배경 이미지를 10500 × 6900 픽셀 JPG로 만들었어. 인쇄소에 가로 3500mm, 세로 2300mm 현수막으로 맡기려고 하는데, 해상도 이대로 괜찮아? 300dpi가 아니면 안 된다는 말도 들어서 걱정이야.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if 아래를 모두 만족한다.\n1. 10500px ÷ (3500mm ÷ 25.4) ≈ 76dpi로 실제 출력 해상도를 계산한다(세로도 약 76dpi).\n2. 현수막처럼 멀리서 보는 대형 출력은 300dpi가 필요 없고, 시청 거리에 따라 필요한 해상도가 달라진다고 설명한다.\n3. 최종 판단은 맡길 인쇄소의 권장 해상도와 파일 규격(형식, 색 모드, 재단 여유)을 확인하라고 권한다.\n\nFAIL if 무조건 300dpi로 다시 만들라고 하거나, dpi를 계산하지 않거나, 계산이 틀렸다(예: 300dpi라고 함).",
+          "config": {
+            "criteria": "PASS if 아래를 모두 만족한다.\n1. 10500px ÷ (3500mm ÷ 25.4) ≈ 76dpi로 실제 출력 해상도를 계산한다(세로도 약 76dpi).\n2. 현수막처럼 멀리서 보는 대형 출력은 300dpi가 필요 없고, 시청 거리에 따라 필요한 해상도가 달라진다고 설명한다.\n3. 최종 판단은 맡길 인쇄소의 권장 해상도와 파일 규격(형식, 색 모드, 재단 여유)을 확인하라고 권한다.\n\nFAIL if 무조건 300dpi로 다시 만들라고 하거나, dpi를 계산하지 않거나, 계산이 틀렸다(예: 300dpi라고 함).",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "dpi-76",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "\\b7[56](\\.\\d+)?\\s*(dpi|ppi)",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.11617859999999999,
+            "judgeCostUsd": 0.0020019999999999986,
+            "durationSeconds": 37,
+            "startedAt": "2026-11-07T16:27:04.828Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-pPUAeA/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# 해상도는 이대로 괜찮아요\n\n## 계산해 보면\n\n| 방향 | 픽셀 | 출력 크기 | 해상도 |\n|---|---|---|---|\n| 가로 | 10,500 px | 3,500 mm (137.8 in) | 3 px/mm ≈ **76 dpi** |\n| 세로 | 6,900 px | 2,300 mm (90.6 in) | 3 px/mm ≈ **76 dpi** |\n\n가로세로 비율이 현수막 비율(35:23)과 정확히 같아요. 그래서 잘리거나 늘어나지 않고 그대로 들어갑니다.\n\n## 300dpi가 필요 없는 이유\n\n- **300dpi는 손에 들고 30cm 앞에서 보는 인쇄물 기준이에요.** 이 크기를 300dpi로 맞추려면 약 41,000 × 27,000 px(약 11억 화소)가 필요해요. 파일이 너무 커서 대부분의 인쇄소가 받지 않습니다.\n- **현수막은 멀리서 보니까 기준이 훨씬 낮아요.** 사람 눈의 해상력으로 계산하면 필요한 해상도는 대략 이 정도예요.\n  - 1m 거리: 약 87 dpi\n  - 2m 거리: 약 44 dpi\n  - 3m 이상: 약 30 dpi 이하\n- 76dpi면 **약 1.2m보다 멀리서 볼 때 픽셀이 보이지 않아요.** 현수막은 보통 그보다 멀리서 보니 충분합니다. 대형 실사출력에서는 실제 크기 기준 72~100dpi가 흔히 쓰는 값이에요.\n\n## 하지 말아야 할 것\n\n**포토샵에서 300dpi로 키우는 리샘플링(업스케일)은 하지 마세요.** 없던 정보가 생기지 않아요. 파일만 커지고 화질은 그대로이거나 오히려 뭉개질 수 있습니다.\n\n## 맡기기 전에 확인할 것\n\n1. **인쇄소에 이렇게 물어보세요.** \"실제 크기 기준 약 76dpi(10500×6900px)인데 괜찮나요?\" 국내 실사출력 업체는 \"실제 크기면 72~100dpi\" 또는 \"1/10 크기면 300dpi\"를 기준으로 삼는 곳이 많아서 대개 그대로 받아줍니다.\n2. **글자와 로고를 확인하세요.** 큰 글자는 문제없지만 작은 글씨나 가는 선이 있다면 가까이서 흐릿해 보일 수 있어요. 가능하면 AI나 PDF 같은 벡터 파일로 따로 넣는 게 가장 깨끗해요.\n3. **가장자리를 비워 두세요.** 아일렛(고리 구멍)이나 봉미싱(막대를 끼우려고 접어 박는 부분)이 들어가는 자리가 있어요. 중요한 글자와 얼굴은 테두리에서 5cm 이상 안쪽에 두세요.\n4. **JPG는 최고 품질로 저장하세요.** 품질 10~12로 저장해야 압축 때문에 생기는 얼룩이 넓은 면적에서 티 나지 않아요.\n5. **색상 모드를 물어보세요.** 인쇄소마다 RGB를 받는 곳과 CMYK를 원하는 곳이 있어요. 미리 물어보면 색이 바뀌는 걸 줄일 수 있습니다.\n\n파일 자체를 열어 본 건 아니고, 알려 주신 픽셀 수와 크기로만 계산한 결과예요."
+              },
+              {
+                "name": "dpi-76",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \\b7[56](\\.\\d+)?\\s*(dpi|ppi)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.173746,
+            "judgeCostUsd": 0.0019401999999999996,
+            "durationSeconds": 27,
+            "startedAt": "2026-11-07T16:27:16.949Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-kWgi9J/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "결론부터 말하면, **멀리서 보는 현수막이라면 지금 해상도로 대부분 괜찮아요.** 다만 맡길 인쇄소의 최소 기준과는 꼭 비교해 봐야 해요.\n\n## 계산\n\n출력 dpi = 픽셀 수 ÷ (출력 mm ÷ 25.4)\n\n- 가로: 10500 ÷ (3500 ÷ 25.4) = **약 76dpi**\n- 세로: 6900 ÷ (2300 ÷ 25.4) = **약 76dpi**\n- 비율: 이미지 10500:6900과 현수막 3500:2300이 정확히 같아요(1.52:1). 늘어나거나 잘릴 걱정은 없어요.\n\n## 300dpi가 꼭 필요할까?\n\n아니요. 300dpi는 눈앞에서 보는 책이나 전단지 기준이에요. 이 크기를 300dpi로 맞추려면 약 41300 × 27200px(11억 픽셀)이 필요해서 비현실적이에요.\n\n- HP 기준: 6m 넘게 떨어져서 보는 현수막은 50~100PPI면 충분하고, 1.5~3m 거리에서 보는 포스터는 100~150PPI예요.\n- 3.5m짜리 현수막은 보통 몇 미터 떨어져서 보니까 76dpi는 이 범위에 들어가요.\n\n## 인쇄소마다 기준이 달라요\n\n| 인쇄소 | 안내 기준(실제 크기 기준) | 76dpi 판정 |\n|---|---|---|\n| 와우프레스 | 70dpi (1/10 크기 작업이면 700dpi) | 통과 |\n| 비즈하우스 | 현수막 최소 120dpi | 미달 |\n| 광고천하 | 150ppi | 미달 |\n\n맡기려는 인쇄소의 최소값을 확인해 보세요. 미달이면 인쇄소에 76dpi로 출력해도 되는지 물어보는 게 먼저예요. 멀리서 보는 용도라고 하면 받아 주는 곳이 많아요. 그래도 안 된다고 하면 AI 업스케일 같은 방법으로 픽셀을 늘려야 하는데, 이렇게 해도 디테일이 실제로 늘어나지는 않아요.\n\n## 해상도 말고 같이 확인할 것\n\n1. **재단 여유**: 인쇄소에 따라 사방 2mm 정도를 더 달라고 해요. 그러면 3504 × 2304mm가 되고, 76dpi 기준으로 한쪽에 약 6px씩 늘어나요.\n2. **안전 영역**: 글자와 로고는 가장자리에서 10mm 이상 안쪽에 두세요. 현수막은 가장자리에 아일렛(고리 구멍)을 뚫기도 하니까 여유를 더 두면 좋아요.\n3. **색 모드**: 비즈하우스와 와우프레스처럼 CMYK를 요구하는 곳이 있어요. RGB JPG로 넘기면 색이 조금 칙칙하게 나올 수 있으니 미리 물어보세요.\n4. **JPG 품질**: 최고 품질로 저장했는지 확인하세요. 크게 출력하면 압축 얼룩이 눈에 띄어요.\n\n**확인 못 한 것**: 실제로 맡길 인쇄소의 기준과 보는 거리는 아직 몰라요. 위 인쇄소 기준은 2026-11-08 기준으로 정리된 자료이니, 주문 전에 해당 인쇄소 안내를 한 번 더 확인하세요. 인쇄소 이름과 보는 거리를 알려 주면 거기에 맞춰 다시 판단해 드릴게요."
+              },
+              {
+                "name": "dpi-76",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \\b7[56](\\.\\d+)?\\s*(dpi|ppi)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.109845,
+            "judgeCostUsd": 0.002676399999999999,
+            "durationSeconds": 27,
+            "startedAt": "2026-11-07T16:27:18.007Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-00n87M/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "결론부터 말하면, **지금 해상도로 충분합니다.** 300dpi는 필요 없습니다.\n\n## 계산\n\n| | 가로 | 세로 |\n|---|---|---|\n| 출력 크기 | 3500mm = 137.8인치 | 2300mm = 90.6인치 |\n| 픽셀 | 10500px | 6900px |\n| **출력 해상도** | **약 76dpi** | **약 76dpi** |\n\n- 비율도 맞습니다. 10500:6900과 3500:2300은 둘 다 약 1.522여서 늘어나거나 잘리지 않습니다.\n- 300dpi로 맞추려면 41339 × 27165px(약 11억 화소)가 필요합니다. 파일이 너무 커서 인쇄소에서 오히려 받기 어려워합니다.\n\n## 300dpi가 아니어도 되는 이유\n\n300dpi는 책이나 전단처럼 30cm 정도 거리에서 보는 인쇄물의 기준입니다. 현수막은 멀리서 보기 때문에 실사출력소에서는 보통 72~150dpi를 씁니다.\n\n76dpi이면 픽셀 하나가 약 0.33mm입니다. 사람 눈은 **약 1.2m보다 멀리서는** 이 크기의 픽셀을 구분하지 못합니다. 3.5m짜리 현수막은 보통 몇 미터 떨어져서 보니까 문제없습니다.\n\n## 그래도 확인할 것\n\n1. **원본이 처음부터 이 크기였나요?** 작은 이미지를 10500px로 키운 거라면 숫자는 맞아도 흐릿하게 나옵니다. 100% 확대해서 가장자리가 뭉개졌는지 봐 주세요.\n2. **작은 글씨나 가는 선.** 76dpi에서는 아주 가는 선(1mm 미만)이 거칠게 보일 수 있습니다. 글자는 큼직하게 쓰는 게 좋습니다.\n3. **인쇄소에 물어볼 것:**\n   - 재단 여백(도련)과 아일렛(고리 구멍) 자리. 가장자리 몇 cm에는 중요한 내용을 넣지 마세요.\n   - RGB JPG를 받는지, CMYK로 바꿔야 하는지. 바꾸지 않으면 색이 조금 달라질 수 있습니다.\n4. **JPG는 최고 품질로 저장하세요.** 압축을 세게 하면 확대했을 때 블록 노이즈가 보입니다.\n5. **파일 속 dpi 값.** 파일에 72dpi처럼 적혀 있으면 인쇄소에서 \"해상도가 낮다\"고 할 수 있습니다. 픽셀 수는 그대로 두고 그 값만 76dpi로 바꾸거나, \"3500×2300mm에 맞춰 출력해 주세요\"라고 말하면 됩니다.\n\n인쇄소에서 따로 정한 기준이 있다면 그걸 따르는 게 가장 확실합니다. 하지만 일반적인 현수막 출력 기준으로는 지금 파일 그대로 맡겨도 괜찮습니다."
+              },
+              {
+                "name": "dpi-76",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \\b7[56](\\.\\d+)?\\s*(dpi|ppi)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "print-stroke-mm",
+      "dir": "evals/gotechy-design/print-stroke-mm",
+      "source": "prose",
+      "promptMarkdown": "현수막에 붙일 글자 본을 SVG로 만들고 있어. viewBox는 mm 단위(예: 0 0 210 297)이고, 화면에서는 0.4배로 줄여 보고 있어. 테두리 선에 CSS로 `stroke-width: 2; vector-effect: non-scaling-stroke;`를 줬어. 화면에서는 선이 잘 보이는데, A4로 실제 크기 출력하면 선이 머리카락처럼 가늘어. 왜 그렇고 어떻게 고쳐?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 원인으로 `vector-effect: non-scaling-stroke`를 짚는다: 선 굵기가 viewBox 단위(mm)가 아니라 출력 장치나 화면 단위로 고정되어 실제 크기 출력에서 가늘어진다(장치마다 해석이 다르다는 설명이 붙어도 된다).\n2. 고치는 법으로 그 속성을 빼고 선 굵기를 mm(viewBox 단위)로 직접 준다. 화면 배율로 나눈 값을 주는 방법도 인정한다.\n\nFAIL if non-scaling-stroke를 그대로 둔 채 숫자만 키우라고 하거나, 원인을 이 속성과 무관한 것(프린터 품질 설정만, 드라이버만)으로 본다.",
+          "config": {
+            "criteria": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 원인으로 `vector-effect: non-scaling-stroke`를 짚는다: 선 굵기가 viewBox 단위(mm)가 아니라 출력 장치나 화면 단위로 고정되어 실제 크기 출력에서 가늘어진다(장치마다 해석이 다르다는 설명이 붙어도 된다).\n2. 고치는 법으로 그 속성을 빼고 선 굵기를 mm(viewBox 단위)로 직접 준다. 화면 배율로 나눈 값을 주는 방법도 인정한다.\n\nFAIL if non-scaling-stroke를 그대로 둔 채 숫자만 키우라고 하거나, 원인을 이 속성과 무관한 것(프린터 품질 설정만, 드라이버만)으로 본다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "remove-nss",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1145187,
+            "judgeCostUsd": 0.0015780999999999972,
+            "durationSeconds": 28,
+            "startedAt": "2026-11-07T16:27:41.514Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-9ikgUo/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n`vector-effect: non-scaling-stroke`를 쓰면 `stroke-width` 값을 viewBox의 mm 단위로 보지 않습니다. 최종 출력 장치의 좌표, 즉 화면이면 화면 픽셀, 프린터면 프린터 도트 기준으로 계산합니다.\n\n- **화면:** `stroke-width: 2`는 화면 2픽셀입니다. 0.4배로 줄여 봐도 선은 그대로 2픽셀이라 잘 보입니다.\n- **인쇄:** 출력 장치가 프린터로 바뀌면 2가 프린터 도트 2개가 될 수 있습니다. 600dpi 프린터라면 약 0.08mm여서 머리카락처럼 가늘게 나옵니다. 브라우저나 PDF 변환기마다 이 속성을 처리하는 방식이 달라서, 0에 가까운 폭으로 나오기도 합니다.\n\n정리하면 지금 설정은 \"확대하든 축소하든 늘 몇 픽셀\"이라는 뜻입니다. 실제 mm 두께가 중요한 인쇄용 본에는 맞지 않습니다.\n\n## 고치는 법\n\n**1. `vector-effect`를 빼고 두께를 mm로 정하세요.** viewBox가 mm 단위라 `stroke-width` 숫자가 곧 mm가 됩니다.\n\n```css\n.outline {\n  stroke-width: 1;   /* 실제 출력 1mm */\n  /* vector-effect 제거 */\n}\n```\n\n이렇게 하면 0.4배 미리보기에서는 선이 0.4배로 가늘어 보입니다. 축소한 크기에서는 그게 맞는 모습입니다. 오려 내거나 따라 그릴 선이라면 0.5~1mm 정도를 권합니다.\n\n**2. 화면에서 선을 굵게 보고 싶다면 미디어 쿼리로 나누세요.**\n\n```css\n.outline { stroke-width: 1; }             /* 인쇄: 1mm */\n\n@media screen {\n  .outline {\n    stroke-width: 2;\n    vector-effect: non-scaling-stroke;    /* 화면: 늘 2px */\n  }\n}\n```\n\n**3. 실제 크기로 출력되는지 확인하세요.**\n\n```xml\n<svg width=\"210mm\" height=\"297mm\" viewBox=\"0 0 210 297\">\n```\n\n- `width`와 `height`를 mm로 적어야 브라우저가 A4 크기 그대로 인쇄합니다.\n- 인쇄 창에서 배율은 \"100%\" 또는 \"실제 크기\"로 고르세요. \"페이지에 맞춤\"은 끄세요.\n- 출력소에 파일을 넘긴다면 PDF로 만들기 전에 선을 면으로 바꿔 두세요. Inkscape에서는 \"패스 → 선을 패스로\" 메뉴입니다. 그러면 어떤 프로그램에서 열어도 두께가 달라지지 않습니다.\n\n**확인 방법:** 이렇게 바꾼 뒤 한 장 뽑아서 자로 선 두께를 재 보세요. 설정한 mm와 맞으면 됩니다."
+              },
+              {
+                "name": "remove-nss",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1120085,
+            "judgeCostUsd": 0.0020078999999999965,
+            "durationSeconds": 26,
+            "startedAt": "2026-11-07T16:27:44.307Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-nfNnSi/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n`vector-effect: non-scaling-stroke`는 선 굵기를 **viewBox 단위(mm)가 아니라 최종 출력 장치 기준**으로 고정합니다. 그래서 `stroke-width: 2`는 \"2mm\"가 아니라 \"출력 장치에서 2 단위\"가 됩니다.\n\n- **화면**: 2 단위가 화면 픽셀 2개라서 잘 보입니다.\n- **인쇄**: 브라우저나 PDF 엔진이 이 값을 어떻게 처리하느냐에 따라 결과가 달라집니다. 600dpi 프린터의 점 2개로 처리하면 약 0.08mm, 그러니까 머리카락 굵기가 됩니다. 이 속성은 화면용으로 만들어졌고, 인쇄할 때의 동작은 엔진마다 일관되지 않습니다.\n\n이 속성은 확대·축소해도 선이 같은 굵기로 보여야 하는 지도나 차트에 쓰는 것입니다. 실제 크기로 뽑아야 하는 본에는 맞지 않습니다.\n\n## 고치는 방법\n\n**1. `vector-effect`를 지우고 굵기를 mm로 지정하세요.** viewBox가 mm 단위라서 `stroke-width` 값이 그대로 mm가 됩니다.\n\n```css\n.outline {\n  stroke-width: 1.5;   /* = 1.5mm로 출력 */\n  /* vector-effect: non-scaling-stroke;  ← 삭제 */\n}\n```\n\n**2. SVG의 실제 크기를 mm로 지정하세요.** 이렇게 해야 A4로 100% 출력됩니다.\n\n```xml\n<svg xmlns=\"http://www.w3.org/2000/svg\"\n     width=\"210mm\" height=\"297mm\" viewBox=\"0 0 210 297\">\n```\n\n**3. 화면 미리보기는 SVG 바깥에서 줄이세요.** 그러면 선도 같이 0.4배로 줄어서, 화면에서 보는 비율이 출력물 비율과 같아집니다. 본을 만들 때는 이게 더 정확한 미리보기입니다.\n\n```css\n@media screen {\n  svg { width: 84mm; height: auto; }   /* 210 × 0.4 */\n}\n```\n\n화면에서 선이 너무 가늘어 작업하기 불편하면, 화면에서만 굵게 덮어쓰면 됩니다. 인쇄에는 영향이 없습니다.\n\n```css\n@media screen { .outline { stroke-width: 3; } }\n```\n\n## 확인\n\n- 인쇄 대화상자에서 배율을 **\"실제 크기 / 100%\"**로 두세요. \"페이지에 맞춤\"이면 전체가 조금 줄어듭니다.\n- 본 구석에 `<line x1=\"10\" y1=\"10\" x2=\"110\" y2=\"10\" stroke-width=\"1.5\"/>`처럼 100mm 기준선을 넣고 뽑아 보세요. 자로 쟀을 때 길이가 100mm이고 굵기가 1.5mm 정도면 맞게 나온 겁니다.\n\n현수막을 A4 여러 장으로 나눠 뽑을 생각이면, 겹침 띠와 맞춤 표시를 넣는 것도 도와드릴 수 있어요."
+              },
+              {
+                "name": "remove-nss",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1143293,
+            "judgeCostUsd": 0.0015046999999999977,
+            "durationSeconds": 26,
+            "startedAt": "2026-11-07T16:27:44.753Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-wrjB6Q/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# 원인: `non-scaling-stroke`는 선 굵기를 mm가 아니라 화면 픽셀로 고정해요\n\n## 왜 그런가\n\n- **`vector-effect: non-scaling-stroke`가 없으면** `stroke-width: 2`는 viewBox 단위로 읽혀요. 이 파일에서는 **2mm**예요. 확대하든 축소하든 그림과 함께 커지고 작아져요.\n- **`non-scaling-stroke`를 주면** viewBox 축소나 확대를 무시해요. 선 굵기가 출력 쪽 좌표 기준 **2 CSS px**로 고정돼요.\n  - 화면에서 2px은 0.4배로 줄인 그림 위에서 원래 크기 약 1.3mm 정도로 보여요. 그래서 굵게 느껴졌어요.\n  - 인쇄에서 2 CSS px은 2/96인치, 약 0.5mm예요. 현수막 글자 크기에 비하면 머리카락처럼 보여요. 출력 경로(브라우저 인쇄, PDF 변환, Inkscape 등)에 따라서는 이 속성을 무시하거나 장치 픽셀로 바꿔서 더 가늘어지기도 해요. PDF에는 이 속성에 해당하는 기능이 없어요.\n\n정리하면 화면에서 본 굵기와 인쇄된 굵기는 서로 다른 단위로 계산된 값이에요.\n\n## 고치는 방법\n\n1. **`vector-effect: non-scaling-stroke`를 지우세요.** 실제 크기로 출력하는 본에는 맞지 않는 속성이에요.\n2. **굵기를 mm(viewBox 단위)로 정하세요.** 단위 없는 숫자로 쓰면 돼요.\n   ```css\n   .outline { stroke-width: 2; } /* = 2mm */\n   ```\n   `2px`처럼 단위를 붙이지 마세요. 단위 없이 써야 viewBox 단위로 읽혀요.\n3. **루트 SVG에 실제 크기를 적으세요.**\n   ```xml\n   <svg xmlns=\"http://www.w3.org/2000/svg\"\n        width=\"210mm\" height=\"297mm\" viewBox=\"0 0 210 297\">\n   ```\n   인쇄 대화상자에서는 \"실제 크기\"나 \"100%\"를 고르세요. \"페이지에 맞춤\"을 고르면 크기가 바뀌어요.\n4. (선택) 축소 화면에서 선이 너무 가늘어 보이면 화면용 굵기만 따로 주세요.\n   ```css\n   @media screen { .outline { stroke-width: 4; } }\n   @media print  { .outline { stroke-width: 2; } }\n   ```\n\n## 참고\n\n- 선은 경로 중심에 그려져요. 2mm 선이면 1mm는 글자 안쪽, 1mm는 바깥쪽에 걸려요. 오려 낼 본이라면 선 가운데를 자르는 기준으로 삼으세요.\n- 출력한 뒤 자로 선 굵기와 글자 높이를 한 번 재 보면 크기가 맞게 나왔는지 바로 확인할 수 있어요."
+              },
+              {
+                "name": "remove-nss",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "print-template-bounds",
+      "dir": "evals/gotechy-design/print-template-bounds",
+      "source": "prose",
+      "promptMarkdown": "A4 여러 장으로 출력할 본(큰 글자 조각, 십자가 모양)을 HTML과 SVG로 만들어서 PDF로 뽑고 있어. 지난번에는 마지막 장의 십자가가 종이 오른쪽 밖으로 잘렸는데, 출력해 보기 전까지 몰랐어. 또 어떤 장은 코드 실수로 빈 페이지가 나왔어. 다음부터 출력하기 전에 이런 걸 어떻게 미리 잡을 수 있을까?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "bbox",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(경계\\s*상자|bounding\\s*box|getBBox|getBoundingClientRect|bbox)",
+            "flags": "i",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if 아래를 모두 만족한다.\n1. 요소마다 경계 상자(bounding box)를 구해 종이의 인쇄 가능 영역(종이 크기에서 프린터 여백을 뺀 것)과 비교하는 자동 검사를 제안한다.\n2. 모든 페이지를 이미지로 렌더링해서 페이지마다 확인하라고 한다(빈 페이지 검사 포함, 예: 픽셀이 거의 비었는지).\n3. 검사가 실패하면 PDF를 만들지 않게(출력 전에 멈추게) 하라고 한다.\n\nFAIL if \"출력해서 확인하라\"나 \"꼼꼼히 보라\"처럼 사람 눈에만 맡기거나, 경계와 인쇄 가능 영역 비교가 없다.",
+          "config": {
+            "criteria": "PASS if 아래를 모두 만족한다.\n1. 요소마다 경계 상자(bounding box)를 구해 종이의 인쇄 가능 영역(종이 크기에서 프린터 여백을 뺀 것)과 비교하는 자동 검사를 제안한다.\n2. 모든 페이지를 이미지로 렌더링해서 페이지마다 확인하라고 한다(빈 페이지 검사 포함, 예: 픽셀이 거의 비었는지).\n3. 검사가 실패하면 PDF를 만들지 않게(출력 전에 멈추게) 하라고 한다.\n\nFAIL if \"출력해서 확인하라\"나 \"꼼꼼히 보라\"처럼 사람 눈에만 맡기거나, 경계와 인쇄 가능 영역 비교가 없다.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.23324749999999994,
+            "judgeCostUsd": 0.0012966999999999979,
+            "durationSeconds": 45,
+            "startedAt": "2026-11-07T16:28:09.354Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-PYfahn/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "bbox",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (경계\\s*상자|bounding\\s*box|getBBox|getBoundingClientRect|bbox)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "지난번 두 문제 모두 출력하기 전에 스크립트로 잡을 수 있어요. PDF를 만들기 전에 세 가지를 자동으로 검사하고, 하나라도 실패하면 PDF를 만들지 않게 하면 됩니다.\n\n## 1. 잘림 검사: 도형 위치를 숫자로 비교하기\n\n- **인쇄 가능 영역을 정해 둡니다.** 프린터는 종이 끝까지 찍지 못해요. A4(210×297mm)에서 사방 여백 5mm를 빼면 200×287mm입니다. 5mm는 프린터 여백을 모를 때 쓰는 기본값이니, 쓰시는 프린터 설명서에서 실제 값을 확인해 바꾸세요.\n- **헤드리스 브라우저로 HTML을 열고 도형마다 위치를 잽니다.** 헤드리스 브라우저는 화면 없이 스크립트로 돌리는 브라우저예요. SVG 도형(`path`, `text`, `rect` 등)마다 경계 상자(도형을 감싸는 사각형)를 구해 인쇄 가능 영역과 비교합니다.\n- **조심할 점이 두 가지 있어요.**\n  - SVG의 `getBBox()`는 선 굵기를 빼고 `transform`을 적용하기 전 좌표를 줍니다. 그래서 `getBoundingClientRect()`로 페이지 좌표를 구하고, 선 굵기의 절반을 직접 더해야 합니다.\n  - 지난번 십자가가 이 경우일 가능성이 커요. 중심 좌표는 종이 안이었는데 팔 끝이나 테두리 선이 밖으로 나간 거죠.\n\n## 2. 빈 페이지 검사: 두 단계로 확인하기\n\n- **PDF를 만들기 전, 코드 단계에서:**\n  - 페이지마다 그려진 도형이 1개 이상인지 셉니다.\n  - SVG 속성에 `NaN`이나 `undefined`가 들어갔는지 찾습니다. 숫자 변환 실수로 빈 페이지가 생기는 흔한 원인이에요. 좌표가 `NaN`이면 브라우저는 오류를 내지 않고 그냥 아무것도 그리지 않습니다.\n- **PDF를 만든 뒤:**\n  - 모든 페이지를 이미지로 바꿔 흰색이 아닌 픽셀의 비율을 셉니다. 거의 0%인 페이지는 실패입니다.\n  - 전체 장 수가 예상한 장 수와 같은지도 확인합니다. 내용이 조금 넘쳐서 생기는 빈 장도 이걸로 잡혀요.\n\n## 3. 예시 스크립트 (Python + Playwright)\n\n각 장이 `<div class=\"sheet\">` 하나이고 그 안에 SVG가 있다고 가정했어요. 구조가 다르면 선택자만 바꾸면 됩니다.\n\n```python\n# check_print.py  사용법: python check_print.py 본.html 예상장수\nimport sys, fitz  # pip install playwright pymupdf && playwright install chromium\nfrom playwright.sync_api import sync_playwright\n\nMARGIN_MM = 5            # 프린터 여백 가정. 실제 값으로 바꾸기\nPX_PER_MM = 96 / 25.4    # CSS 1mm = 3.78px\n\nJS = \"\"\"\n(margin) => {\n  const mm = 96 / 25.4, errors = [];\n  document.querySelectorAll('.sheet').forEach((sheet, i) => {\n    const s = sheet.getBoundingClientRect();\n    const box = { l: s.left + margin*mm, t: s.top + margin*mm,\n                  r: s.right - margin*mm, b: s.bottom - margin*mm };\n    const shapes = sheet.querySelectorAll('path,rect,circle,ellipse,line,polyline,polygon,text,image,use');\n    let drawn = 0;\n    shapes.forEach(el => {\n      for (const a of el.attributes)\n        if (/NaN|undefined|Infinity/.test(a.value))\n          errors.push(`${i+1}장: <${el.tagName}> ${a.name}=\"${a.value}\"`);\n      const r = el.getBoundingClientRect();\n      if (r.width === 0 && r.height === 0) return;\n      drawn++;\n      // 선 굵기 절반을 화면 배율까지 반영해 더한다\n      const sw = parseFloat(getComputedStyle(el).strokeWidth) || 0;\n      const ctm = el.getScreenCTM(), half = sw / 2 * (ctm ? Math.hypot(ctm.a, ctm.b) : 1);\n      const over = {\n        왼쪽: box.l - (r.left - half), 오른쪽: (r.right + half) - box.r,\n        위: box.t - (r.top - half),    아래: (r.bottom + half) - box.b };\n      for (const [side, px] of Object.entries(over))\n        if (px > 0.5) errors.push(`${i+1}장: <${el.tagName}${el.id ? '#'+el.id : ''}> ${side}으로 ${(px/mm).toFixed(1)}mm 넘침`);\n    });\n    if (drawn === 0) errors.push(`${i+1}장: 그려진 도형 0개 (빈 페이지)`);\n  });\n  return { sheets: document.querySelectorAll('.sheet').length, errors };\n}\n\"\"\"\n\nhtml, expected = sys.argv[1], int(sys.argv[2])\nwith sync_playwright() as p:\n    page = p.chromium.launch().new_page()\n    page.goto(f\"file://{__import__('os').path.abspath(html)}\")\n    page.emulate_media(media=\"print\")\n    res = page.evaluate(JS, MARGIN_MM)\n    if res[\"sheets\"] != expected:\n        res[\"errors\"].append(f\"장 수 {res['sheets']} (예상 {expected})\")\n    if res[\"errors\"]:\n        print(\"실패, PDF를 만들지 않습니다:\\n  \" + \"\\n  \".join(res[\"errors\"]))\n        sys.exit(1)\n    page.pdf(path=\"out.pdf\", prefer_css_page_size=True, print_background=True)\n\n# PDF 단계: 페이지 수와 빈 페이지 확인\ndoc = fitz.open(\"out.pdf\")\nbad = []\nif len(doc) != expected:\n    bad.append(f\"PDF 페이지 {len(doc)} (예상 {expected})\")\nfor n, pg in enumerate(doc, 1):\n    pix = pg.get_pixmap(dpi=40, colorspace=fitz.csGRAY)\n    dark = sum(1 for b in pix.samples if b < 240) / len(pix.samples)\n    pix.save(f\"preview-{n:02d}.png\")          # 눈으로 훑어볼 미리보기\n    if dark < 0.001:\n        bad.append(f\"{n}쪽: 거의 흰 페이지 ({dark:.3%})\")\nprint(\"\\n\".join(bad) or f\"통과: {len(doc)}쪽, out.pdf 생성\")\nsys.exit(1 if bad else 0)\n```\n\n## 4. 함께 넣어 두면 좋은 것\n\n- **CSS로 페이지 크기를 고정합니다.** `@page { size: A4; margin: 0 }`로 두고, `.sheet`는 `width:210mm; height:297mm; overflow:hidden; break-after:page`로 잡습니다. `.sheet`에서 넘친 내용이 다음 장으로 밀려나 빈 장이 생기는 걸 막아 줘요. `overflow:hidden`은 넘친 부분을 조용히 숨기기도 하는데, 위 잘림 검사가 그걸 잡아냅니다.\n- **SVG 좌표를 1단위 = 1mm로 둡니다.** `viewBox=\"0 0 210 297\"`처럼 쓰면 오류 메시지의 숫자를 자로 재는 값과 바로 맞춰 볼 수 있어요.\n- **맞춤 표시와 기준 자를 넣습니다.** 장마다 장 번호와 맞춤 표시를, 첫 장에 50mm 기준 자를 넣으세요. 출력할 때는 \"용지에 맞춤\"이 아니라 **실제 크기(100%)**로 뽑습니다.\n- **첫 장은 실제로 뽑아서 확인합니다.** 자동 검사를 통과해도 첫 장을 출력해 기준 자를 자로 재 보세요. 프린터 여백 5mm 가정이 맞는지는 이 단계에서만 확인할 수 있어요.\n\n이 스크립트는 제가 실제로 돌려 보지 않았고, 지금 쓰시는 HTML 구조도 보지 못했어요. 파일을 보여 주시면 선택자와 여백 값을 맞춰 바로 돌려 보고, 지난번 십자가가 왜 잘렸는지도 확인해 드릴게요."
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.2776085,
+            "judgeCostUsd": 0.003089899999999996,
+            "durationSeconds": 68,
+            "startedAt": "2026-11-07T16:28:10.460Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-Vck2Jw/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "bbox",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (경계\\s*상자|bounding\\s*box|getBBox|getBoundingClientRect|bbox)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 요약\n\n두 문제 모두 PDF를 만들기 전에 스크립트로 잡을 수 있어요. 검사는 세 가지입니다.\n\n1. **잘림 검사**: 십자가 같은 도형마다 바깥 경계를 계산해서, 프린터가 실제로 찍을 수 있는 영역 안에 있는지 확인합니다. 하나라도 넘치면 PDF를 만들지 않고 멈춥니다.\n2. **장 수 검사**: HTML에 만든 페이지 수와 PDF의 페이지 수가 같은지 봅니다. 내용이 조금 넘쳐서 생기는 빈 장이 여기서 잡힙니다.\n3. **빈 페이지 검사**: PDF의 모든 장을 이미지로 바꾼 뒤, 거의 흰색뿐인 장을 찾습니다. 코드 실수로 도형이 안 그려진 장이 여기서 잡힙니다.\n\n이 세 검사를 통과한 뒤에도 첫 장은 실제로 출력해서 자로 재 보세요.\n\n## 왜 지난번엔 못 잡았나\n\n- **종이 전체가 아니라 찍히는 영역을 기준으로 봐야 합니다.** 집 프린터는 종이 가장자리 4~6mm에는 잉크를 못 찍습니다(크롬 인쇄 창의 \"최소\" 여백은 약 6.35mm). 화면에서는 A4 안에 들어와 보여도, 가장자리 근처의 십자가 끝은 실제 출력에서 사라집니다.\n- **`overflow: hidden`은 잘림을 숨깁니다.** 페이지 상자에 이 설정이 있으면 넘친 부분이 화면에서도 조용히 잘려서 눈으로 보고는 알 수 없습니다. 그래서 눈 대신 좌표로 비교해야 합니다.\n- **선 굵기와 위치 이동값을 빼먹기 쉽습니다.** SVG에서 도형의 경계를 구하는 기본 방법(`getBBox()`)은 선 굵기를 빼고, `transform`으로 옮긴 위치도 반영하지 않습니다. 그래서 굵은 테두리나 옮긴 조각은 실제보다 안쪽에 있는 것처럼 계산됩니다.\n\n## 검사 스크립트 예시\n\nHTML 구조를 `<div class=\"page\">` 한 개가 A4 한 장이고, 그 안에 SVG가 있다고 가정했습니다.\n\n```js\n// check-print.mjs\n// 실행: node check-print.mjs bon.html 6\n// 6 = 프린터 여백(mm). 모르면 5~6으로 둡니다.\nimport { chromium } from 'playwright';\nimport { execSync } from 'node:child_process';\nimport { pathToFileURL } from 'node:url';\nimport path from 'node:path';\n\nconst [file, marginMm = '6'] = process.argv.slice(2);\nconst MM = 96 / 25.4;               // CSS에서 1mm = 약 3.78px\nconst margin = Number(marginMm) * MM;\nconst tol = 0.2 * MM;               // 0.2mm까지는 오차로 봐줍니다\n\nconst browser = await chromium.launch();\nconst page = await browser.newPage();\nawait page.goto(pathToFileURL(path.resolve(file)).href);\nawait page.emulateMedia({ media: 'print' });\n\n// 1) 잘림 검사: 도형마다 (선 굵기 + 이동값 포함) 경계를 구해 찍히는 영역과 비교\nconst { pageCount, problems } = await page.evaluate(({ margin, tol }) => {\n  const problems = [];\n  const pages = [...document.querySelectorAll('.page')];\n  pages.forEach((pg, i) => {\n    const r = pg.getBoundingClientRect();\n    const safe = { l: r.left + margin, t: r.top + margin, r: r.right - margin, b: r.bottom - margin };\n    const shapes = pg.querySelectorAll('svg :is(path,rect,circle,ellipse,line,polyline,polygon,text,use,image)');\n    if (shapes.length === 0) problems.push(`${i + 1}장: 도형이 0개 (빈 페이지 의심)`);\n    shapes.forEach(el => {\n      const bb = el.getBBox();\n      const cs = getComputedStyle(el);\n      const half = cs.stroke !== 'none' ? (parseFloat(cs.strokeWidth) || 0) / 2 : 0;\n      const m = el.getScreenCTM();\n      const pts = [[bb.x - half, bb.y - half], [bb.x + bb.width + half, bb.y - half],\n                   [bb.x - half, bb.y + bb.height + half], [bb.x + bb.width + half, bb.y + bb.height + half]]\n        .map(([x, y]) => new DOMPoint(x, y).matrixTransform(m));\n      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);\n      const over = {\n        왼쪽: safe.l - Math.min(...xs), 오른쪽: Math.max(...xs) - safe.r,\n        위: safe.t - Math.min(...ys), 아래: Math.max(...ys) - safe.b,\n      };\n      for (const [side, px] of Object.entries(over)) {\n        if (px > tol) problems.push(\n          `${i + 1}장 <${el.tagName}${el.id ? '#' + el.id : ''}>: ${side}으로 ${(px / (96 / 25.4)).toFixed(1)}mm 넘침`);\n      }\n    });\n  });\n  return { pageCount: pages.length, problems };\n}, { margin, tol });\n\nif (problems.length) {\n  console.error('❌ 잘림/빈 페이지 의심:\\n' + problems.join('\\n'));\n  await browser.close();\n  process.exit(1);                  // PDF를 만들지 않습니다\n}\n\n// 2) PDF 생성\nconst out = file.replace(/\\.html$/, '.pdf');\nawait page.pdf({ path: out, preferCSSPageSize: true, printBackground: true });\nawait browser.close();\n\n// 3) 장 수 검사 (poppler 필요: brew install poppler)\nconst pdfPages = Number(execSync(`pdfinfo \"${out}\"`).toString().match(/Pages:\\s+(\\d+)/)[1]);\nif (pdfPages !== pageCount) {\n  console.error(`❌ HTML은 ${pageCount}장인데 PDF는 ${pdfPages}장 — 넘친 내용이 빈 장을 만들었을 가능성`);\n  process.exit(1);\n}\n\n// 4) 빈 페이지 검사: 모든 장을 이미지로 바꾸고 어두운 픽셀 비율을 봅니다 (imagemagick 필요)\nexecSync(`rm -rf /tmp/chk && mkdir /tmp/chk && pdftoppm -r 40 -png \"${out}\" /tmp/chk/p`);\nconst files = execSync('ls /tmp/chk').toString().trim().split('\\n');\nlet bad = false;\nfor (const f of files) {\n  const dark = Number(execSync(`magick /tmp/chk/${f} -colorspace gray -threshold 90% -format \"%[fx:1-mean]\" info:`));\n  const pct = (dark * 100).toFixed(2);\n  if (dark < 0.01) { console.error(`❌ ${f}: 칠해진 부분 ${pct}% — 빈 페이지 의심`); bad = true; }\n  else console.log(`✓ ${f}: ${pct}%`);\n}\nif (bad) process.exit(1);\nconsole.log(`✅ ${pdfPages}장 모두 통과 → ${out}`);\n```\n\n준비물은 `npm i playwright`, `npx playwright install chromium`, `brew install poppler imagemagick`입니다.\n\n빈 페이지 판단 기준은 \"칠해진 부분이 1% 미만\"으로 잡았습니다. 큰 글자 조각은 보통 이보다 훨씬 많이 칠해지고, 장 번호나 맞춤 표시만 남은 장은 이 기준에 걸립니다. 실제 본으로 한 번 돌려 보고 숫자를 조정하세요.\n\n## 같이 해두면 좋은 것\n\n- **페이지 크기를 mm로 고정하세요.** `@page { size: A4; margin: 0 }`와 `.page { width: 210mm; height: 297mm; break-after: page }`로 두고, 마지막 장은 `break-after: auto`로 둡니다. 이렇게 하면 마지막에 빈 장이 붙는 흔한 원인을 막을 수 있습니다.\n- **조각을 나누는 계산은 찍히는 영역 기준으로 하세요.** 한 장의 폭은 210 − 여백×2를 쓰고, 이웃 장과 10~20mm를 겹치게 합니다. 이 계산을 종이 전체 폭(210mm)으로 하면 마지막 장의 끝이 밖으로 밀려납니다. 지난번 문제의 원인이 이것일 가능성이 큽니다.\n- **장마다 장 번호와 맞춤 표시를, 첫 장에는 50mm 기준 자를 넣으세요.** 출력할 때는 \"실제 크기(100%)\"로 뽑아야 합니다. \"용지에 맞춤\"으로 뽑으면 크기가 줄어서 조각이 맞지 않습니다.\n\n## 확인하지 못한 것\n\n- 지금 작업 폴더에 HTML 파일이 없어서 위 스크립트는 **실제로 돌려 보지 않았습니다.**\n- `.page` 클래스 이름과 SVG 구조는 제가 가정한 것이라, 실제 코드에 맞게 선택자를 바꿔야 할 수 있습니다.\n- 프린터 여백 6mm도 가정입니다. 실제 값은 프린터 사양서나 테스트 출력으로 확인해 주세요.\n\n본 HTML 파일을 주시면 거기에 맞춰 스크립트를 고치고, 직접 돌려서 결과까지 확인해 드릴게요."
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.2715719,
+            "judgeCostUsd": 0.0018076999999999954,
+            "durationSeconds": 61,
+            "startedAt": "2026-11-07T16:28:10.649Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-t2X1nQ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "bbox",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (경계\\s*상자|bounding\\s*box|getBBox|getBoundingClientRect|bbox)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "두 가지 모두 출력 전에 스크립트로 잡을 수 있어요. PDF를 만들기 직전에 검사를 한 번 돌리고, 하나라도 실패하면 PDF를 만들지 않게 하면 됩니다.\n\n## 무엇을 검사하나\n\n**1. 잘림 검사 (도형 위치를 숫자로 비교)**\n- 장마다 인쇄 가능 영역을 정합니다. 종이 크기에서 프린터 여백을 뺀 영역이에요. 여백을 모르면 사방 5mm로 잡으세요.\n- 그 장에 있는 모든 SVG 도형의 위치(경계 상자)를 구해, 선 굵기까지 더한 범위가 인쇄 가능 영역 안에 있는지 확인합니다.\n- 지난번 마지막 장 십자가는 여기서 \"3장: 오른쪽으로 12.4mm 넘침\"처럼 걸렸을 거예요.\n- 주의: 페이지에 `overflow: hidden`을 걸면 화면과 PDF에서는 넘친 부분이 조용히 사라져 보입니다. 이 검사는 그와 상관없이 실제 위치를 재기 때문에 잡아냅니다.\n\n**2. 빈 페이지 검사 (그림으로 확인)**\n- PDF의 모든 장을 낮은 해상도 그림으로 바꿔서 거의 흰 픽셀뿐인 장을 찾습니다.\n- 가장자리 여백 띠에 잉크가 묻은 장도 함께 찾습니다. 위치 검사를 빠져나간 잘림을 한 번 더 걸러 내요.\n- PDF의 장 수가 HTML의 `.page` 개수와 같은지도 봅니다. 내용이 넘쳐서 생기는 여분의 빈 장이 여기서 걸립니다.\n\n## 스크립트 예시\n\nHTML에서 각 장이 `<section class=\"page\">` 하나이고, 크기가 `width:210mm; height:297mm`로 잡혀 있다고 가정했습니다.\n\n```python\n# preflight.py  사용법: python preflight.py 본.html 결과.pdf\n# 준비: pip install playwright pillow && playwright install chromium && brew install poppler\nimport sys, subprocess, tempfile, shutil, pathlib\nfrom playwright.sync_api import sync_playwright\nfrom PIL import Image\n\nMARGIN_MM = 5                 # 프린터 여백 가정\nPX_PER_MM = 96 / 25.4\nhtml, out_pdf = pathlib.Path(sys.argv[1]).resolve(), sys.argv[2]\n\nGEOM_JS = \"\"\"\n([m, pxmm]) => {\n  const errs = [];\n  const pages = document.querySelectorAll('.page');\n  pages.forEach((pg, i) => {\n    const p = pg.getBoundingClientRect();\n    const box = {l: p.left + m, t: p.top + m, r: p.right - m, b: p.bottom - m};\n    const shapes = pg.querySelectorAll(\n      'svg path, svg rect, svg polygon, svg polyline, svg circle, svg ellipse, svg line, svg text, svg use, svg image');\n    if (shapes.length === 0) errs.push(`${i+1}장: 그림 요소 0개 (빈 페이지)`);\n    shapes.forEach(el => {\n      const r = el.getBoundingClientRect();\n      const cs = getComputedStyle(el), ctm = el.getScreenCTM();\n      const scale = ctm ? Math.hypot(ctm.a, ctm.b) : 1;\n      const pad = cs.stroke !== 'none' ? (parseFloat(cs.strokeWidth) || 0) * scale / 2 : 0;\n      const over = {\n        왼쪽: box.l - (r.left - pad), 위: box.t - (r.top - pad),\n        오른쪽: (r.right + pad) - box.r, 아래: (r.bottom + pad) - box.b };\n      for (const [side, px] of Object.entries(over))\n        if (px > 0.5) errs.push(`${i+1}장 <${el.tagName}${el.id ? '#'+el.id : ''}>: ${side}으로 ${(px/pxmm).toFixed(1)}mm 넘침`);\n    });\n  });\n  return {errs, count: pages.length};\n}\n\"\"\"\n\nwith sync_playwright() as pw:\n    b = pw.chromium.launch(); page = b.new_page()\n    page.goto(html.as_uri()); page.emulate_media(media=\"print\")\n    res = page.evaluate(GEOM_JS, [MARGIN_MM * PX_PER_MM, PX_PER_MM])\n    if res[\"errs\"]:\n        print(\"잘림/빈 페이지 발견, PDF를 만들지 않습니다:\"); print(\"\\n\".join(res[\"errs\"])); sys.exit(1)\n    tmp = pathlib.Path(tempfile.mkdtemp())\n    page.pdf(path=tmp / \"draft.pdf\", prefer_css_page_size=True, print_background=True)\n    b.close()\n\nDPI = 40\nsubprocess.run([\"pdftoppm\", \"-r\", str(DPI), \"-png\", tmp / \"draft.pdf\", tmp / \"p\"], check=True)\npngs = sorted(tmp.glob(\"p-*.png\")); band = round(MARGIN_MM * DPI / 25.4)\nerrs = []\nif len(pngs) != res[\"count\"]:\n    errs.append(f\"PDF {len(pngs)}장인데 .page는 {res['count']}개 (넘친 내용이 새 장을 만들었을 수 있음)\")\nfor n, f in enumerate(pngs, 1):\n    im = Image.open(f).convert(\"L\"); w, h = im.size; px = im.load()\n    ink = lambda x0, y0, x1, y1: sum(px[x, y] < 200 for x in range(x0, x1) for y in range(y0, y1))\n    if ink(0, 0, w, h) < w * h * 0.001: errs.append(f\"{n}장: 거의 흰 페이지\")\n    edges = {\"왼쪽\": ink(0, 0, band, h), \"오른쪽\": ink(w-band, 0, w, h),\n             \"위\": ink(0, 0, w, band), \"아래\": ink(0, h-band, w, h)}\n    for side, c in edges.items():\n        if c: errs.append(f\"{n}장: {side} 여백 띠에 잉크 {c}px (잘림 의심)\")\nif errs:\n    print(\"\\n\".join(errs)); print(f\"미리보기 그림: {tmp}\"); sys.exit(1)\nshutil.move(tmp / \"draft.pdf\", out_pdf); print(f\"통과: {len(pngs)}장 → {out_pdf}\")\n```\n\n검사에서 실패하면 `미리보기 그림` 폴더가 남습니다. 거기 있는 PNG를 열어 보면 어느 장이 어떻게 생겼는지 바로 확인할 수 있어요.\n\n## 함께 하면 좋은 것\n\n- **마지막 장을 의심하세요.** 마지막 장만 잘리는 건 보통 조각 위치를 계산하는 코드가 마지막 나머지 조각을 따로 처리하지 않을 때 생깁니다. 예를 들어 `x = col * step` 같은 계산이에요. 위 검사가 이걸 잡아 주지만, 원인도 한 번 보세요.\n- **빈 페이지는 숫자 변환 실수에서 자주 나옵니다.** 문자열 `\"10\"`과 숫자를 더하거나 `NaN`이 좌표에 들어가면 도형이 안 그려져요. 검사의 \"그림 요소 0개\"나 \"거의 흰 페이지\"에서 걸립니다.\n- **자동 검사를 통과해도 첫 장은 꼭 직접 뽑아 보세요.** 첫 장에 50mm 기준 자를 넣고 \"실제 크기(100%)\"로 출력한 뒤 자로 재면 배율이 맞는지 확인할 수 있습니다. \"용지에 맞춤\"으로 뽑으면 조각끼리 맞지 않아요.\n- **분할 본이라면** 이웃 장끼리 10~20mm 겹치는 풀칠 자리, 맞춤 십자 표시, 장 번호(예: G-1, G-2)를 넣어 두면 붙일 때 편합니다.\n\n## 확인하지 못한 것\n\n- 작업 폴더에 HTML이나 SVG 파일이 없어서 실제 파일로 스크립트를 돌려 보지 못했습니다. 그래서 위 코드는 실행해서 확인하지 않은 예시예요.\n- 클래스 이름(`.page`)과 장 크기는 지금 코드에 맞게 바꿔야 할 수 있습니다.\n- 프린터 여백 5mm는 가정입니다. 쓰는 프린터의 실제 여백을 알면 `MARGIN_MM`을 그 값으로 바꾸세요.\n\n지금 쓰는 HTML 파일을 보여 주시면 그 구조에 맞춰 스크립트를 고치고 실제로 돌려 볼게요."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "print-tiling",
+      "dir": "evals/gotechy-design/print-tiling",
+      "source": "prose",
+      "promptMarkdown": "행사용 배경 현수막(가로 3500mm, 세로 2300mm) 위에 GOSPEL 글자를 하나씩 오려 붙이려고 해. 글자 하나 높이가 약 400mm, 폭은 250~330mm야. 집에 있는 프린터는 A4만 확실히 돼. 글자 본을 A4로 나눠 출력해서 붙이는 계획을 짜 줘. 출력 파일 만들 때 뭘 넣어야 하는지도 알려 줘.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "actual-size",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(100\\s*%|실제\\s*크기|원본\\s*크기|actual\\s*size)",
+            "flags": "i",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if 아래를 모두 만족한다.\n1. 글자 하나를 A4 여러 장으로 나누고, 이웃 장끼리 10~20mm 겹치는 띠(풀칠 자리)를 두라고 한다.\n2. 장마다 맞춤 표시(맞춤선, 십자 표시, 이음 번호 같은 것)와 조립 순서(장 번호)를 넣으라고 한다.\n3. 프린터 설정을 \"실제 크기(100%)\"로 하고, 출력물에 넣은 기준 길이(자, 예: 50mm 눈금)를 재서 배율을 확인하라고 한다.\n4. 프린터가 종이 가장자리까지 찍지 못한다는 점(인쇄 가능 영역, 여백)을 나눌 크기 계산에 반영한다.\n\nFAIL if 겹침 없이 맞대어 붙이라고 하거나, \"용지에 맞춤\"으로 출력해도 된다고 하거나, 배율 확인 방법이 없다.",
+          "config": {
+            "criteria": "PASS if 아래를 모두 만족한다.\n1. 글자 하나를 A4 여러 장으로 나누고, 이웃 장끼리 10~20mm 겹치는 띠(풀칠 자리)를 두라고 한다.\n2. 장마다 맞춤 표시(맞춤선, 십자 표시, 이음 번호 같은 것)와 조립 순서(장 번호)를 넣으라고 한다.\n3. 프린터 설정을 \"실제 크기(100%)\"로 하고, 출력물에 넣은 기준 길이(자, 예: 50mm 눈금)를 재서 배율을 확인하라고 한다.\n4. 프린터가 종이 가장자리까지 찍지 못한다는 점(인쇄 가능 영역, 여백)을 나눌 크기 계산에 반영한다.\n\nFAIL if 겹침 없이 맞대어 붙이라고 하거나, \"용지에 맞춤\"으로 출력해도 된다고 하거나, 배율 확인 방법이 없다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "overlap-band",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(겹침|겹치|겹쳐|오버랩|풀칠|overlap)[^\\n]{0,60}?\\b(1[0-9]|20)\\s*mm",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.2413709,
+            "judgeCostUsd": 0.001150700000000001,
+            "durationSeconds": 59,
+            "startedAt": "2026-11-07T16:28:54.451Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-Cr1rn0/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "actual-size",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (100\\s*%|실제\\s*크기|원본\\s*크기|actual\\s*size)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 결론\n글자 하나를 **A4 세로 4장(2×2)**으로 나눠 출력하는 방식을 추천합니다. 6글자면 본 24장에 안내 겸 시험 출력 1장을 더해 **총 25장**입니다.\n\n## 1. 계산\n\n**가정:** 프린터 여백을 사방 5mm로 잡았습니다. 실제 여백은 프린터 설명서에서 확인해 주세요.\n\n- A4에서 실제로 인쇄되는 영역: 200 × 287mm\n- 장끼리 겹치는 풀칠 띠: 15mm\n- 글자 한 개가 차지하는 칸: 340 × 410mm (가장 넓은 글자 330mm, 높이 400mm에 사방 5mm 여유를 더한 값)\n\n| 나누는 방법 | 덮는 크기 | 340 × 410 칸이 들어가나 | 장 수 |\n|---|---|---|---|\n| A4 세로 2×2 | 385 × 559mm | ✅ | 4 |\n| A4 가로 2×2 | 559 × 385mm | ❌ 높이 부족 | – |\n| A4 가로 1열 3장 | 287 × 570mm | 폭 277mm 이하 글자만 ✅ | 3 |\n\nE나 L처럼 폭이 좁은 글자는 가로 3장으로 1장씩 아낄 수 있습니다. 다만 글자마다 조립 방식이 달라지면 헷갈리기 쉬워서 전부 세로 2×2로 맞추는 쪽을 권합니다.\n\n## 2. 작업 순서\n1. **시험 출력 1장:** 50mm 눈금 자가 든 장을 \"실제 크기(100%)\"로 뽑고 자로 잽니다. 50.0mm가 아니면 이후 출력을 멈추고 설정부터 고칩니다.\n2. **본 출력:** 글자마다 4장씩 뽑습니다. 잉크를 아끼려면 글자 윤곽선만 넣습니다.\n3. **조립:** 장 번호 순서(1 → 2 → 3 → 4)로 겹침 띠에 맞춤 표시를 맞추고 테이프로 붙입니다.\n4. **재료에 옮기기:** 붙인 본을 오려 폼보드, 펠트, 색지 같은 재료 위에 대고 따라 그린 뒤 자릅니다. A4를 그대로 붙이면 이음매가 보이니 본으로만 쓰는 편이 깔끔합니다.\n   - **주의:** 재료 뒷면에 대고 그릴 때는 좌우를 뒤집은 본이 필요합니다. 그대로 그리면 G, S, P, L, E가 거꾸로 나옵니다.\n5. **현수막에 배치:** 아래 배치도의 mm 좌표대로 붙입니다.\n\n## 3. 현수막 배치 예시 (가정값)\n글자 폭은 G·O 330, S 280, P 270, E·L 250mm, 글자 사이 간격은 60mm로 가정했습니다.\n\n- 전체 폭: 1710 + 300 = 2010mm\n- 좌우 여백: 각 745mm\n- 왼쪽 끝 기준 위치: G 745 / O 1135 / S 1525 / P 1865 / E 2195 / L 2505mm\n- 세로로 가운데에 두면 글자 윗선이 위에서 950mm입니다. 무대에 쓰는 현수막이라 사람에게 가리지 않게 조금 올리고 싶다면 이 숫자만 바꾸면 됩니다.\n- O, G, S처럼 둥근 글자는 간격을 약 10mm 줄여야 눈으로 볼 때 고르게 보입니다.\n\n## 4. 출력 파일에 넣을 것\n\n**모든 장에 넣을 것**\n- 실제 크기 글자 윤곽선(재단선, 굵기 약 1mm). 글자는 윤곽선으로 변환해 둡니다.\n- 오른쪽과 아래 가장자리에 15mm 겹침 띠. 연한 회색으로 칠하고 \"풀칠\" 글씨를 넣습니다.\n- 겹침 띠 모서리에 맞춤 십자 표시\n- 장 번호(예: `G-2`)와 2×2 위치를 보여 주는 작은 그림, 글자 순서(`2/6 · O`)\n- 50mm 기준 자\n- 글자를 지나는 기준선(바닥선)과 세로 중심선. 현수막에 붙일 때 수평과 위치를 맞추는 데 씁니다.\n- \"정방향\" 또는 \"좌우 반전\" 표시\n\n**표지 1장에 넣을 것**\n- 첫 줄에 **\"실제 크기(100%)로 출력. '용지에 맞춤' 금지\"**\n- 현수막 전체 배치도(글자별 mm 좌표)\n- 조립 순서, 쓴 글꼴 이름, 전체 장 수\n\n**PDF를 만들기 전에 할 검사**\n- 모든 요소가 인쇄 영역(사방 5mm 안쪽) 안에 있는지 확인합니다.\n- 25장 전부를 이미지로 뽑아 잘리거나 빈 장이 없는지 봅니다.\n\n## 아직 확인하지 못한 것\n- 실제 프린터 여백(5mm로 가정)\n- 글자별 실제 폭. 글꼴에 따라 달라서 배치 좌표는 예시입니다.\n- 글자를 만들 재료와 붙이는 방법(폼보드는 양면테이프, 천은 접착 펠트 등)\n\n쓰실 글꼴과 재료를 알려 주시면 위 요소가 다 들어간 25장짜리 PDF(정방향과 좌우 반전 두 가지)를 바로 만들어 드릴게요."
+              },
+              {
+                "name": "overlap-band",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (겹침|겹치|겹쳐|오버랩|풀칠|overlap)[^\\n]{0,60}?\\b(1[0-9]|20)\\s*mm",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.24569259999999998,
+            "judgeCostUsd": 0.0021207999999999956,
+            "durationSeconds": 61,
+            "startedAt": "2026-11-07T16:29:11.783Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-uDdQWs/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "actual-size",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (100\\s*%|실제\\s*크기|원본\\s*크기|actual\\s*size)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 결론: 글자 하나에 A4 세로 4장(2×2), 모두 24장\n\n여백과 겹침을 계산하면 A4 세로 2×2로 나누는 게 가장 적고 단순합니다. 6글자 × 4장 = 24장이고, 시험 출력 1장과 예비를 더해 **26~28장**을 준비하시면 됩니다.\n\n---\n\n## 1. 계산 근거\n\n**한 장에 실제로 찍히는 영역**\n- 프린터 여백을 모르니 사방 5mm로 가정했습니다. A4 210×297mm에서 여백을 빼면 **200×287mm**가 찍힙니다.\n- 이웃 장과 겹쳐 풀칠할 띠는 **15mm**로 잡았습니다.\n\n**A4를 세로로 놓을 때 (추천)**\n- 가로: 2장이면 200 + 185 = **385mm**까지 덮습니다. 가장 넓은 글자가 330mm라 양옆에 약 27mm씩 남습니다.\n- 세로: 2장이면 287 + 272 = **559mm**까지 덮습니다. 글자 높이 400mm라 위아래로 약 80mm씩 남습니다.\n- 그래서 **2×2 = 4장**입니다.\n\n**A4를 가로로 놓을 때**\n- 가로는 2장, 세로는 3장이 필요해서 6장이 됩니다. 손해입니다.\n\n참고로 폭이 270mm 이하인 글자(E, L 등)는 A4 가로 1열×3단, 즉 3장으로도 됩니다. 하지만 방향이 섞이면 조립할 때 헷갈리고 이음매가 2줄 생깁니다. 그래서 **모든 글자를 2×2로 통일하는 걸 추천**합니다.\n\n**장마다 위치 (글자 영역 385×559mm 기준)**\n\n| 장 | 가로 위치 | 세로 위치 |\n|---|---|---|\n| G-1 (왼쪽 위) | 0~200 | 0~287 |\n| G-2 (오른쪽 위) | 185~385 | 0~287 |\n| G-3 (왼쪽 아래) | 0~200 | 272~559 |\n| G-4 (오른쪽 아래) | 185~385 | 272~559 |\n\n겹치는 부분은 가로 185~200mm 띠와 세로 272~287mm 띠입니다.\n\n---\n\n## 2. 출력 파일에 넣을 것\n\n**모든 장에 넣을 것**\n1. **글자 외곽선 (자르는 선)**: 0.5~0.8mm 굵기의 검은 실선입니다. 안을 칠하지 않거나 아주 옅은 회색(10%)만 깔면 잉크가 절약됩니다. 글꼴은 반드시 윤곽선(path)으로 바꿔서 넣습니다.\n2. **겹침 띠 표시**: 15mm 띠에 옅은 빗금을 넣고 \"여기에 풀칠\"이라고 적습니다. 어느 장이 위로 가는지도 표시합니다. 예: \"G-2를 G-1 위에\".\n3. **맞춤 표시**: 겹침 띠 안에 십자 표시를 2개 이상 넣습니다. 이웃 장의 같은 십자와 정확히 겹치게 맞추면 됩니다.\n4. **장 번호와 배치 미니맵**: 구석에 \"G-2 / 4장 중\"과 2×2 칸 그림을 넣고, 이 장의 칸을 칠해 둡니다.\n5. **위쪽 화살표 \"↑ 위\"**: 글자 조각만 보면 위아래가 헷갈릴 수 있어서 넣습니다.\n\n**글자별 첫 장(-1)에만 넣을 것**\n6. **50mm 기준 자**: 출력한 뒤 실제 자로 재서 50.0mm인지 확인합니다.\n7. **안내문**: 맨 위 첫 줄에 **\"반드시 실제 크기(100%)로 출력, '용지에 맞춤' 끄기\"**를 적습니다.\n\n**현수막에 붙일 때 쓸 표시**\n8. **기준선과 중심선**: 글자 바닥선(baseline)과 글자 가운데 세로선을 외곽선 바깥까지 짧게 늘려 그립니다. 그러면 오려 낸 뒤에도 현수막의 먹줄에 맞출 수 있습니다.\n\n**파일 구성**\n- 시험 출력용 1장: 기준 자와 십자 표시만 넣습니다.\n- 본 파일 24쪽: G-1~G-4, O-1~O-4 … L-1~L-4 순서입니다.\n- 배치도 1쪽: 아래 3절 내용입니다.\n\n---\n\n## 3. 현수막 배치 (가정한 예시)\n\n- 글자 폭을 G·O 330, S·P 280, E·L 250mm 정도로 보면 합이 약 1,720mm입니다.\n- 글자 사이 70mm × 5칸을 더하면 전체 약 **2,070mm**이고, 3,500mm 폭 가운데에 두면 좌우에 약 **715mm**씩 남습니다.\n- 높이 위치는 아직 모릅니다. 현수막의 다른 요소(행사명, 날짜 등)와 가장자리 안전 영역(최소 10mm)을 보고 정해야 합니다.\n- 붙일 때는 바닥선에 먹줄이나 마스킹테이프로 수평선을 긋고, 글자별 중심 위치를 표시한 뒤 붙입니다.\n\n---\n\n## 4. 작업 순서\n\n1. 시험 장을 출력하고 50mm 자를 재서 확인합니다. 어긋나면 프린터 설정부터 고칩니다.\n2. 24장을 출력합니다. 시안을 그린 뒤 출력 전에, 모든 장을 이미지로 확인해 잘린 장이나 빈 장이 없는지 봅니다.\n3. 글자마다 4장을 십자 표시에 맞춰 풀칠합니다. 1+2, 3+4를 먼저 붙이고 위아래를 합칩니다.\n4. 외곽선을 따라 오립니다.\n   - 이걸 **본으로만 쓰고** 하드보드, 폼보드, 펠트 등에 대고 그려 자를 계획이면 일반 80g 용지로 충분합니다.\n   - **출력물 자체를 붙일** 거라면 120~160g 용지가 좋습니다. 집 프린터가 그 두께를 받는지는 확인해 보셔야 합니다.\n\n---\n\n## 확인 못 한 것\n\n- **프린터 실제 여백**: 5mm로 가정했습니다. 여백이 더 크더라도 7.5mm까지는 2×2가 유지됩니다.\n- **글꼴과 글자별 정확한 폭**: 정해지면 3절 배치를 다시 계산합니다. 상업 글꼴이면 행사용 사용이 허용되는지도 확인해야 합니다.\n- **글자 재료와 붙이는 방법**: 종이, 폼보드, 펠트인지, 현수막 천에 무엇으로 붙이는지에 따라 용지 두께와 겹침 방식이 달라집니다.\n- **현수막에서 GOSPEL이 들어갈 세로 위치.**\n\n글꼴과 대략적인 세로 위치를 알려 주시면, 위 요소를 모두 넣은 출력용 PDF(시험 장, 24장, 배치도)를 만들고 잘림 검사까지 돌려 드릴게요."
+              },
+              {
+                "name": "overlap-band",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (겹침|겹치|겹쳐|오버랩|풀칠|overlap)[^\\n]{0,60}?\\b(1[0-9]|20)\\s*mm",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.2364721,
+            "judgeCostUsd": 0.002512299999999995,
+            "durationSeconds": 54,
+            "startedAt": "2026-11-07T16:29:18.942Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-iAnKKX/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "actual-size",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (100\\s*%|실제\\s*크기|원본\\s*크기|actual\\s*size)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "계산해 보니 **글자 하나에 A4 세로 4장(2×2)**이면 됩니다. 6글자면 본은 24장이고, 시험 출력과 예비를 더해 A4 약 30장을 준비하면 됩니다.\n\n## 1. 전제와 계산\n\n- **프린터 여백**: 모델을 몰라서 사방 5mm로 잡았습니다. 그러면 A4에서 실제로 찍히는 영역은 200×287mm입니다.\n- **겹침 띠(풀칠 자리)**: 이웃한 장과 15mm씩 겹치게 합니다.\n\n| 용지 방향 | 가로로 덮는 폭 | 세로로 덮는 높이 | 장 수 |\n|---|---|---|---|\n| **세로 2×2** | 200+185 = **385mm** (330 이상) | 287+272 = **559mm** (400 이상) | **4장** |\n| 가로 2×3 | 287+272 = 559mm | 200+185+185 = 570mm | 6장 |\n\n세로 방향 2×2가 가장 적게 듭니다. 폭이 250mm인 좁은 글자도 한 장(200mm)에는 안 들어가서 똑같이 4장이 필요합니다. 글자는 덮는 영역(385×559mm)의 가운데에 놓습니다.\n\n## 2. 진행 순서\n\n1. **시험 출력**: G의 1번 장만 먼저 뽑습니다. 50mm 기준 자를 실제 자로 재서 오차가 1mm 안쪽인지 봅니다.\n2. **전체 출력**: 6글자를 다 합쳐 24장을 뽑습니다.\n3. **본 조립**: 장마다 겹침 띠를 포개고 십자 맞춤 표시를 맞춘 뒤 테이프로 붙입니다. 순서는 1→2(위쪽 줄), 3→4(아래쪽 줄), 그다음 위아래를 잇습니다.\n4. **재료에 옮기기**: 종이를 그대로 붙이면 이음매가 보입니다. 조립한 본은 폼보드, 펠트, 시트지 같은 재료에 대고 따라 그려 오리는 용도로 쓰는 것을 권합니다.\n   - 재료 **뒷면**에 대고 그릴 거라면 본을 **좌우 반전**해서 출력해야 합니다. 특히 G, S, P, E, L은 반전하지 않으면 글자가 뒤집혀 나옵니다.\n5. **현수막에 배치**:\n   - 글자 사이 간격은 높이의 약 15%인 60mm 정도에서 시작합니다.\n   - 전체 폭 = 글자 폭 합계 + 60×5입니다. 예를 들어 글자 폭 합계가 1,710mm라면 전체 폭은 약 2,010mm이고, 왼쪽 시작점은 (3500−2010)÷2 = 745mm입니다.\n   - 실제 폰트가 정해지면 글자 폭이 바뀌니 다시 계산합니다.\n   - 현수막에 기준선(글자 바닥선)을 연필이나 실로 먼저 긋고, 글자 6개를 핀으로 임시로 꽂아 멀리서 확인한 뒤 붙입니다.\n\n## 3. 출력 파일에 넣을 것\n\n**파일 설정**\n- 용지는 A4 세로이고, 1단위를 1mm로 그립니다. 요소는 모두 인쇄 가능 영역(200×287mm) 안에 둡니다.\n- 폰트는 윤곽선으로 바꿔서 넣습니다. 행사에 써도 되는 폰트 라이선스인지도 확인해 주세요.\n\n**장마다 넣을 것**\n- **오리는 선**: 0.5mm 실선으로 그립니다. 안쪽 채우기는 없음이나 연한 회색으로 해서 잉크를 아낍니다.\n- **겹침 띠 15mm**: 빗금을 치고 \"여기에 풀칠\"이라고 적습니다. 위치는 1·3번 장의 오른쪽 끝과 1·2번 장의 아래쪽 끝입니다.\n- **맞춤 표시**: 겹침 띠 안에 십자 표시를 2개 이상 넣습니다. 이웃한 두 장의 같은 자리에 찍혀야 합니다.\n- **장 번호와 위치 지도**: \"G-1 / 4\"처럼 쓰고, 2×2 칸 중 이 장이 어디인지 작게 그려 둡니다.\n- **50mm 기준 자**: 장마다 넣으면 어느 장이든 배율을 확인할 수 있습니다.\n- **방향과 정렬 표시**: \"↑위\" 화살표, 글자 바닥선, 세로 중심선을 넣습니다. 바닥선과 중심선은 현수막에 맞출 때 씁니다.\n- **반전 여부**: \"앞면용\" 또는 \"뒷면용(반전)\"을 적습니다.\n\n**첫 장 안내문**\n- 맨 위에 **\"실제 크기(100%)로 출력. '용지에 맞춤' 금지\"**를 적습니다.\n- 단면, 흑백 출력과 조립 순서도 함께 적습니다.\n\n**PDF 만들기 전에 할 검사**\n- 요소마다 경계 상자를 구해 인쇄 가능 영역을 넘는지 봅니다. 넘으면 PDF를 만들지 않습니다.\n- 24장을 모두 이미지로 렌더링해 잘린 장이나 빈 장이 없는지 봅니다.\n\n## 확인 못 한 것\n\n- 프린터 여백 5mm는 가정입니다. 실제 여백이 더 크면 겹침 띠를 10mm로 줄이면 됩니다. 4장 구성은 그대로 됩니다.\n- 글자별 실제 폭과 글자 사이 간격은 폰트에 따라 달라서 위 숫자는 예시입니다.\n\n폰트와 재료 뒷면에 그릴지 여부를 알려 주시면 위 요소를 다 넣은 24장짜리 PDF를 만들고, 잘림 검사까지 돌려 드릴게요."
+              },
+              {
+                "name": "overlap-band",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (겹침|겹치|겹쳐|오버랩|풀칠|overlap)[^\\n]{0,60}?\\b(1[0-9]|20)\\s*mm",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    },
+    {
+      "name": "regression-print-not-blocked",
+      "dir": "evals/gotechy-design/regression-print-not-blocked",
+      "source": "prose",
+      "promptMarkdown": "교회 진급자 환영회 무대 뒤에 걸 배경 현수막(가로 3.5m, 세로 2.3m)을 만들 거야. 주제는 \"함께 지어져 가는 우리\"야. 디자인 방향이랑 출력 준비를 같이 잡아 줘.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if 아래를 모두 만족한다.\n1. 사용자 흐름, 사이트맵, 와이어프레임 같은 웹 화면 절차를 요구하거나 그것이 없어서 멈추지 않는다.\n2. 실제 크기(3500 × 2300mm)를 기준으로 시안을 잡고, 출력 수단(인쇄소인지 집 프린터인지)과 인쇄소 파일 규격 확인을 다룬다.\n3. 멀리서 보는 거리에서 읽히는 글자 크기나 위계를 구체적으로(숫자로) 제안한다.\n\nFAIL if 흐름 문서부터 만들자며 디자인을 미루거나, 화면(웹, 앱) 기준으로 답한다.",
+          "config": {
+            "criteria": "PASS if 아래를 모두 만족한다.\n1. 사용자 흐름, 사이트맵, 와이어프레임 같은 웹 화면 절차를 요구하거나 그것이 없어서 멈추지 않는다.\n2. 실제 크기(3500 × 2300mm)를 기준으로 시안을 잡고, 출력 수단(인쇄소인지 집 프린터인지)과 인쇄소 파일 규격 확인을 다룬다.\n3. 멀리서 보는 거리에서 읽히는 글자 크기나 위계를 구체적으로(숫자로) 제안한다.\n\nFAIL if 흐름 문서부터 만들자며 디자인을 미루거나, 화면(웹, 앱) 기준으로 답한다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "no-flow-gate",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(사용자\\s*흐름|유저\\s*플로우|user\\s*flow)[^\\n]{0,40}(먼저|없어|없으|필요|부터)",
+            "flags": "i",
+            "match": "not_contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 5,
+            "costUsd": 0.2561075,
+            "judgeCostUsd": 0.0012744999999999979,
+            "durationSeconds": 62,
+            "startedAt": "2026-11-07T16:29:53.590Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-9zw1FK/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "현수막 디자인 방향과 출력 준비를 정리했어요. 아직 실제 크기 시안 파일은 만들지 않았어요. 그래서 시안을 렌더링해서 확인하는 일과 글자 잘림 검사도 아직 안 했어요.\n\n## 먼저 정해 둔 가정 (틀리면 알려 주세요)\n\n| 항목 | 가정 |\n|---|---|\n| 완성 크기 | 3500 × 2300mm (가로:세로 약 1.52:1) |\n| 출력 | 인쇄소에서 큰 천에 한 번에 뽑는 방식 (집 프린터로 나눠 뽑지 않음) |\n| 보는 거리 | 객석에서 5~15m |\n| 무대 상황 | 강대상과 사람에 가려 아래쪽 약 1000mm는 잘 안 보임 |\n\n## 1. 디자인 방향\n\n**핵심 생각: \"아직 다 지어지지 않은 건물\"**\n주제 문구는 에베소서 2장 22절(\"…너희도 성령 안에서 하나님이 거하실 처소가 되기 위하여 그리스도 예수 안에서 **함께 지어져 가느니라**\")에서 왔어요. 그래서 이미 완성된 건물보다 **지금 쌓고 있는 모습**을 보여 주는 게 맞다고 봤어요.\n\n- **그림:** 색과 크기가 조금씩 다른 벽돌이 양쪽 아래에서 위로 올라가며 아치를 이뤄요. 맨 위 가운데 벽돌 하나만 아직 끼워지지 않고 살짝 떠 있어요. 그 빈자리가 \"새로 온 진급자\"이고, \"함께 지어져 가는\" 중이라는 뜻을 전해요.\n- **벽돌 색:** 부서마다 색을 하나씩 주면, 서로 다른 부서가 한 건물이 된다는 뜻이 생겨요.\n- **배치 (위에서부터):**\n  - 위쪽 약 300mm: 여백과 행사명\n  - 약 400~1300mm: 제목과 성구\n  - 1300mm 아래: 벽돌 기둥만 두고 글자는 넣지 않음 (가려지는 구역)\n- **색:**\n  - 바탕은 따뜻한 크림색이에요. 순백색은 조명을 받으면 사진에서 하얗게 날아가요.\n  - 벽돌은 테라코타, 머스터드, 세이지, 하늘색이에요.\n  - 글자는 진한 남색이에요.\n- **글꼴:** 상업적으로 써도 되는 무료 글꼴인 Pretendard Black이나 G마켓 산스 Bold를 제목에 써요. 본문은 같은 글꼴의 Medium을 써요.\n\n**글자 높이 (15m 뒤에서도 읽히는 기준)**\n\n| 요소 | 문구 예 | 글자 높이 |\n|---|---|---|\n| 제목 | 함께 지어져 가는 우리 | 300~350mm (10글자 + 띄어쓰기 = 폭 약 2900mm 안쪽) |\n| 행사명 | 2026 ○○교회 진급자 환영회 | 120~150mm |\n| 성구 | 에베소서 2:22 (본문을 넣으면 한 줄) | 70~90mm |\n\n글자는 이 세 가지만 넣는 걸 추천해요. 무대 배경은 사람이 앞에 서는 배경이라 글이 많으면 오히려 읽기 어려워요.\n\n## 2. 출력 준비\n\n**해상도 계산** (출력 dpi = 픽셀 수 ÷ (mm ÷ 25.4))\n- 가로 3500mm는 137.8인치, 세로 2300mm는 90.6인치예요.\n- 100dpi로 만들려면 13780 × 9055px이 필요해요.\n- 120dpi(비즈하우스의 현수막 최소 기준)로 만들려면 16535 × 10866px이 필요해요.\n- 이 거리에서 보는 현수막은 300dpi가 필요 없어요. 벽돌과 글자를 **벡터(AI나 PDF)**로 만들면 해상도 문제는 사진을 넣을 때만 생겨요.\n\n**인쇄소에 넘길 파일 체크리스트**\n- [ ] 작업 크기는 3500 × 2300mm예요. 인쇄소가 1/10 크기 작업을 받으면 350 × 230mm로 만들고, 그때 사진은 700dpi 이상이어야 해요.\n- [ ] 재단 여유를 둬요. 인쇄소마다 달라서 사방 2mm 이상이 될 수도 있어요. 고리(아일렛)를 박거나 가장자리를 접어 꿰매면 더 필요하니 인쇄소에 물어봐요.\n- [ ] 안전 영역: 글자와 로고는 재단선에서 최소 10mm 안쪽에 둬요. 고리를 박으면 50mm 안쪽을 추천해요.\n- [ ] 색 모드는 CMYK, 글자는 윤곽선 처리, 투명 효과와 그라데이션은 병합해요.\n- [ ] 원단은 **무광**을 추천해요. 유광은 무대 조명이 반사돼 사진에 번들거리게 나와요.\n- [ ] **폭이 3.5m라서 원단을 한 장으로 뽑을 수 있는지 꼭 물어봐요.** 원단 롤 폭에 따라 이어 붙여야 할 수도 있어요. 이어 붙인다면 이음선 위치를 미리 받아서 제목 글자가 그 선에 걸리지 않게 배치해요.\n- [ ] 거는 방법(고리, 막대 끼움, 끈)을 정하고 그에 맞게 가공해 달라고 해요.\n\n## 3. 알려 주시면 바로 다음 단계로 갈 수 있어요\n\n1. 교회와 부서 이름, 행사 날짜\n2. 맡길 인쇄소 (그 인쇄소의 작업 가이드에 맞춰 수치를 확정할게요)\n3. 아래쪽이 실제로 얼마나 가려지는지 (강대상 높이 정도)\n4. 진급하는 부서 목록 (벽돌 색을 정할 때 써요)\n\n답을 주시면 1px을 1mm로 맞춘 실제 크기 SVG 시안을 만들게요. 렌더링해서 확인하고, 글자가 안전 영역 안에 있는지 잘림 검사를 한 뒤에 인쇄소용 PDF까지 이어서 준비할게요.\n\n**확인 못 한 것:** 인쇄소마다 다른 재단 여유, 원단 최대 폭과 이어 붙일지 여부, 색 모드 요구사항은 인쇄소에 직접 확인해야 해요. 글자 높이는 일반적인 가독성 기준으로 잡은 값이라, 시안이 나오면 실제 거리에서 한 번 보는 걸 추천해요."
+              },
+              {
+                "name": "no-flow-gate",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.3332006,
+            "judgeCostUsd": 0.0013199999999999983,
+            "durationSeconds": 94,
+            "startedAt": "2026-11-07T16:30:12.641Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-7QkWJi/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 현수막 시안 계획: 「함께 지어져 가는 우리」 (3,500 × 2,300 mm)\n\n### 먼저 정해 주실 것\n1. **콘셉트:** A안을 추천합니다(아래 설명).\n2. **인쇄소:** 해상도, 색 모드, 원단 폭 기준이 인쇄소마다 다릅니다. 정해지면 그 인쇄소 기준으로 맞추겠습니다.\n3. **거는 방식:** 상단 봉미싱, 아일렛 타공, 트러스 중 어떤 방식인지에 따라 가장자리 여유가 달라집니다.\n\n모르는 값은 이렇게 가정했습니다. 인쇄소에서 실사 출력하고, 객석 거리는 5~20m이며, 아래쪽 약 900mm는 강대상과 서 있는 사람에 가립니다. 영상 촬영이나 생중계가 있을 수도 있다고 봤습니다.\n\n---\n\n### 1. 디자인 방향\n\n이 문구는 에베소서 2:22에서 온 표현입니다. 20~21절의 \"모퉁잇돌\"과 \"건물마다 서로 연결하여\"가 바로 앞에 있어서, **돌을 쌓아 집을 짓는 모습**이 가장 잘 맞습니다.\n\n**A안 (추천): 쌓아 가는 돌담**\n- 크기와 색이 조금씩 다른 블록들이 아래 양쪽에서 쌓여 올라가 아치나 지붕선을 이루고, 그 안에 제목이 들어갑니다.\n- **\"지어져 가는\"이라는 진행형**을 그림으로 보여 줍니다. 한쪽은 높이 쌓였고, 다른 쪽에는 블록 몇 개가 막 자리를 찾아 내려오고 있습니다. 내려오는 블록이 진급자입니다.\n- 맨 아래 중앙에 금색 **모퉁잇돌**을 둡니다. 작은 십자 음각이나 \"엡 2:20\" 같은 표시를 넣을 수 있습니다.\n- 모양이 다른 블록들은 \"서로 다른 우리\"가 하나의 집이 된다는 뜻입니다.\n\n**B안: 설계도 위의 집**\n- 남색 바탕에 흰 선으로 그린 설계도 위에서 집의 일부만 색이 칠해져 있는 그림입니다.\n- 세련되지만, 아이들 대상이면 차갑게 느껴질 수 있습니다. 가는 선이 많아 카메라에서 물결무늬(모아레)가 생길 위험도 있습니다.\n\n**참여형 아이디어 (A안에 붙이기):** 진급자 이름이 적힌 벽돌 카드를 행사 중에 직접 비어 있는 블록 자리에 붙이는 순서를 넣을 수 있습니다. 주제를 몸으로 보여 줄 수 있습니다. 원단 현수막에는 벨크로 부착이 무난합니다.\n\n**색 (A안)**\n| 역할 | 색 | 메모 |\n|---|---|---|\n| 배경 | 따뜻한 모래색 `#EDE3D3` | 순백은 조명과 카메라에서 하얗게 날아갑니다 |\n| 제목 | 짙은 남색 `#1F2A44` | 배경 대비 약 12:1 |\n| 블록 | 테라코타, 올리브, 하늘색, 겨자색 (채도를 낮춘 톤) | 4~5색으로 제한합니다 |\n| 강조 | 금색 계열 `#C9A227` | 모퉁잇돌, \"우리\" |\n\nHEX 값은 화면 기준입니다. 인쇄소가 CMYK를 요구하면 변환한 뒤 색이 탁해지는지 교정 출력으로 확인해야 합니다.\n\n---\n\n### 2. 배치 (단위 mm, 왼쪽 위가 기준점)\n\n```\n┌──────────────────────────── 3500 ────────────────────────────┐\n│ 0~100   걸이 여유 (그림만, 글자 없음)                          │\n│ 250     \"2026 진급자 환영회\"           글자 높이 130          │\n│ 450~730 \"함께 지어져 가는\"            글자 높이 280          │\n│ 790~1240 \"우 리\"                       글자 높이 450 (금색 강조) │\n│ 1300    \"엡 2:22\" + 교회 이름          글자 높이 70~80        │\n│ 1400~2300 블록 담 (아래 900은 가려져도 괜찮은 그림만)          │\n└───────────── 좌우 안전 여백: 양쪽 150 ────────────────────────┘\n```\n\n**글자 높이를 정한 근거:** 간판에서 흔히 쓰는 기준은 \"읽을 수 있는 최대 거리 1m당 글자 높이 약 8mm\"입니다. 한눈에 바로 읽히려면 그 3~4배가 필요합니다.\n- 제목 280~450mm는 20m 뒤에서도 바로 읽힙니다.\n- 행사명 130mm는 약 16m까지 읽힙니다.\n- 성경 구절 70mm는 약 8m까지 읽혀서, 앞쪽 객석과 사진용입니다.\n\n**한 줄로 넣을 경우:** \"함께 지어져 가는 우리\"는 공백까지 약 10글자 폭입니다. 사용 가능한 폭 3,200mm에 넣으면 글자 높이가 최대 약 300mm라서, \"우리\"를 강조하는 두 줄 배치가 낫습니다.\n\n**글꼴:** 단단하고 블록 느낌이 나는 굵은 고딕을 추천합니다(Pretendard Black, G마켓 산스 Bold 등). 둘 다 인쇄 사용이 허용되지만 출력 전에 라이선스를 한 번 더 확인하세요.\n\n---\n\n### 3. 출력 준비\n\n**해상도 계산** (식: 픽셀 수 ÷ (mm ÷ 25.4)). 3,500mm는 137.8인치, 2,300mm는 90.6인치입니다.\n\n| 실제 크기 기준 | 필요한 픽셀 | 쓰는 곳 |\n|---|---|---|\n| 70 dpi | 9,646 × 6,339 | 와우프레스 기준 (1/10 크기로 작업하면 700dpi) |\n| 100 dpi | 13,780 × 9,055 | 6m 넘는 거리에서 보면 충분 |\n| 120 dpi | 16,535 × 10,866 | 비즈하우스 현수막 최소 기준 |\n| 150 dpi | 20,669 × 13,583 | 광고천하 기준 |\n\n**추천:** 글자와 블록을 **벡터(AI나 PDF)**로 만드세요. 그러면 해상도 문제는 사진이나 질감 같은 비트맵 요소에만 생깁니다. 전체를 비트맵으로 만들면 120dpi에서 약 1억 8천만 픽셀이라 파일이 감당하기 어려워집니다.\n\n**인쇄소에 넘기기 전 점검표**\n- [ ] 글자를 모두 윤곽선으로 바꿨는지\n- [ ] 색 모드가 인쇄소 요구(대개 CMYK)와 맞는지\n- [ ] 그라데이션과 투명 효과를 병합했는지\n- [ ] 재단 여유를 넣었는지 (예: 사방 2mm, 인쇄소마다 다름)\n- [ ] 글자와 로고가 재단선에서 최소 10mm 안쪽에 있는지 (이 시안은 걸이 때문에 100~150mm로 잡음)\n- [ ] **원단 폭 확인:** 가로 3.5m가 원단 롤 폭을 넘으면 이음선이 생깁니다. 인쇄소에 \"이음 없이 되는지, 90도 돌려 세로 2.3m를 롤 폭으로 뽑을 수 있는지\" 물어보세요. 이음이 생긴다면 그 위치가 제목을 지나지 않게 배치하겠습니다.\n- [ ] **소재:** 무대 조명 아래에서는 **무광 원단**(현수막 천이나 패브릭 실사)이 좋습니다. 광택 소재는 반사가 생기고 카메라에 번들거리게 찍힙니다.\n- [ ] 마감: 봉미싱이나 아일렛 간격(약 500mm)을 행사장 걸이 구조에 맞추기\n\n**참여형 벽돌 카드를 쓰는 경우** (집 프린터, 여백은 사방 5mm로 가정)\n- 카드 크기를 180 × 90mm로 하면 A4 한 장에 3개가 들어갑니다. 진급자 수 ÷ 3을 올림하면 필요한 장 수입니다.\n- 이름 글자 높이는 약 54mm(카드 높이의 60%)라서 5~6m 거리에서 읽힙니다.\n- 출력은 반드시 **\"실제 크기(100%)\"**로 하세요. \"용지에 맞춤\"을 쓰면 크기가 줄어듭니다.\n\n---\n\n### 아직 하지 않은 것, 확인하지 못한 것\n- **실제 크기 시안 파일은 아직 만들지 않았습니다.** 콘셉트를 정해 주시면 1px = 1mm SVG로 그려 렌더링하고, 글자가 잘리지 않는지 검사한 결과와 함께 드리겠습니다.\n- 인쇄소별 해상도 기준은 각 인쇄소 작업 가이드 기준입니다. 고르신 인쇄소의 실제 요구(해상도, 색 모드, 재단 여유, 원단 폭)는 직접 확인이 필요합니다.\n- 아래 900mm가 가린다는 것과 객석 거리 20m는 가정입니다. 무대 높이와 예배당 깊이를 알려 주시면 배치를 다시 맞추겠습니다.\n- 진급 대상 연령(유초등부인지 청소년부인지)에 따라 색 채도와 글꼴 분위기를 조정하면 좋습니다."
+              },
+              {
+                "name": "no-flow-gate",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.39811290000000005,
+            "judgeCostUsd": 0.0016977,
+            "durationSeconds": 135,
+            "startedAt": "2026-11-07T16:30:12.785Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-wnER27/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "저장과 실행 도구가 없어 파일 저장, 렌더링, 잘림 검사는 하지 못했습니다. 그래서 디자인 방향, 계산 값, 1mm=1px 기준 SVG 시안 코드를 글로 드립니다. 이 시안은 아직 렌더링해 보지 않았습니다.\n\n## 0. 전제 (모르는 값은 가정으로 잡았습니다)\n\n| 항목 | 값 |\n|---|---|\n| 완성 크기 | 3500 × 2300mm (확정) |\n| 출력 수단 | **가정:** 인쇄소 실사 출력, 한 장짜리 |\n| 보는 거리 | **가정:** 예배당 앞줄 3m에서 뒷줄 15m |\n| 거는 방법 | **가정:** 사방에 고리(아일렛)나 위아래 봉 |\n| 진급 부서 | **가정:** 6개 부서 (유치부부터 청년부까지) |\n\n## 1. 디자인 방향: \"아직 쌓고 있는 벽\"\n\n- **핵심 그림:** 완성된 집이 아니라 쌓고 있는 중인 벽돌 벽입니다. 주제의 \"지어져 **가는**\"이 진행형이라서, 맨 윗줄은 군데군데 비워 두고 벽돌 하나가 그 빈칸으로 내려오는 장면으로 그립니다. 진급자가 새 공동체에 들어와 함께 쌓여 간다는 뜻을 담습니다.\n- **색의 뜻:** 맨 윗줄의 색 벽돌을 부서마다 다른 색으로 칠합니다. 서로 다른 부서가 한 벽을 이룬다는 뜻입니다. 그 아래 벽은 배경과 비슷한 톤으로 조용히 둡니다.\n- **말씀:** 에베소서 2:22. **문구는 교회에서 쓰는 번역본(개역개정)과 꼭 대조해 주세요.** 제가 쓴 어순이 정확하다고 장담하지 못합니다.\n- **무대 현실 반영:** 아래쪽 약 600mm는 강대상, 화분, 서 있는 사람에 가려집니다. 그래서 글자는 모두 위쪽 3분의 2에 넣고, 아래쪽에는 장식인 벽만 둡니다.\n- **글자 높이:** 표지판 경험칙(3m마다 글자 높이 약 25mm)으로 15m에서 읽으려면 최소 약 125mm가 필요합니다.\n\n| 요소 | 글자 크기(font-size) | 한글 실제 높이(약) | 15m에서 |\n|---|---|---|---|\n| 2027 진급자 환영회 | 100mm | 85mm | 앞쪽 절반 정도에서만 읽힘 (보조 정보라 괜찮음) |\n| 함께 지어져 가는 | 260mm | 225mm | 충분히 읽힘 |\n| **우리** | 440mm | 380mm | 가장 크게 강조 |\n| 말씀 2줄 | 60mm | 50mm | 6m 안쪽 (가까이서 읽는 용도) |\n\n- **색:** 배경은 따뜻한 아이보리 `#F6EFE3`, 글자는 짙은 남색 `#1F2A44`입니다(대비는 어림셈으로 약 12:1). 부서 색은 테라코타 `#C8643B`, 세이지 `#6F9467`, 하늘 `#5E93BF`, 라벤더 `#8C7BB8`, 코랄 `#E07A6A`, 머스타드 `#DDA22A`입니다. 화면에서 보는 RGB 색은 CMYK로 출력하면 탁해지기 쉬우니 색 견본을 받아 보길 권합니다.\n- **글꼴:** Pretendard Black 또는 Noto Sans KR Black을 권합니다(둘 다 OFL이라 무료로 상업적 사용 가능). 인쇄소에 넘길 때는 글자를 윤곽선으로 바꿉니다.\n\n## 2. 실제 크기 시안 (SVG, 1단위 = 1mm, 렌더링 전)\n\n```svg\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"3500mm\" height=\"2300mm\" viewBox=\"0 0 3500 2300\">\n  <defs>\n    <pattern id=\"wall\" x=\"0\" y=\"1845\" width=\"870\" height=\"310\" patternUnits=\"userSpaceOnUse\">\n      <rect x=\"0\" y=\"0\" width=\"420\" height=\"145\" fill=\"#E6D8C0\"/>\n      <rect x=\"435\" y=\"0\" width=\"420\" height=\"145\" fill=\"#E6D8C0\"/>\n      <rect x=\"-217.5\" y=\"155\" width=\"420\" height=\"145\" fill=\"#E6D8C0\"/>\n      <rect x=\"217.5\" y=\"155\" width=\"420\" height=\"145\" fill=\"#E6D8C0\"/>\n      <rect x=\"652.5\" y=\"155\" width=\"420\" height=\"145\" fill=\"#E6D8C0\"/>\n    </pattern>\n  </defs>\n  <rect width=\"3500\" height=\"2300\" fill=\"#F6EFE3\"/>\n  <g font-family=\"Pretendard, 'Noto Sans KR', sans-serif\" text-anchor=\"middle\" fill=\"#1F2A44\">\n    <text x=\"1750\" y=\"360\" font-size=\"100\" font-weight=\"700\" letter-spacing=\"20\">2027 진급자 환영회</text>\n    <text x=\"1750\" y=\"720\" font-size=\"260\" font-weight=\"900\">함께 지어져 가는</text>\n    <text x=\"1750\" y=\"1180\" font-size=\"440\" font-weight=\"900\">우리</text>\n    <text x=\"1750\" y=\"1360\" font-size=\"60\" font-weight=\"500\">그리스도 예수 안에서 너희도 성령 안에서</text>\n    <text x=\"1750\" y=\"1450\" font-size=\"60\" font-weight=\"500\">하나님이 거하실 처소가 되기 위하여 함께 지어져 가느니라 · 에베소서 2:22</text>\n  </g>\n  <!-- 내려오는 벽돌 (빈칸 1522.5 자리로) -->\n  <rect x=\"1522.5\" y=\"1515\" width=\"420\" height=\"145\" rx=\"8\" fill=\"#1F2A44\" transform=\"rotate(-6 1732.5 1587.5)\"/>\n  <!-- 맨 윗줄: 부서 색, 군데군데 비움 -->\n  <g>\n    <rect x=\"217.5\"  y=\"1690\" width=\"420\" height=\"145\" fill=\"#C8643B\"/>\n    <rect x=\"652.5\"  y=\"1690\" width=\"420\" height=\"145\" fill=\"#6F9467\"/>\n    <rect x=\"1087.5\" y=\"1690\" width=\"420\" height=\"145\" fill=\"#5E93BF\"/>\n    <rect x=\"1957.5\" y=\"1690\" width=\"420\" height=\"145\" fill=\"#8C7BB8\"/>\n    <rect x=\"2392.5\" y=\"1690\" width=\"420\" height=\"145\" fill=\"#E07A6A\"/>\n    <rect x=\"2827.5\" y=\"1690\" width=\"420\" height=\"145\" fill=\"#DDA22A\"/>\n  </g>\n  <rect x=\"0\" y=\"1845\" width=\"3500\" height=\"455\" fill=\"url(#wall)\"/>\n</svg>\n```\n\n- **안전 영역:** 고리와 재단을 생각해 사방 150mm 안쪽에만 글자를 둡니다. 계산으로 본 글자 폭은 제목 첫 줄 약 1980mm(x 760~2740), 말씀 둘째 줄 약 1950mm로 안전 영역 안에 듭니다. **다만 글꼴마다 글자 폭이 달라서 렌더링으로 확인해야 합니다.**\n- 벽돌이 가장자리에서 잘리는 것은 의도한 것입니다. 장식이라 재단 여유를 넘어가도 괜찮습니다.\n\n## 3. 출력 해상도 계산\n\n식: 픽셀 수 = (mm ÷ 25.4) × dpi. 가장 좋은 방법은 **벡터 PDF**(글자 윤곽선 처리)로 넘기는 것이고, 이때는 해상도 걱정이 없습니다. 이미지로 넘긴다면 아래 크기를 맞추세요.\n\n| 인쇄소 기준 (2026-11-08 확인) | 필요한 이미지 크기 |\n|---|---|\n| 비즈하우스 현수막 최소 120dpi | 3500mm는 137.8인치 → **16535 × 10866px** |\n| 광고천하 실제 크기 150ppi | **20669 × 13583px** |\n| 와우프레스, 1/10 크기(350 × 230mm)를 700dpi로 | **9646 × 6339px** (실제 크기로 치면 70dpi) |\n\n- 15m 거리에서 보는 현수막은 300dpi가 필요 없습니다. 고른 인쇄소의 최소값만 넘기면 됩니다.\n\n## 4. 인쇄소에 보내기 전 확인할 것\n\n1. **원단 폭:** 2300mm 쪽을 원단 폭 방향으로 놓고 한 장으로 뽑을 수 있는지, 이음매 없이 되는지 물어보세요.\n2. **원단 종류:** 무대 조명 반사를 줄이려면 무광 원단이 좋습니다. 뒤에서 오는 빛에 비치지 않는지도 확인하세요(얇은 현수막천은 비칩니다).\n3. **색 모드와 재단 여유:** 인쇄소 작업 가이드를 따릅니다. 예를 들어 CMYK, 재단 여유 사방 2mm처럼 업체마다 다릅니다.\n4. **마감:** 고리 간격, 봉 미싱 여부, 그리고 접지 말고 **말아서 배송**해 달라고 요청하세요(접힌 주름이 무대 조명 아래에서 잘 보입니다).\n5. **글꼴:** 글자를 윤곽선으로 바꾸고, 투명 효과는 병합합니다.\n\n## 정해 주실 것\n\n- 교회 이름이나 부서 이름을 넣을지, 진급 부서 수와 연도(\"2027\"이 맞는지)\n- 쓸 인쇄소 (해상도와 색 기준이 거기에 맞춰 정해집니다)\n- 진급자 이름을 넣을지. 저는 현수막에는 넣지 말고, 집 프린터로 뽑는 \"이름 벽돌 카드\"를 따로 만들어 벽에 붙이는 방식을 권합니다. 명단이 바뀌어도 현수막을 다시 뽑지 않아도 되기 때문입니다.\n\n## 하지 못한 것과 위험\n\n- **렌더링하지 않음:** 시안 SVG를 그려 보지 않았고, 잘림 검사(글자 경계와 안전 영역 비교)도 돌리지 않았습니다. 글꼴이 바뀌면 글자 폭이 달라지니, 출력 전에 꼭 렌더링해서 확인해야 합니다.\n- **말씀 문구 미확인:** 에베소서 2:22 문구를 원문과 대조하지 않았습니다.\n- **어림셈 값:** 색 대비와 CMYK에서 색이 어떻게 보일지는 어림셈입니다. 인쇄소에서 시험 출력이나 색 견본을 받아 보길 권합니다.\n- **현재 등급 C:** 인쇄물 검사 기준 P1~P8 가운데 잘림 검사(P5)와 렌더링 확인(P6)을 하지 못했습니다. 렌더링할 수 있는 환경을 열어 주시면 PNG 시안을 렌더링하고 잘림 검사까지 하겠습니다. 이름 카드 분할 출력 본도 그때 만들 수 있습니다."
+              },
+              {
+                "name": "no-flow-gate",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 8,
+    "casesPassed": 8,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

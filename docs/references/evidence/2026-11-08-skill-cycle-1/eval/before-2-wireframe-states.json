@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T16:18:17.690Z",
+  "durationSeconds": 23,
+  "costUsd": 0.470689,
+  "partial": false,
+  "suite": {
+    "root": "~/orca/workspaces/gotechy-harness/wt-before",
+    "ablation": "none",
+    "caseFilter": "wireframe-states",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "gotechy",
+        "version": "0.1.0",
+        "path": "~/orca/workspaces/gotechy-harness/wt-before"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "wireframe-states",
+      "dir": "evals/gotechy-design/wireframe-states",
+      "source": "prose",
+      "promptMarkdown": "`docs/product-specs/memo/30-user-flow.md`는 확정됐어. 페이지는 \"메모 목록\"과 \"메모 쓰기\" 두 개야. 메모 목록은 서버에서 불러오고, 검색창이 있어.\n\n메모 목록 페이지의 와이어프레임을 써 줘. 사용자는 바쁜 직장인이고 폰으로 주로 써.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "gotechy-design bar의 D5, D6, D7, D13을 본다.\n\nPASS if 아래를 모두 만족한다.\n1. 메모 목록 데이터 섹션에 상태 8종(로딩, 첫 사용 빈 상태, 결과 없음, 복구 가능 오류, 복구 불가 오류, 부분 실패, 오프라인, 권한 없음)이 모두 있다. 첫 사용 빈 상태와 검색 결과 없음을 따로 다룬다.\n2. 상태마다 사용자의 다음 행동이 하나씩 있다(예: 결과 없음이면 검색어 지우기).\n3. 버튼과 안내에 실제 문구를 쓰고 로렘이나 \"텍스트\" 같은 자리표시가 없다.\n4. 375px 배치를 섹션마다 적는다.\n\nFAIL if 상태가 로딩과 빈 상태 두세 개뿐이거나, 오류 문구가 \"오류가 발생했습니다\"처럼 고치는 법이 없거나, 자리표시 카피가 있다.",
+          "config": {
+            "criteria": "gotechy-design bar의 D5, D6, D7, D13을 본다.\n\nPASS if 아래를 모두 만족한다.\n1. 메모 목록 데이터 섹션에 상태 8종(로딩, 첫 사용 빈 상태, 결과 없음, 복구 가능 오류, 복구 불가 오류, 부분 실패, 오프라인, 권한 없음)이 모두 있다. 첫 사용 빈 상태와 검색 결과 없음을 따로 다룬다.\n2. 상태마다 사용자의 다음 행동이 하나씩 있다(예: 결과 없음이면 검색어 지우기).\n3. 버튼과 안내에 실제 문구를 쓰고 로렘이나 \"텍스트\" 같은 자리표시가 없다.\n4. 375px 배치를 섹션마다 적는다.\n\nFAIL if 상태가 로딩과 빈 상태 두세 개뿐이거나, 오류 문구가 \"오류가 발생했습니다\"처럼 고치는 법이 없거나, 자리표시 카피가 있다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "skill-fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?gotechy-design\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 6,
+            "costUsd": 0.15603060000000002,
+            "judgeCostUsd": 0.0011342000000000001,
+            "durationSeconds": 23,
+            "startedAt": "2026-11-07T16:18:17.771Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-yEa9IQ/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "`[위저드 50-wireframe, 6/7]`: 시작 전에 멈췄어요. 와이어프레임은 아직 쓰지 않았어요.\n\n**`docs/product-specs/memo/30-user-flow.md` 파일이 이 저장소에 없어요.** 작업 폴더(`/private/tmp/e-yEa9IQ/home/cwd`)와 저장소 전체(`/private/tmp/e-yEa9IQ/home`)에서 `30-user-flow.md`를 찾았지만 없었어요. `docs/product-specs/` 폴더도 없고, 저장소에 마크다운 파일이 하나도 없어요.\n\n와이어프레임은 확정된 사용자 흐름에서 화면을 옮겨 그리는 작업이에요. 그래서 흐름 파일 없이는 시작하지 않아요. 말씀하신 두 페이지, 서버에서 불러오는 목록, 검색창만으로는 아래를 정할 근거가 없어요. 이걸 제가 지어내면 화면이 흐름과 어긋나요.\n\n- 목록에서 메모를 누르면 어디로 가는지: 수정, 상세 보기, 아니면 메모 쓰기 화면 재사용\n- 삭제, 고정, 정렬 같은 행동이 목록에 있는지\n- 로그인이 필요한지: 권한 없음 상태를 그릴지가 여기에 달려 있어요\n- 검색을 서버에서 하는지, 이미 받은 목록에서 거르는지: 로딩과 결과 없음 상태가 달라져요\n\n**하나만 골라 주세요.**\n\n1. **파일 위치 알려주기:** 다른 브랜치나 다른 경로에 있으면 알려 주세요. 바로 읽고 진행할게요.\n2. **흐름 내용 붙여 넣기:** 확정된 흐름을 대화에 붙여 주시면 그 파일로 저장하고 시작할게요.\n3. **흐름부터 만들기:** 아직 문서로 안 썼다면 `gotechy-spec`으로 사용자 흐름을 먼저 정리하는 걸 권해요.\n\n와이어프레임 앞에 사이트맵(40-sitemap) 단계가 하나 더 있다는 점도 미리 말씀드려요. 흐름이 확인되면 두 페이지의 섹션 구성을 사이트맵으로 짧게 먼저 승인받을게요. 그다음 모바일 375px 기준으로 메모 목록 와이어프레임을 쓸게요. 여기에는 실제 화면 문구, 로딩·빈 목록·검색 결과 없음·오프라인 같은 상태 8종, 한 손 조작 배치가 들어가요."
+              },
+              {
+                "name": "skill-fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 7,
+            "costUsd": 0.1588049,
+            "judgeCostUsd": 0.0011187,
+            "durationSeconds": 22,
+            "startedAt": "2026-11-07T16:18:17.771Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-66KZyc/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "[위저드 50-wireframe, 6/7] 시작 전에 멈췄어요. 근거 파일이 없어서 와이어프레임을 아직 쓰지 못했습니다.\n\n**확인한 것**\n- `docs/product-specs/memo/30-user-flow.md`가 지금 작업 폴더(`/private/tmp/e-66KZyc/home/cwd`)에 없습니다. `docs/product-specs/` 아래에 파일이 하나도 없고, 상위 `home` 폴더 전체를 찾아봐도 `30-user-flow.md`는 없었어요.\n- 와이어프레임 바로 앞 단계인 `40-sitemap.md`도 없습니다. 와이어프레임은 사이트맵에서 정한 섹션 목록을 받아 화면을 채우는 단계라서, 사이트맵이 먼저 승인돼야 합니다.\n\n**지금 바로 쓰지 않은 이유**\n\"서버에서 불러오는 목록 + 검색창\"만으로도 그럴듯한 화면은 그릴 수 있어요. 하지만 흐름 문서에 정해져 있을 내용을 모르면 제가 지어내야 합니다. 예를 들면 목록을 누르면 어디로 가는지, 메모 수정과 삭제가 있는지, 로그인이 필요한지(로그인하지 않은 상태의 화면 필요 여부), 검색 대상이 제목인지 본문까지인지 같은 것들이요. 이렇게 지어낸 화면은 확정된 흐름과 어긋나기 쉽습니다.\n\n**다음 단계 중 하나를 골라 주세요**\n1. **파일 위치 알려 주기 (추천):** 다른 경로나 브랜치에 있다면 경로를 알려 주세요. 내용을 붙여 넣어 주셔도 됩니다. 그러면 40-sitemap(두 페이지, 화면별 섹션 목록)을 짧게 먼저 승인받고, 이어서 메모 목록 와이어프레임을 쓸게요. 폰 375px 폭을 기준으로 하고, 실제 문구와 상태 8종을 넣습니다. 상태 8종은 로딩, 메모가 아직 없음, 검색 결과 없음, 다시 시도하면 되는 오류, 다시 시도해도 안 되는 오류, 일부만 불러옴, 오프라인, 권한 없음입니다.\n2. **흐름부터 만들기:** 파일이 아직 없다면 `gotechy-spec`으로 30-user-flow를 먼저 확정하고 넘어오는 게 맞습니다."
+              },
+              {
+                "name": "skill-fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 6,
+            "costUsd": 0.15585349999999998,
+            "judgeCostUsd": 0.0008283,
+            "durationSeconds": 21,
+            "startedAt": "2026-11-07T16:18:17.771Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-tVvB4Q/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "[위저드 50-wireframe, 6/7] — 시작 전에 멈췄어요\n\n와이어프레임은 아직 쓰지 않았어요. 확정됐다는 사용자 흐름 파일이 이 저장소에 없습니다.\n\n- `docs/product-specs/memo/30-user-flow.md`가 없어요. 현재 작업 폴더(`/private/tmp/e-tVvB4Q/home/cwd`)에 `docs/` 폴더 자체가 없고, `/private/tmp/e-tVvB4Q/home` 아래 전체를 찾아봐도 `30-user-flow.md`는 나오지 않았어요.\n- 와이어프레임 바로 앞 단계인 사이트맵(`40-sitemap.md`)도 없어요. 와이어프레임은 사이트맵의 섹션 목록을 받아 그리기 때문에 이 파일이 먼저 있어야 해요.\n\n흐름 파일 없이 그리면 진입 경로, 메모를 눌렀을 때의 동작, 검색 범위 같은 걸 제가 짐작으로 채우게 돼요. 그러면 확정된 흐름과 어긋날 수 있어요.\n\n**어떻게 진행할지 하나 골라 주세요.**\n\n1. **파일 위치 알려 주기 (추천):** 다른 폴더나 브랜치에 있다면 경로를 알려 주시거나 이 저장소에 넣어 주세요. 그걸 읽고 사이트맵(5/7)부터 승인받은 뒤 와이어프레임으로 넘어갈게요.\n2. **흐름 새로 만들기:** 파일이 아예 없다면 `gotechy-spec` 스킬로 사용자 흐름부터 짧게 만들어요. 말씀해 주신 내용(페이지 2개, 서버에서 불러오는 목록, 검색창, 폰을 주로 쓰는 바쁜 직장인)이 출발점이 돼요.\n\n1번이면 흐름 파일에서 다음 내용을 확인할 거예요.\n- 메모 목록에 들어오는 경로\n- 메모를 눌렀을 때 동작(읽기인지 바로 편집인지)\n- 검색 대상(제목만인지 본문까지인지)\n- 로그인이 필요한지"
+              },
+              {
+                "name": "skill-fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Skill called 1x (expected 1..∞)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.5,
+    "overallPassRate": 0
+  }
+}

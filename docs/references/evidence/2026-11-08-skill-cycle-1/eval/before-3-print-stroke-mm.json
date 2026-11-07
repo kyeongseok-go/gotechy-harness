@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T16:21:36.188Z",
+  "durationSeconds": 29,
+  "costUsd": 0.3325386,
+  "partial": false,
+  "suite": {
+    "root": "~/orca/workspaces/gotechy-harness/wt-before",
+    "ablation": "none",
+    "caseFilter": "print-stroke-mm",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "gotechy",
+        "version": "0.1.0",
+        "path": "~/orca/workspaces/gotechy-harness/wt-before"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "print-stroke-mm",
+      "dir": "evals/gotechy-design/print-stroke-mm",
+      "source": "prose",
+      "promptMarkdown": "현수막에 붙일 글자 본을 SVG로 만들고 있어. viewBox는 mm 단위(예: 0 0 210 297)이고, 화면에서는 0.4배로 줄여 보고 있어. 테두리 선에 CSS로 `stroke-width: 2; vector-effect: non-scaling-stroke;`를 줬어. 화면에서는 선이 잘 보이는데, A4로 실제 크기 출력하면 선이 머리카락처럼 가늘어. 왜 그렇고 어떻게 고쳐?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 원인으로 `vector-effect: non-scaling-stroke`를 짚는다: 선 굵기가 viewBox 단위(mm)가 아니라 출력 장치나 화면 단위로 고정되어 실제 크기 출력에서 가늘어진다(장치마다 해석이 다르다는 설명이 붙어도 된다).\n2. 고치는 법으로 그 속성을 빼고 선 굵기를 mm(viewBox 단위)로 직접 준다. 화면 배율로 나눈 값을 주는 방법도 인정한다.\n\nFAIL if non-scaling-stroke를 그대로 둔 채 숫자만 키우라고 하거나, 원인을 이 속성과 무관한 것(프린터 품질 설정만, 드라이버만)으로 본다.",
+          "config": {
+            "criteria": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 원인으로 `vector-effect: non-scaling-stroke`를 짚는다: 선 굵기가 viewBox 단위(mm)가 아니라 출력 장치나 화면 단위로 고정되어 실제 크기 출력에서 가늘어진다(장치마다 해석이 다르다는 설명이 붙어도 된다).\n2. 고치는 법으로 그 속성을 빼고 선 굵기를 mm(viewBox 단위)로 직접 준다. 화면 배율로 나눈 값을 주는 방법도 인정한다.\n\nFAIL if non-scaling-stroke를 그대로 둔 채 숫자만 키우라고 하거나, 원인을 이 속성과 무관한 것(프린터 품질 설정만, 드라이버만)으로 본다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "remove-nss",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1033887,
+            "judgeCostUsd": 0.0006041,
+            "durationSeconds": 22,
+            "startedAt": "2026-11-07T16:21:36.264Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-2vk93N/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n`vector-effect: non-scaling-stroke`가 원인이에요.\n\n- 이 속성을 켜면 선 굵기를 viewBox 좌표계가 아니라 화면 좌표계 기준으로 계산합니다. viewBox와 확대·축소 배율을 무시하고 \"출력 장치에서 항상 2 CSS px\"로 고정되는 거예요.\n- CSS에서 1px은 1/96인치로 정해져 있습니다. 그래서 2px은 약 0.53mm입니다.\n- 의도한 굵기는 아마 viewBox 단위로 2, 즉 2mm였을 거예요. 실제로는 그 1/4 정도인 0.53mm로 출력되니 머리카락처럼 보입니다. 브라우저나 PDF 변환기에 따라 더 가늘게 처리되는 경우도 있어요.\n\n화면에서 괜찮아 보였던 건 모니터에서 2px이 충분히 눈에 띄기 때문입니다. 종이에서는 같은 2px이 0.5mm 남짓이라 현수막 본으로 쓰기엔 너무 가늘어요.\n\n## 해결\n\n실물 크기가 중요한 출력용 SVG에서는 `non-scaling-stroke`를 빼고 viewBox 단위(mm)로 굵기를 지정하세요.\n\n```css\n.outline {\n  stroke-width: 2;   /* viewBox 단위 = 2mm */\n  /* vector-effect 제거 */\n}\n```\n\n화면에서 0.4배로 볼 때 선이 너무 가늘어 보이면 화면에서만 따로 처리하면 됩니다.\n\n```css\n.outline { stroke-width: 2; }              /* 인쇄: 2mm */\n\n@media screen {\n  .outline {\n    vector-effect: non-scaling-stroke;\n    stroke-width: 2;                        /* 화면: 2px */\n  }\n}\n```\n\n## 함께 확인할 것\n\n1. SVG 루트에 실제 크기를 지정하세요. 그래야 1 단위가 1mm가 됩니다.\n   ```xml\n   <svg xmlns=\"http://www.w3.org/2000/svg\"\n        width=\"210mm\" height=\"297mm\" viewBox=\"0 0 210 297\">\n   ```\n2. 인쇄할 때 배율은 100%(실제 크기)로 하세요. \"페이지에 맞춤\"을 켜면 여백 때문에 조금 줄어듭니다.\n3. 출력한 뒤 자로 재서 확인하세요. 예를 들어 길이 100인 테스트 선을 하나 넣고 10cm로 나오는지 보면 됩니다."
+              },
+              {
+                "name": "remove-nss",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1124064,
+            "judgeCostUsd": 0.0020218,
+            "durationSeconds": 28,
+            "startedAt": "2026-11-07T16:21:36.264Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-wLotd0/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n`vector-effect: non-scaling-stroke`를 주면 선 굵기가 viewBox 좌표(mm)를 따르지 않고 **출력 장치 쪽 좌표**를 기준으로 고정돼요.\n\n- **화면**: `stroke-width: 2`는 2 CSS px이에요. 0.4배로 줄여 봐도 선은 2px 그대로라서 굵고 잘 보여요. 글자는 작아졌는데 선만 그대로니 상대적으로 더 굵어 보이기도 해요.\n- **인쇄**: 2 CSS px는 2/96인치, 약 **0.53mm**예요. 현수막용 본에서는 머리카락처럼 보여요. 브라우저나 PDF 변환기에 따라서는 non-scaling-stroke를 프린터 해상도 기준으로 계산하거나 아예 최소 굵기(hairline)로 처리하기도 해서 더 가늘어질 수 있어요.\n\n정리하면 화면에서 잘 보이게 해 준 속성이 인쇄에서는 선을 실제 mm 크기로 키우지 못하게 막고 있어요.\n\n## 고치는 법\n\n**1. 인쇄할 때는 `vector-effect`를 빼고 굵기를 viewBox 단위(mm)로 주세요.**\n\n```css\n/* 화면 미리보기용: 줄여 봐도 선이 잘 보이게 */\n@media screen {\n  .outline { stroke-width: 2; vector-effect: non-scaling-stroke; }\n}\n\n/* 인쇄용: 실제 mm 굵기 */\n@media print {\n  .outline { stroke-width: 1.5; vector-effect: none; }  /* 1.5 = 1.5mm */\n}\n```\n\n화면과 인쇄 모두 실제 굵기로 보고 싶다면 그냥 `vector-effect`를 없애면 돼요. 화면에서 0.4배로 줄인 모습이 곧 실제 비율이에요.\n\n**2. `2mm`처럼 단위를 붙이지 마세요.** 흔히 빠지는 함정이에요. CSS의 `mm`는 1mm = 3.78px로 바뀐 다음 사용자 단위로 해석돼요. 그래서 viewBox가 mm 기준이면 `stroke-width: 2mm`는 약 7.56mm로 찍혀요. 단위 없는 숫자를 쓰면 그 숫자가 곧 mm예요.\n\n**3. 루트 SVG에 실제 크기를 지정하세요.** 그래야 사용자 단위 1이 정확히 1mm가 돼요.\n\n```xml\n<svg width=\"210mm\" height=\"297mm\" viewBox=\"0 0 210 297\" ...>\n```\n\n**4. 인쇄 설정을 확인하세요.** 배율을 100%(실제 크기)로 두고, \"페이지에 맞춤\"은 꺼 주세요.\n\n**5. (권장) 최종본은 선을 면으로 바꿔 두세요.** Inkscape나 Illustrator에서 *Stroke to Path*(윤곽선으로 변환)를 하면 어떤 프린터나 출력소에서도 굵기가 똑같이 나와요. 현수막 출력소에 파일을 넘길 때 특히 안전해요."
+              },
+              {
+                "name": "remove-nss",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1167435,
+            "judgeCostUsd": 0.0020749,
+            "durationSeconds": 29,
+            "startedAt": "2026-11-07T16:21:36.264Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-GgoOvE/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n`vector-effect: non-scaling-stroke`를 쓰면 선 두께를 viewBox의 mm 단위로 계산하지 않습니다. 화면이나 출력 장치의 좌표계 기준으로 계산합니다. 그래서 `stroke-width: 2`는 2mm가 아니라 출력 장치 기준으로 2단위가 됩니다.\n\n- **화면에서는** 2 CSS px로 그려집니다. 0.4배로 줄여 봐도 2px 그대로라서 잘 보입니다.\n- **인쇄할 때는** 브라우저와 PDF 변환기마다 이 속성을 다르게 처리합니다.\n  - 프린터 도트(600dpi 기준 2도트는 약 0.08mm)로 계산하는 경우가 있습니다.\n  - PDF에는 이 속성에 해당하는 기능이 없습니다. 그래서 두께 0, 즉 장치가 그릴 수 있는 가장 얇은 선으로 바뀌기도 합니다.\n  - 일러스트레이터, 잉크스케이프, 커팅 프로그램 같은 도구는 이 속성을 아예 무시하거나 이상하게 처리하기도 합니다.\n\n결과적으로 실제 크기로 뽑으면 머리카락 같은 선이 나옵니다. 이 속성은 화면에서 확대·축소해도 선 두께를 그대로 두려고 만든 기능이라, 실제 치수가 중요한 출력용 본에는 맞지 않습니다.\n\n## 해결\n\n**1. `vector-effect`를 빼고 두께를 mm 값으로 직접 주세요.**\n\n```css\n.outline {\n  stroke-width: 0.5;   /* 단위 없이 쓰면 viewBox 단위, 곧 0.5mm */\n  /* vector-effect 제거 */\n}\n```\n\n원하는 실제 두께를 그대로 숫자로 쓰면 됩니다(예: 1mm라면 `1`).\n\n⚠\ufe0f `stroke-width: 0.5mm`처럼 단위를 붙이면 안 됩니다. 이렇게 쓰면 CSS의 mm(약 3.78px)로 해석되고, 그게 다시 viewBox 비율로 늘어나서 엉뚱한 두께가 됩니다. 단위 없이 쓰세요.\n\n**2. 루트 `<svg>`에 실제 크기를 지정하세요.**\n\n```xml\n<svg width=\"210mm\" height=\"297mm\" viewBox=\"0 0 210 297\">\n```\n\n이렇게 해야 viewBox 1단위가 정확히 1mm로 출력됩니다. 인쇄 대화상자의 배율도 \"100%\" 또는 \"실제 크기\"로 맞추세요. \"페이지에 맞춤\"을 쓰면 크기가 달라집니다.\n\n**3. (선택) 화면 미리보기에서만 굵게 보고 싶다면 미디어 쿼리로 나누세요.**\n\n```css\n.outline { stroke-width: 0.5; }\n\n@media screen {\n  .outline { vector-effect: non-scaling-stroke; stroke-width: 2; }\n}\n```\n\n이렇게 하면 인쇄에는 mm 기준 두께가 적용됩니다.\n\n**4. 다른 프로그램이나 커팅기로 넘길 거라면** 선을 면으로 바꿔 두는 게 가장 안전합니다(잉크스케이프의 \"Stroke to Path\", 일러스트레이터의 \"Outline Stroke\"). 그러면 어떤 프로그램에서도 두께가 바뀌지 않습니다."
+              },
+              {
+                "name": "remove-nss",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (non-scaling-stroke|vector-effect)[^\\n]{0,80}(빼|제거|지우|없애|쓰지 말|끄|remove|none)|(빼|제거|지우|없애|쓰지 말|끄)[^\\n]{0,40}(non-scaling-stroke|vector-effect)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

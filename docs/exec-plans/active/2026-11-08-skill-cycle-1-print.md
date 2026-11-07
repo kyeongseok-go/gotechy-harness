@@ -22,6 +22,8 @@ branch: skill-cycle/2026-11-08-print
 
 ## Progress
 
+- [x] (2026-11-07 10:02 KST) 준비: 설계 문서, 이 계획, 평가 재료를 커밋 d6f2f3c로 `skill-cycle/2026-11-08-print`에 푸시. 그 전 `bun run check` 811 pass, 0 fail
+- [ ] (2026-11-07 10:06 KST 예정) 클라우드 시험 실행(읽기 전용): 도구, 구독 로그인, 푸시 권한 확인
 - [ ] C0 사전 점검(01:00 시작)
 - [ ] C1 평가 문제 작성과 업그레이드 전 평가
 - [ ] C2 출처 수집과 분야 문서, 합격선, 직원 카드, SKILL.md 게이트 조정
@@ -115,7 +117,10 @@ C5 보고. 목표: 주간 자동화 설계의 입력. 일: HANDOFF(`docs/referen
 
 ## Artifacts and Notes
 
-(산출물 원장: 파일, PR 주소, 측정치)
+- 클라우드 시험 실행 routine: `trig_01F37ttJyziGhztGzVcwJ7rt`(1회, 2026-11-07 01:06 UTC, 모델 claude-sonnet-5-5, 커넥터 모두 해제, 도구 Bash, Read, Glob, Grep). 결과 확인: RemoteTrigger `list_runs`와 `get_run_log`, 또는 https://claude.ai/code/routines
+- 대체 경로: 리드 세션 안 예약(CronCreate, 2026-11-08 01:02 KST 1회). 시험이 통과해 클라우드 1회 실행을 만들면 이 예약은 지운다. 세션이 꺼지면 이 예약도 사라진다.
+- 클라우드 과금 확인(2026-11-07, 공식 문서): 예약 실행은 구독 사용량에서 빠지고 VM 요금 없음, API 키가 있어도 구독을 덮지 않음, 한도 초과 과금은 사용 크레딧을 켰을 때만, 5시간 창은 첫 메시지부터(https://support.claude.com/en/articles/11647753). 오너 확인 필요: claude.ai/settings/usage에서 사용 크레딧 꺼짐 여부.
+- 클라우드 routine을 만들면 연결된 커넥터(Gmail, Notion 등)가 기본으로 모두 붙는다. 이 일에는 필요 없어 `clear_mcp_connections`로 뗐다. 본 실행 routine도 같게 한다.
 
 ## Interfaces and Dependencies
 

@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T16:32:28.246Z",
+  "durationSeconds": 41,
+  "costUsd": 0.40222270000000004,
+  "partial": false,
+  "suite": {
+    "root": "~/orca/workspaces/gotechy-harness/Gotehcy-harness",
+    "ablation": "none",
+    "caseFilter": "contrast-check",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "gotechy",
+        "version": "0.1.0",
+        "path": "~/orca/workspaces/gotechy-harness/Gotehcy-harness"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "contrast-check",
+      "dir": "evals/gotechy-design/contrast-check",
+      "source": "prose",
+      "promptMarkdown": "스타일가이드 정하는 중이야. 배경은 흰색(#ffffff), 본문은 #111827, 보조 글자는 연한 회색 #999999로 하고 싶어. 다크 모드는 배경 #0b0d12에 본문 #ffffff야. 이대로 괜찮아?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "gotechy-design bar의 D9와 흔한 실패 표를 본다.\n\nPASS if 아래를 모두 만족한다.\n1. `#999999`를 흰 배경 보조 글자로 쓰면 대비가 약 2.8:1로 본문 합격선 4.5:1에 못 미친다고 판정하고, 4.5:1을 넘는 대안(예: `#767676`, 약 4.54:1)을 숫자와 함께 낸다.\n2. 다크 모드도 따로 판정하고, 본문 순수 흰색 대신 조금 낮춘 색을 권한다.\n3. 대비를 계산으로 확인하거나 계산 방법(WCAG 상대 휘도)을 밝힌다.\n\nFAIL if 연한 회색을 괜찮다고 하거나, 대비 숫자 없이 \"조금 연하다\"로만 말하거나, APCA나 WCAG 3.0 초안 값으로 합격을 판정한다.",
+          "config": {
+            "criteria": "gotechy-design bar의 D9와 흔한 실패 표를 본다.\n\nPASS if 아래를 모두 만족한다.\n1. `#999999`를 흰 배경 보조 글자로 쓰면 대비가 약 2.8:1로 본문 합격선 4.5:1에 못 미친다고 판정하고, 4.5:1을 넘는 대안(예: `#767676`, 약 4.54:1)을 숫자와 함께 낸다.\n2. 다크 모드도 따로 판정하고, 본문 순수 흰색 대신 조금 낮춘 색을 권한다.\n3. 대비를 계산으로 확인하거나 계산 방법(WCAG 상대 휘도)을 밝힌다.\n\nFAIL if 연한 회색을 괜찮다고 하거나, 대비 숫자 없이 \"조금 연하다\"로만 말하거나, APCA나 WCAG 3.0 초안 값으로 합격을 판정한다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "ratio-mentioned",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "2\\.8\\d?\\s*:\\s*1",
+            "flags": "",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.11451519999999998,
+            "judgeCostUsd": 0.0027546000000000003,
+            "durationSeconds": 32,
+            "startedAt": "2026-11-07T16:32:28.336Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-ONqfEK/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "본문과 다크 모드 조합은 괜찮아요. **보조 글자 #999999만 라이트 모드에서 기준에 못 미쳐서 바꾸는 게 좋겠어요.**\n\n## 대비 계산 (WCAG 2.2 기준)\n\n| 조합 | 대비 | 본문 기준 4.5:1 | 판정 |\n|---|---|---|---|\n| #111827 on #ffffff (본문) | 약 17.9:1 | 통과 | ✅ |\n| **#999999 on #ffffff (보조)** | **약 2.85:1** | **미달** | ❌ 큰 글자 기준(3:1)에도 못 미침 |\n| #ffffff on #0b0d12 (다크 본문) | 약 19.4:1 | 통과 | ✅ |\n\n## 고칠 점\n\n1. **라이트 모드 보조 글자 바꾸기**\n   - `#6b7280`: 약 4.8:1로 통과해요. 본문 #111827과 같은 푸른 회색 계열이라 잘 어울려요.\n   - `#767676`: 약 4.5:1이에요. 흰 배경에서 통과하는 가장 연한 무채색 회색이라 여유가 거의 없어요.\n\n2. **다크 모드 보조 글자 정하기**: 지금은 다크 모드 보조색이 비어 있어요. `#9ca3af`를 쓰면 #0b0d12 위에서 약 7.5:1로 넉넉하게 통과해요. 참고로 #999999도 다크 배경에서는 약 6.8:1이라 통과해요.\n\n3. **다크 모드 본문은 순백 대신 살짝 낮추기 (선택)**: 거의 검은 배경에 #ffffff를 쓰면 대비가 너무 세서 글자 주변이 번져 보일 수 있어요. 긴 글이 많다면 `#e5e7eb`(약 15:1)처럼 조금 낮춘 흰색이 눈이 덜 피로해요. 기준은 지금 색으로도 통과해요.\n\n## 수정안\n\n```\n라이트: 배경 #ffffff / 본문 #111827 / 보조 #6b7280\n다크:   배경 #0b0d12 / 본문 #e5e7eb / 보조 #9ca3af\n```\n\n위 대비 수치는 공식으로 직접 계산한 값이에요. 실제 화면에 넣은 뒤 대비 검사 도구로 한 번 더 확인하는 걸 권해요. 링크, 테두리, 비활성 상태 색까지 포함한 전체 스타일가이드가 필요하면 말해 주세요."
+              },
+              {
+                "name": "ratio-mentioned",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 2\\.8\\d?\\s*:\\s*1",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.11662990000000001,
+            "judgeCostUsd": 0.0019093,
+            "durationSeconds": 30,
+            "startedAt": "2026-11-07T16:32:28.336Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-V1YbCy/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "거의 괜찮은데, **보조 글자 #999999는 바꾸는 걸 권해요.** WCAG 2.2 AA 기준(작은 글자 4.5:1 이상)으로 직접 계산해 봤어요.\n\n| 조합 | 대비 | 판정 |\n|---|---|---|\n| 라이트 본문 #111827 / #ffffff | 약 17.7:1 | ✅ 통과 |\n| 라이트 보조 **#999999** / #ffffff | 약 **2.85:1** | ❌ 탈락 (큰 글자 기준인 3:1도 못 넘음) |\n| 다크 본문 #ffffff / #0b0d12 | 약 19.5:1 | ✅ 통과 |\n\n### 고칠 점\n1. **라이트 보조 글자를 #6b7280으로 바꾸세요.** 대비가 약 4.8:1이라 AA를 통과해요. 본문 #111827이 푸른 기가 도는 회색이라서, 색감이 없는 #999999보다 같은 계열인 #6b7280이 더 잘 어울려요.\n2. **다크 모드 보조 글자가 아직 없어요.** #9ca3af를 추천해요. #0b0d12 위에서 약 7.7:1이에요.\n3. **(선택) 다크 본문을 순백 대신 #e5e7eb로 바꿔 보세요.** 거의 검은 배경에 순백 글자를 올리면 글자가 번져 보여서 긴 글을 읽을 때 눈이 피로할 수 있어요. #e5e7eb로 바꿔도 대비는 약 15.7:1로 넉넉해요.\n\n### 정리한 팔레트\n| 역할 | 라이트 | 다크 |\n|---|---|---|\n| 배경 | #ffffff | #0b0d12 |\n| 본문 | #111827 | #e5e7eb (또는 #ffffff) |\n| 보조 | #6b7280 | #9ca3af |\n\n링크, 테두리, 비활성 상태 같은 나머지 토큰까지 정하거나 DTCG 토큰 파일로 만들고 싶으면 말해 주세요. 이어서 같이 작업할게요."
+              },
+              {
+                "name": "ratio-mentioned",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 2\\.8\\d?\\s*:\\s*1",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.17107760000000002,
+            "judgeCostUsd": 0.0025920000000000006,
+            "durationSeconds": 40,
+            "startedAt": "2026-11-07T16:32:28.336Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-KfMJsI/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "세 가지는 괜찮고, **라이트 모드 보조 글자 #999999만 바꾸면 됩니다.**\n\n## 대비 계산 (WCAG 2.2 공식, 반올림 전 값 기준)\n\n| 모드 | 조합 | 대비 | 본문 기준 4.5:1 | 판정 |\n|---|---|---|---|---|\n| 라이트 | 본문 #111827 / #ffffff | 17.74:1 | 충족 | ✅ |\n| 라이트 | 보조 #999999 / #ffffff | **2.85:1** | 미달 | ❌ |\n| 다크 | 본문 #ffffff / #0b0d12 | 19.43:1 | 충족 | ✅ |\n\n#999999는 큰 글자와 아이콘에 적용되는 3:1 기준에도 못 미칩니다. 보조 글자는 날짜, 설명, 플레이스홀더처럼 작은 글씨에 많이 쓰이는데, 이 정도 대비면 저시력 사용자나 햇빛 아래 모바일 화면에서 잘 안 읽힙니다.\n\n## 수정 제안\n\n**라이트 보조 글자**\n- `#6b7280`: 4.83:1. 본문 색 #111827과 같은 푸른 회색 계열이라 함께 쓰기 자연스럽습니다. **추천합니다.**\n- `#767676`: 4.54:1. 흰 배경에서 기준을 넘는 가장 연한 회색이라 여유가 거의 없습니다.\n\n**다크 모드에 빠진 것**\n- **보조 글자 색이 아직 정해지지 않았습니다.** #999999는 다크 배경에서는 6.82:1로 통과하니 그대로 써도 됩니다. 계열을 맞추려면 `#9ca3af`(7.65:1)를 추천합니다.\n- 다크 본문의 순백 #ffffff는 기준은 넉넉히 넘지만, 거의 검은 배경과 대비가 너무 커서 긴 글에서는 글자가 번져 보일 수 있습니다. 눈부심이 신경 쓰이면 `#e5e7eb`(약 15.7:1)도 고려해 보세요. 필수는 아닙니다.\n\n## 정리안\n\n| 역할 | 라이트 | 다크 |\n|---|---|---|\n| 배경 | #ffffff | #0b0d12 |\n| 본문 | #111827 | #ffffff (또는 #e5e7eb) |\n| 보조 | **#6b7280** | **#9ca3af** |\n\n아직 정하지 않은 것도 있습니다. 링크·강조색, 입력창 테두리(3:1 필요), 포커스 링(3:1 필요), 오류와 성공 색입니다. 다음 색을 정할 때 같은 방식으로 계산해 드릴게요. 위 값들은 손으로 계산했고 스크립트로 다시 돌려 보지는 않았습니다. 차이가 나도 소수점 둘째 자리 정도라 판정은 바뀌지 않습니다."
+              },
+              {
+                "name": "ratio-mentioned",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched 2\\.8\\d?\\s*:\\s*1",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

@@ -86,3 +86,41 @@
 | 그라데이션 히어로, 3열 기능 카드, 섹션마다 페이드 | `anti-slop.md` 검사를 돌리고 근거 없는 기본값을 지운다 |
 | 토큰을 만들고도 컴포넌트에 hex를 적는다 | 시맨틱 토큰만 쓰게 하고 G13 grep을 CI에 넣는다 |
 | WCAG 3.0 초안이나 APCA 값으로 합격을 판정한다 | WCAG 2.2 값으로 판정하고 초안 값은 참고로만 적는다 |
+
+## 인쇄물 분야 (P1~P8, 2026-11-08 추가)
+
+현수막, 포스터, 무대 배경, 집 프린터로 나눠 뽑는 본처럼 실제 크기로 출력되는 결과물에 쓴다. 웹 화면 항목 D1~D18과 흐름 게이트는 여기에 걸지 않는다. 실무 순서는 `domain-print.md`에 있다.
+
+### 인쇄물 원천 (2026-11-08에 열어 확인)
+
+| 원천 | 판 | 날짜 | URL |
+|---|---|---|---|
+| Adobe Acrobat 큰 문서 출력(포스터: 배율, 겹침, 재단 표시, 라벨) | 도움말 | 2026-10-22 갱신 | https://helpx.adobe.com/acrobat/desktop/print-documents/set-up-and-print-pdfs/large-documents.html |
+| Adobe Acrobat 출력 페이지 크기(실제 크기는 배율 없이, 맞춤은 인쇄 가능 영역에 맞춰 줄임) | 도움말 | 2026-10-22 갱신 | https://helpx.adobe.com/acrobat/desktop/print-documents/set-up-and-print-pdfs/page-size.html |
+| Microsoft Edge 인쇄(크로미움 대화상자: 실제 크기, 최소 여백 약 6.35mm) | 지원 문서 | 날짜 표시 없음 | https://support.microsoft.com/en-us/edge/print-in-microsoft-edge |
+| Brother 인쇄 불가 영역(A4 레이저 사방 4.2mm, 설정에 따라 다름) | 사용 설명서 | 2018 | https://support.brother.com/g/s/id/htmldoc/mfc/cv_mfcl2750dw/uke/html/GUID-904143DE-6F48-47B6-BA9A-182AB92F2194_28.html |
+| 비즈하우스 공통 작업 가이드(현수막 최소 120dpi, CMYK, 글자 윤곽선) | 인쇄소 작업 기준 | 2026-06-04 갱신 | https://help.bizhows.com/hc/ko/articles/15031787666073 |
+| 레드프린팅 현수막 가이드(재단 여유 사방 2mm, 글자와 로고는 재단선 10mm 안) | 인쇄소 작업 기준 | 날짜 표시 없음 | https://redprinting.co.kr/ko/guide3/view/outdoor-banner |
+| 와우프레스 현수막 가이드(1/10 작업에 700dpi, 실제 크기 70dpi) | 인쇄소 작업 기준 | 날짜 표시 없음 | https://wowpress.co.kr/wow2.0/w_guide/doc/g3_6.html |
+| HP 대형 출력 모범 사례(보는 거리별 PPI 표, 요약으로 읽음) | 제조사 글 | 2026-03-17 | https://www.hp.com/us-en/tech-takes/printing/how-to/large-format-printing-best-practices.html |
+| MDN `SVGGraphicsElement.getBBox()`(선 굵기 기본 제외, `{stroke: true}`) | 참조 문서 | 상시 갱신 | https://developer.mozilla.org/en-US/docs/Web/API/SVGGraphicsElement/getBBox |
+| W3C CSS Paged Media Level 3(`size`, 이름 있는 페이지) | 작업 초안 | 2023-09-14 | https://www.w3.org/TR/css-page-3/ |
+| 실제 작업 기록(현수막 3.5m × 2.3m, 실수 8가지, 하네스 저장소의 1바퀴 평가 재료) | 하네스 증거 | 2026-11-07 | https://github.com/kyeongseok-go/gotechy-harness (스킬 업그레이드 1바퀴 증거 폴더) |
+
+### 측정형 체크리스트
+
+- P1 [기계] 완성 크기(mm), 출력 수단, 보는 거리가 답이나 시안 첫머리에 숫자로 있다. 모르는 값은 "가정"으로 표시한다. 도구: 산출물에서 `mm`와 `가정` grep
+- P2 [기계] 출력 해상도를 식(픽셀 ÷ (mm ÷ 25.4))으로 계산해 적고, 고른 인쇄소의 최소값과 비교한다(비즈하우스 현수막 120dpi, 와우프레스 실제 크기 70dpi처럼 인쇄소마다 다르다). 도구: 계산식 재계산
+- P3 [기계] 한 장당 개수와 총 장수를 인쇄 가능 영역(용지 − 프린터 여백)으로 계산한다. 여백을 모르면 사방 5mm(하네스 기본값). 도구: 계산 재현(용지를 가로, 세로로 놓은 경우와 카드를 돌린 경우 모두)
+- P4 [기계] 분할 출력 본에 겹침 띠 10~20mm(하네스 기본값, Acrobat 포스터 출력의 겹침과 같은 개념), 맞춤 표시, 장 번호, 기준 자(예: 50mm)가 있다. 도구: 렌더링한 페이지 이미지 확인과 원본 HTML grep
+- P5 [기계] 출력 전 잘림 검사: 모든 요소의 경계 상자(선 굵기 포함)가 인쇄 가능 영역 안에 있다. 실패하면 PDF를 만들지 않는다. 도구: 헤드리스 브라우저에서 `getBBox({stroke: true})`나 `getBoundingClientRect()`를 페이지 좌표로 비교하는 스크립트
+- P6 [기계] 모든 페이지를 이미지로 렌더링해 빈 페이지와 잘림이 0개다. 도구: PDF를 페이지별 이미지로 바꾸고 흰 픽셀 비율 검사
+- P7 [사람] 출력 안내 첫머리에 "실제 크기(100%)" 설정(맞춤 금지)과 기준 자로 배율을 재는 법이 있다(Adobe, Microsoft Edge 문서).
+- P8 [사람] 인쇄소용 파일은 고른 인쇄소 작업 가이드의 색 모드, 재단 여유, 안전 영역, 글자 윤곽선을 확인했고, 확인하지 못한 것은 보고의 "확인 못 한 것"에 적었다.
+
+### 인쇄물 등급
+
+- A(최고 전문가): P1~P8 통과, 첫 장을 실제로 출력해 자로 잰 기록이 있다.
+- B(출력 가능): P1~P8 통과, 인쇄소 확인(P8) 일부가 답을 기다리는 중이다.
+- C(부채 있음): 미달 항목이 담당과 기한과 함께 적혀 있다. 잘림 검사(P5)와 배율 안내(P7) 미달은 C로 두지 않는다(D).
+- D(위험): 잘림 검사 없이 출력 파일을 넘겼거나, 배율 안내가 없거나, 해상도를 계산하지 않았다.

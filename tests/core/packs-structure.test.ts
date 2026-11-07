@@ -236,6 +236,41 @@ const between = (skill: string, marker: string): string[] => {
   return out
 }
 
+describe('분야 직원 카드(staff/, 스킬 주기 업그레이드 설계 Q9)', () => {
+  const SECTIONS = [
+    '역할',
+    '받는 입력',
+    '내놓는 산출물',
+    '완료 기준',
+    '쓸 수 있는 도구와 권한',
+    '하지 않는 일',
+    '보고 형식',
+  ]
+  const cards = ALL_SKILLS.flatMap((s) => {
+    const dir = join(SKILLS, s, 'staff')
+    return existsSync(dir)
+      ? readdirSync(dir)
+          .filter((f) => f.endsWith('.md'))
+          .map((f) => ({ skill: s, file: f, path: join(dir, f) }))
+      : []
+  })
+
+  test('직원 카드가 적어도 하나 있다(인쇄물 분야)', () => {
+    expect(cards.map((c) => `${c.skill}/${c.file}`)).toContain('gotechy-design/print.md')
+  })
+
+  test('직원 카드는 역할을 실행할 수 있게 일곱 절을 모두 갖고, frontmatter의 staff가 파일 이름, skill이 폴더 이름이다', () => {
+    for (const c of cards) {
+      const text = readFileSync(c.path, 'utf8')
+      const fm = parseFrontmatter(text, c.file)
+      expect(fm.ok && fm.value.data.staff, c.file).toBe(c.file.replace(/\.md$/, ''))
+      expect(fm.ok && fm.value.data.skill, c.file).toBe(c.skill)
+      for (const sec of SECTIONS)
+        expect(text, `${c.skill}/${c.file}: ## ${sec}`).toMatch(new RegExp(`^## ${sec}$`, 'm'))
+    }
+  })
+})
+
 describe('스킬 사이 이음매', () => {
   test.each([
     ['size-table', ['gotechy-spec', 'gotechy-plan', 'gotechy-build', 'gotechy-ship']],

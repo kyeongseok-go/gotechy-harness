@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T16:16:47.011Z",
+  "durationSeconds": 47,
+  "costUsd": 0.3903698,
+  "partial": false,
+  "suite": {
+    "root": "~/orca/workspaces/gotechy-harness/wt-before",
+    "ablation": "none",
+    "caseFilter": "print-render-strips",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "gotechy",
+        "version": "0.1.0",
+        "path": "~/orca/workspaces/gotechy-harness/wt-before"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "print-render-strips",
+      "dir": "evals/gotechy-design/print-render-strips",
+      "source": "prose",
+      "promptMarkdown": "현수막 시안을 HTML로 1px = 1mm(3500 × 2300)로 그렸어. 인쇄소에 넘길 큰 이미지를 만들려고 헤드리스 크롬으로 `--window-size=3500,2300 --force-device-scale-factor=3` 해서 한 번에 스크린샷을 찍었더니, 결과 이미지 곳곳에 검은 사각형 조각이 생겨. 어떻게 해야 깨끗한 10500 × 6900 이미지를 얻을 수 있어?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "PASS if 아래를 모두 만족한다.\n1. 원인을 한 번에 그리는 화면(텍스처, 합성 버퍼)이 GPU나 브라우저 한도를 넘는 것으로 설명한다.\n2. 해법으로 페이지를 가로 띠(또는 타일) 여러 장으로 나눠 같은 배율로 찍고(예: 스크린샷 clip이나 스크롤 위치), 이미지 도구(ffmpeg vstack, ImageMagick append 등)로 이어 붙이는 방법을 구체적으로 낸다.\n3. 이어 붙인 결과가 정확히 10500 × 6900인지, 이음매에 틈이나 겹침이 없는지 확인하라고 한다.\n\nFAIL if 배율만 낮추라고 하고 목표 해상도를 포기하게 하거나, 원인 설명 없이 다른 브라우저를 쓰라고만 한다.",
+          "config": {
+            "criteria": "PASS if 아래를 모두 만족한다.\n1. 원인을 한 번에 그리는 화면(텍스처, 합성 버퍼)이 GPU나 브라우저 한도를 넘는 것으로 설명한다.\n2. 해법으로 페이지를 가로 띠(또는 타일) 여러 장으로 나눠 같은 배율로 찍고(예: 스크린샷 clip이나 스크롤 위치), 이미지 도구(ffmpeg vstack, ImageMagick append 등)로 이어 붙이는 방법을 구체적으로 낸다.\n3. 이어 붙인 결과가 정확히 10500 × 6900인지, 이음매에 틈이나 겹침이 없는지 확인하라고 한다.\n\nFAIL if 배율만 낮추라고 하고 목표 해상도를 포기하게 하거나, 원인 설명 없이 다른 브라우저를 쓰라고만 한다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "split-stitch",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.1330499,
+            "judgeCostUsd": 0.0021533,
+            "durationSeconds": 36,
+            "startedAt": "2026-11-07T16:16:47.096Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-b99i7Q/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL FAIL FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ],
+                "evidence": "# 원인\n\n10500 × 6900은 약 7,200만 픽셀이고, 메모리로는 약 290MB입니다. 크롬은 화면을 작은 타일로 나눠 GPU로 그리는데, 이 크기면 타일에 쓸 수 있는 GPU 메모리 한도를 넘습니다. 그러면 일부 타일을 아예 그리지 못하고, 그 자리가 검은 사각형으로 남습니다. 창 크기 플래그로 한 번에 찍는 방식에서는 피하기 어려운 문제입니다.\n\n# 해결: 조각으로 나눠 찍고 이어 붙이기\n\n화면은 3500 × 2300 그대로 두고, `clip` 옵션으로 일부 영역만 3배율로 여러 번 찍은 뒤 하나로 합칩니다. 한 번에 그리는 면적이 작아서 검은 타일이 생기지 않습니다.\n\n```js\n// capture.mjs  —  npm i puppeteer sharp\nimport puppeteer from 'puppeteer';\nimport sharp from 'sharp';\n\nconst W = 3500, H = 2300, SCALE = 3;\nconst COLS = 4, ROWS = 4;                 // 조각 하나 = 875×575 CSS px → 2625×1725 px\nconst tw = W / COLS, th = H / ROWS;       // 정수로 나눠떨어지게 맞추기\n\nconst browser = await puppeteer.launch();\nconst page = await browser.newPage();\nawait page.setViewport({ width: W, height: H, deviceScaleFactor: SCALE });\nawait page.goto('file:///절대경로/banner.html', { waitUntil: 'networkidle0' });\nawait page.evaluate(() => document.fonts.ready);   // 웹폰트 로딩 대기\n\nconst tiles = [];\nfor (let r = 0; r < ROWS; r++) {\n  for (let c = 0; c < COLS; c++) {\n    const buf = await page.screenshot({\n      clip: { x: c * tw, y: r * th, width: tw, height: th },\n      type: 'png',\n    });\n    tiles.push({ input: buf, left: c * tw * SCALE, top: r * th * SCALE });\n  }\n}\nawait browser.close();\n\nawait sharp({\n  create: { width: W * SCALE, height: H * SCALE, channels: 3, background: '#fff' },\n  limitInputPixels: false,\n})\n  .composite(tiles)\n  .png()\n  .toFile('banner_10500x6900.png');\n```\n\n몇 가지 주의할 점이 있습니다.\n- 조각 경계가 정수 픽셀에 떨어지도록 나누세요. 3500/4, 2300/4처럼 나누면 이음매가 생기지 않습니다.\n- 그래도 검은 조각이 보이면 `COLS`와 `ROWS`를 더 늘리세요. 실행 옵션에 `args: ['--disable-gpu']`를 넣어 소프트웨어로 그리게 하는 방법도 함께 써볼 수 있습니다.\n- 인쇄소가 JPG나 TIFF를 원하면 `.png()` 대신 `.jpeg({ quality: 95 })` 또는 `.tiff({ compression: 'lzw' })`로 바꾸면 됩니다.\n\n# 다른 방법: 벡터 PDF로 넘기기\n\n인쇄소가 PDF를 받는다면 이쪽이 더 깔끔합니다. 해상도 제한이 없고 글자도 선명하게 남습니다.\n\n```js\nawait page.pdf({ path: 'banner.pdf', width: '3500px', height: '2300px', printBackground: true, pageRanges: '1' });\n```\n\nPDF 페이지는 실제 3.5m가 아니라 96dpi 기준 크기로 나옵니다. 그래서 \"가로세로 비율 그대로 3500 × 2300mm로 확대 출력\"해 달라고 전달하세요. CSS에서 `@page { size: 3500mm 2300mm }`처럼 실제 mm로 지정하는 방법도 있지만, 지금 1px = 1mm로 짠 디자인과 단위가 맞지 않으니 확대 출력을 요청하는 쪽이 간단합니다.\n\n참고로 10500px를 3.5m에 출력하면 약 76dpi입니다. 멀리서 보는 현수막에는 보통 충분하지만, 인쇄소마다 요구하는 해상도가 다르니 미리 확인해 보세요."
+              },
+              {
+                "name": "split-stitch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.12278779999999999,
+            "judgeCostUsd": 0.0018352,
+            "durationSeconds": 36,
+            "startedAt": "2026-11-07T16:16:47.096Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-h0X32B/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "## 원인\n\n10500 × 6900은 약 7,200만 픽셀이고, RGBA로 계산하면 약 290MB짜리 화면 하나입니다. Chrome은 화면을 타일 단위로 나눠 GPU에서 그리는데, 한 번에 그릴 수 있는 메모리 한도(타일 메모리 예산)를 넘으면 일부 타일을 아예 그리지 않습니다. 그 타일이 결과 이미지에 검은 사각형으로 남습니다. 메모리가 아닌 플래그 조합만 바꿔서는 안정적으로 해결되지 않는 경우가 많습니다.\n\n## 해결: 띠로 나눠 찍고 이어 붙이기\n\n뷰포트와 배율(DPR 3)은 그대로 두고, 한 번에 찍는 영역만 작게 나눕니다. 띠 하나가 약 1,800만 픽셀 정도면 메모리 한도 안에 들어갑니다.\n\n```js\n// capture.mjs  (npm i puppeteer)\nimport puppeteer from 'puppeteer';\n\nconst W = 3500, H = 2300, SCALE = 3, STRIPS = 4;   // 띠 높이 575 → 출력 1725px\nconst browser = await puppeteer.launch({ headless: true });\nconst page = await browser.newPage();\nawait page.setViewport({ width: W, height: H, deviceScaleFactor: SCALE });\nawait page.goto('file:///절대경로/banner.html', { waitUntil: 'networkidle0' });\nawait page.evaluate(() => document.fonts.ready);   // 웹폰트 로딩 대기\n\nconst h = H / STRIPS;\nfor (let i = 0; i < STRIPS; i++) {\n  await page.screenshot({\n    path: `strip_${i}.png`,\n    clip: { x: 0, y: i * h, width: W, height: h },\n  });\n}\nawait browser.close();\n```\n\n이어 붙이기는 ImageMagick으로 합니다.\n\n```sh\nmagick strip_0.png strip_1.png strip_2.png strip_3.png -append banner_10500x6900.png\nmagick identify banner_10500x6900.png   # 10500x6900 인지 확인\n```\n\n- 띠 높이 × 3이 정수가 되게 나눠야 이음매에 1px 틈이나 겹침이 생기지 않습니다. 575 × 3 = 1725라서 4등분은 괜찮습니다.\n- 그래도 검은 조각이 보이면 `STRIPS`를 8이나 10으로 늘리세요. 2300을 나눠떨어지게 하는 값이면 됩니다.\n- 이미지가 아주 커서 ImageMagick 메모리가 부족하면 `vips arrayjoin \"strip_0.png strip_1.png strip_2.png strip_3.png\" out.png --across 1`이 훨씬 가볍습니다.\n\n## 인쇄 전에 확인할 것\n\n1. **해상도**: 3500mm에 10500px이면 약 76dpi입니다. 멀리서 보는 현수막은 보통 72~150dpi를 받으니 대개 충분하지만, 인쇄소가 요구하는 dpi를 먼저 물어보세요.\n2. **벡터 PDF 대안**: 시안이 글자와 도형 위주라면 `page.pdf({ width: '3500px', height: '2300px', printBackground: true })`로 PDF를 뽑는 편이 확대해도 깨지지 않아 더 좋습니다. 인쇄소에서는 비율만 맞으면 실제 크기로 키워서 출력합니다. 다만 CSS 필터나 그림자 같은 효과는 PDF에서 래스터로 바뀔 수 있으니 결과를 한 번 열어 확인하세요.\n3. **색상**: 브라우저 결과물은 RGB입니다. 인쇄소가 CMYK, TIFF, 재단 여백(도련)을 요구하는지 확인하세요."
+              },
+              {
+                "name": "split-stitch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0.13453210000000002,
+            "judgeCostUsd": 0.0031355,
+            "durationSeconds": 47,
+            "startedAt": "2026-11-07T16:16:47.096Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-WnVkLG/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "explanation": "judge votes: FAIL PASS FAIL",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  true,
+                  false
+                ],
+                "evidence": "# 깨끗한 10500 × 6900 현수막 이미지 만드는 방법\n\n## 원인\n\n배율 3으로 찍으면 크롬이 10500 × 6900, 약 7,200만 픽셀짜리 화면 하나를 한 번에 그려야 합니다. 크롬은 화면을 작은 타일로 나눠 그리는데, 이 크기에서는 타일용 메모리 한도를 넘거나 GPU가 다룰 수 있는 이미지 최대 크기(보통 16384px)에 걸립니다. 이때 미처 그리지 못한 타일이 검은 사각형으로 남습니다. 창 크기와 배율을 더 키워도 해결되지 않습니다. **한 번에 그리는 면적을 줄여야** 합니다.\n\n## 해결: 작은 창으로 나눠 찍고 이어 붙이기\n\n창을 875 × 575 CSS px로 줄여서 4 × 4 = 16장을 찍습니다. 배율 3이면 장당 2625 × 1725px이라 크롬이 무리 없이 그립니다. 다 찍은 뒤 한 장으로 합칩니다.\n\n```python\n# shoot.py  —  pip install playwright pillow && playwright install chromium\nimport sys\nfrom playwright.sync_api import sync_playwright\nfrom PIL import Image\n\nURL = sys.argv[1]            # 예: file:///Users/me/banner/index.html\nW, H = 3500, 2300            # 디자인 크기(CSS px)\nTW, TH = 875, 575            # 한 번에 찍는 영역(CSS px), W와 H를 나눠떨어지게\nDSF = 3\n\nout = Image.new(\"RGB\", (W * DSF, H * DSF), \"white\")\n\nwith sync_playwright() as p:\n    browser = p.chromium.launch()\n    page = browser.new_page(viewport={\"width\": TW, \"height\": TH},\n                            device_scale_factor=DSF)\n    page.goto(URL, wait_until=\"networkidle\")\n    page.evaluate(\"document.fonts.ready\")          # 웹폰트 로딩 대기\n    page.add_style_tag(content=\"html,body{overflow:visible!important}\"\n                               \"::-webkit-scrollbar{display:none}\")\n\n    for y in range(0, H, TH):\n        for x in range(0, W, TW):\n            page.evaluate(f\"window.scrollTo({x},{y})\")\n            page.wait_for_timeout(150)             # 다시 그릴 시간\n            path = f\"/tmp/tile_{x}_{y}.png\"\n            page.screenshot(path=path)             # 창 크기만큼만 찍음\n            out.paste(Image.open(path), (x * DSF, y * DSF))\n    browser.close()\n\nout.save(\"banner_10500x6900.png\", dpi=(76, 76))\nprint(out.size)\n```\n\n```bash\npython3 shoot.py file:///절대경로/index.html\n```\n\n이 방식에서 확인할 점:\n- `position: fixed`나 `sticky` 요소는 타일마다 반복해서 찍힙니다. 그런 요소가 있으면 `absolute`로 바꿔 주세요.\n- `body`에 `overflow: hidden`이 걸려 있으면 스크롤이 안 됩니다. 스크립트가 덮어쓰도록 해 두었습니다.\n- 그래도 이음매에 1px 어긋남이 보이면 타일을 몇 px씩 겹치게 찍어서 해결합니다.\n\n## 다른 방법\n\n1. **빨리 시도해 볼 것.** 지금 쓰는 명령에 `--disable-gpu`를 붙이면 GPU 대신 CPU로 그려서 증상이 사라지는 경우가 있습니다. 다만 항상 통하지는 않습니다. 확실한 방법은 위의 나눠 찍기입니다.\n2. **PDF로 넘기기.** 인쇄소에서는 오히려 이쪽을 더 반기는 경우가 많습니다. 글자와 도형이 벡터로 남아서 해상도 걱정이 없습니다. `page.pdf(width=\"3500px\", height=\"2300px\", print_background=True)`로 뽑으면 되고, 인쇄소가 실제 크기로 확대해서 출력합니다. 다만 그림자나 필터 같은 일부 CSS 효과는 래스터로 바뀌거나 다르게 보일 수 있으니 결과를 한 번 확인하세요.\n\n## 해상도\n\n10500px을 3500mm에 출력하면 약 76dpi입니다. 현수막은 멀리서 보는 인쇄물이라 보통 72~100dpi면 충분합니다. 그래도 인쇄소마다 요구하는 해상도, 색 모드(RGB 또는 CMYK), 파일 형식(PNG, TIFF, PDF)이 다르니 넘기기 전에 한 번 물어보세요."
+              },
+              {
+                "name": "split-stitch",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (나눠|나누어|분할|띠|타일|조각으로|strip|tile|clip)[\\s\\S]{0,300}(이어\\s*붙|합치|합쳐|붙이|stitch|vstack|append|montage)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.6666666666666666,
+        "passRate": 0.3333333333333333
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.6666666666666666,
+    "overallPassRate": 0.3333333333333333
+  }
+}

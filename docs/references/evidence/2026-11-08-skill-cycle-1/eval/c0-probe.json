@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T16:03:06.672Z",
+  "durationSeconds": 22,
+  "costUsd": 0.1388744,
+  "partial": false,
+  "suite": {
+    "root": "~/orca/workspaces/gotechy-harness/Gotehcy-harness",
+    "ablation": "none",
+    "caseFilter": "regression-no-flow",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "gotechy",
+        "version": "0.1.0",
+        "path": "~/orca/workspaces/gotechy-harness/Gotehcy-harness"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "regression-no-flow",
+      "dir": "evals/gotechy-design/regression-no-flow",
+      "source": "prose",
+      "promptMarkdown": "반려동물 산책 기록 앱을 만들 거야. 스펙은 아직 없어. 일단 홈 화면 와이어프레임이랑 색부터 멋지게 뽑아 줘.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 6,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "gotechy-design SKILL.md의 시작 조건(하드 게이트)과 bar D1, 흔한 실패 첫 줄을 본다.\n\nPASS if 사용자 흐름(30-user-flow)이나 미니 스펙의 흐름이 없으니 먼저 만들자고 하고(gotechy-spec 스킬 안내), 지어낸 페이지 구조나 색 팔레트를 확정안처럼 내놓지 않는다. 흐름을 만들기 위한 질문 한두 개는 해도 된다.\n\nFAIL if 흐름 확인 없이 홈 화면 와이어프레임이나 색 팔레트를 완성안으로 그려 내거나, 그라데이션 히어로와 3열 기능 카드 같은 판박이 구성을 바로 제안한다.",
+          "config": {
+            "criteria": "gotechy-design SKILL.md의 시작 조건(하드 게이트)과 bar D1, 흔한 실패 첫 줄을 본다.\n\nPASS if 사용자 흐름(30-user-flow)이나 미니 스펙의 흐름이 없으니 먼저 만들자고 하고(gotechy-spec 스킬 안내), 지어낸 페이지 구조나 색 팔레트를 확정안처럼 내놓지 않는다. 흐름을 만들기 위한 질문 한두 개는 해도 된다.\n\nFAIL if 흐름 확인 없이 홈 화면 와이어프레임이나 색 팔레트를 완성안으로 그려 내거나, 그라데이션 히어로와 3열 기능 카드 같은 판박이 구성을 바로 제안한다.",
+            "focus": "last_message"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 4,
+            "costUsd": 0.1388744,
+            "judgeCostUsd": 0.00039960000000000006,
+            "durationSeconds": 22,
+            "startedAt": "2026-11-07T16:03:06.763Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-5Zt042/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "아직 그리지 않았어요. 지금 바로 그리면 보기에만 그럴듯한 화면이 나올 가능성이 높아서 순서를 바꾸자고 제안드려요.\n\n**이유 두 가지**\n1. **홈에 뭘 올릴지가 아직 안 정해졌어요.** 홈 화면은 \"앱을 열고 가장 먼저 하는 행동\"에 맞춰 짜야 해요. 그런데 그 행동이 \"산책 시작\"인지, \"오늘 기록 확인\"인지, \"여러 마리 중 한 마리 고르기\"인지 아직 몰라요. 이걸 모른 채 그리면 제가 섹션을 지어내게 돼요. 확인해 보니 저장소에 스펙 문서(`docs/product-specs/`)도 아직 없어요.\n2. **색은 와이어프레임 다음에 정해야 해요.** 실제 문구와 상태(로딩, 기록 없음, GPS 꺼짐 등)가 정해져야 어떤 색이 어디서 몇 대 1 대비를 내야 하는지 계산할 수 있어요. 색부터 고르면 나중에 다시 고치게 될 가능성이 높아요.\n\n**제안하는 순서 (빠르게 가는 길)**\n1. **사용자 흐름만 짧게 정하기.** 홈 화면 하나 기준의 미니 스펙이라 질문 몇 개면 끝나요.\n2. **홈 와이어프레임.** 실제 문구, 상태별 화면(첫 사용, 산책 중, 오프라인 등), 375px 모바일 배치까지 넣어요.\n3. **색과 스타일가이드.** 라이트와 다크 모두 대비를 계산해서 정해요.\n\n단계마다 확인받고 넘어갈게요.\n\n바로 1단계 첫 질문부터 시작할게요.\n\n> **보호자가 앱을 열었을 때 가장 자주 하는 행동은 무엇인가요?**\n> - (a) 지금 바로 산책 시작 (타이머나 GPS 기록)\n> - (b) 다녀온 산책을 나중에 기록\n> - (c) 이번 주 산책량과 목표 달성 확인\n> - (d) 기타. 자유롭게 말씀해 주세요\n\n순서를 건너뛰고 일단 분위기만 보고 싶으시면 그렇게 말씀해 주세요. 시안용 홈 화면과 색을 \"가정 기반 초안\"으로 표시해서 빠르게 만들어 드릴게요. 다만 흐름이 정해지면 다시 손봐야 해요."
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

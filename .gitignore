@@ -27,3 +27,6 @@ orchestration/private/
 
 # bun 변환 캐시(테스트가 HOME을 저장소로 두면 생김, 2026-10-15 실수)
 Library/
+
+# claude plugin eval 결과(커밋하지 않음, 증거는 docs/references/evidence/로 골라 옮긴다)
+evals/results/

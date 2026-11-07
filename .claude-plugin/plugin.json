@@ -1,0 +1,5 @@
+{
+  "name": "gotechy",
+  "description": "Gotechy 전문가 스킬 팩(skills/)을 claude plugin eval로 평가하기 위한 매니페스트. 평가 문제는 evals/<스킬>/<문제>/",
+  "version": "0.1.0"
+}

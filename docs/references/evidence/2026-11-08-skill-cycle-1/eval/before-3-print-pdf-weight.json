@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.319",
+  "startedAt": "2026-11-07T16:22:06.188Z",
+  "durationSeconds": 37,
+  "costUsd": 0.3714873,
+  "partial": false,
+  "suite": {
+    "root": "~/orca/workspaces/gotechy-harness/wt-before",
+    "ablation": "none",
+    "caseFilter": "print-pdf-weight",
+    "threshold": 1,
+    "concurrency": 3,
+    "plugins": [
+      {
+        "name": "gotechy",
+        "version": "0.1.0",
+        "path": "~/orca/workspaces/gotechy-harness/wt-before"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "print-pdf-weight",
+      "dir": "evals/gotechy-design/print-pdf-weight",
+      "source": "prose",
+      "promptMarkdown": "현수막 부품 본(A4 22장)을 HTML과 SVG로 만들어 크롬에서 PDF로 저장했는데 30MB가 나와서 메신저로 못 보내. 배경에 SVG 질감 필터(feTurbulence)랑 큰 그라데이션을 깔았고, 글자는 웹 폰트야. 집 프린터로 실제 크기 출력할 거야. 파일을 어떻게 줄이지?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 용량의 주원인을 SVG 필터(feTurbulence)나 그라데이션, 투명 효과가 PDF 안에서 페이지마다 큰 비트맵으로 바뀌는 것으로 짚는다.\n2. 실제로 줄이는 방법을 하나 이상 구체적으로 낸다: 질감을 미리 그린 이미지 한 장으로 바꿔 재사용하기, 필터 빼기, 또는 페이지를 150~300dpi 이미지로 래스터화해 다시 PDF로 묶기. 어느 것이든 실제 크기(배율)를 바꾸지 않는다.\n\nFAIL if 원인을 웹 폰트로만 보거나, 온라인 압축만 권하거나, 해상도를 72dpi 이하로 낮추라고 한다.",
+          "config": {
+            "criteria": "핵심만 본다. 표현이 달라도 같은 뜻이면 인정한다.\n\nPASS if 둘 다 만족한다.\n1. 용량의 주원인을 SVG 필터(feTurbulence)나 그라데이션, 투명 효과가 PDF 안에서 페이지마다 큰 비트맵으로 바뀌는 것으로 짚는다.\n2. 실제로 줄이는 방법을 하나 이상 구체적으로 낸다: 질감을 미리 그린 이미지 한 장으로 바꿔 재사용하기, 필터 빼기, 또는 페이지를 150~300dpi 이미지로 래스터화해 다시 PDF로 묶기. 어느 것이든 실제 크기(배율)를 바꾸지 않는다.\n\nFAIL if 원인을 웹 폰트로만 보거나, 온라인 압축만 권하거나, 해상도를 72dpi 이하로 낮추라고 한다.",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "rasterize",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "(래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+            "flags": "i",
+            "match": "contains"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1216151,
+            "judgeCostUsd": 0.0011225000000000002,
+            "durationSeconds": 31,
+            "startedAt": "2026-11-07T16:22:06.266Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-FVli8s/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "30MB가 된 건 대부분 **feTurbulence 필터** 때문일 가능성이 큽니다. 크롬은 PDF로 저장할 때 SVG 필터를 벡터로 남기지 못하고 페이지마다 고해상도 이미지로 바꿔 넣습니다. 22장이면 큰 질감 이미지가 22번 들어갑니다. 그라데이션은 원래 벡터라서 가볍습니다. 다만 필터, `mix-blend-mode`, `opacity`와 겹치면 함께 이미지로 바뀝니다. 웹 폰트는 크롬이 쓴 글자만 골라 넣기 때문에 보통 수백 KB 수준입니다.\n\n## 1. 원인 확인 (1분)\n질감 레이어만 `display:none`으로 숨기고 PDF를 다시 저장해 보세요. 용량이 1~2MB로 떨어지면 원인은 필터입니다.\n\n## 2. 근본 해결: 질감을 이미지 한 장으로 미리 구워 반복하기\n1. 질감만 있는 600×600px 정도 요소를 만듭니다.\n2. 크롬 개발자도구에서 그 요소를 우클릭하고 **Capture node screenshot**을 눌러 PNG로 저장합니다. 바탕색까지 같이 구우면 JPEG로 저장해도 되고, 그러면 더 가볍습니다.\n3. 필터를 지우고 이렇게 바꿉니다.\n   ```css\n   .page {\n     background: url(texture.jpg) repeat, linear-gradient(...);\n     background-size: 50mm 50mm, auto;  /* 타일 크기는 취향대로 */\n   }\n   ```\n4. 질감이나 그라데이션 위에 걸린 `filter`, `mix-blend-mode`, `backdrop-filter`도 지웁니다. 하나라도 남아 있으면 그 영역이 다시 이미지로 바뀝니다.\n\n같은 이미지 파일을 모든 페이지에서 쓰면 PDF에는 보통 한 번만 들어갑니다. 글자와 그라데이션은 벡터로 남으니 결과는 수 MB 이하일 겁니다.\n\n## 3. 지금 PDF를 바로 줄이기 (HTML 수정 없이)\nGhostscript로 이미지 해상도만 낮추면 됩니다. 글자는 벡터라서 선명하게 유지됩니다.\n```bash\nbrew install ghostscript\ngs -sDEVICE=pdfwrite -dCompatibilityLevel=1.6 -dNOPAUSE -dBATCH -dQUIET \\\n   -dPDFSETTINGS=/printer \\\n   -dDownsampleColorImages=true -dColorImageResolution=200 \\\n   -sOutputFile=banner_small.pdf banner.pdf\n```\n- 집 프린터로 뽑는 배경 질감은 150~200dpi면 충분합니다. 더 줄여야 하면 `-dPDFSETTINGS=/ebook`을 쓰고 해상도를 150으로 낮추세요.\n- macOS 미리보기의 \"파일 크기 줄이기\"는 너무 뭉개지니 쓰지 않는 게 좋습니다.\n\n## 출력할 때 주의할 점\n- 인쇄 창에서 **배율 100%(실제 크기)**를 고르고 \"페이지에 맞추기\"는 끕니다. 그래야 부품을 이어 붙일 때 크기가 맞습니다.\n- 집 프린터는 가장자리 3~5mm를 못 찍습니다. 부품을 이어 붙이는 겹침 여백이 그보다 넓은지 확인하세요.\n- 질감 배경을 22장에 꽉 채우면 잉크가 많이 듭니다. 질감을 끈 버전도 하나 만들어 두면 시험 출력할 때 좋습니다.\n\n추천 순서는 이렇습니다. 지금 당장 보내야 하면 3번(Ghostscript)을 쓰세요. 다음에 수정할 일이 있으면 2번으로 바꿔 두면 처음부터 작은 PDF가 나옵니다. 그래도 크면 메신저 대신 구글 드라이브 같은 클라우드 링크로 보내는 방법도 있습니다."
+              },
+              {
+                "name": "rasterize",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.1157231,
+            "judgeCostUsd": 0.0007065000000000001,
+            "durationSeconds": 28,
+            "startedAt": "2026-11-07T16:22:06.266Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-XbrDgh/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# 현수막 부품 본 PDF 용량 줄이기\n\n용량이 커진 원인은 거의 확실히 **feTurbulence 질감 필터**예요. 크롬은 PDF를 저장할 때 SVG 필터를 벡터로 남기지 못하고, 페이지마다 고해상도 이미지로 굽습니다. 그 이미지가 22장 전부에 들어가면 30MB가 됩니다. 글자(웹 폰트)는 쓴 글자만 골라 넣기 때문에 보통 원인이 아니에요.\n\n## 0. 원인부터 확인 (1분)\n```bash\nbrew install poppler          # 없으면 설치\npdfimages -list 부품본.pdf | head -30   # 페이지마다 큰 이미지가 박혀 있는지 확인\npdffonts 부품본.pdf                      # 폰트가 \"emb yes, sub yes\"(부분 포함)인지 확인\n```\n페이지마다 수천 픽셀짜리 이미지가 보이면 필터가 원인이 맞습니다.\n\n## 1. 가장 빠른 방법: 지금 PDF를 그대로 압축\n```bash\nbrew install ghostscript\ngs -sDEVICE=pdfwrite -dCompatibilityLevel=1.6 -dPDFSETTINGS=/printer \\\n   -dColorImageResolution=200 -dDownsampleColorImages=true \\\n   -dNOPAUSE -dBATCH -dQUIET -sOutputFile=부품본_작게.pdf 부품본.pdf\n```\n- 글자와 도형은 벡터 그대로 남아요. 질감 이미지만 200dpi로 낮아지는데, 집 프린터에서는 차이가 거의 안 보입니다.\n- 그래도 크면 `/printer`를 `/ebook`(150dpi)으로 바꾸세요. 질감 배경은 150dpi로도 충분해요.\n- **페이지 크기는 그대로라서 실제 크기 출력에는 영향이 없습니다.**\n\n## 2. 근본 해결: 원본 HTML/SVG를 고치기\n1. **feTurbulence를 작은 타일 이미지로 바꾸기.** 질감을 256~512px PNG(또는 JPG) 한 장으로 미리 뽑아 두고 `background: url(noise.png) repeat;`로 깝니다. 그러면 22장이 같은 이미지 하나를 함께 써서 수백 KB면 끝나요.\n2. **그라데이션은 CSS `linear-gradient`/`radial-gradient`만 쓰기.** 그라데이션 자체는 벡터로 남아서 가볍습니다. 다만 같은 요소에 `filter`, `mix-blend-mode`, `opacity`, `backdrop-filter`가 붙으면 다시 이미지로 굽혀요. 이 속성들은 빼 주세요.\n3. 다시 PDF로 저장할 때 크롬 인쇄 설정은 이렇게 하세요. 배율 100%, 여백 없음, 배경 그래픽 켬. 그리고 `@page { size: A4; margin: 0; }`를 넣어 두세요.\n\n이렇게 고치면 보통 몇 MB 아래로 내려갑니다. 1번 압축까지 하면 더 작아져요.\n\n## 출력할 때 주의\n프린터 대화상자에서 **\"실제 크기\"(100%)**를 고르세요. \"용지에 맞추기\"를 고르면 부품 치수가 몇 % 줄어듭니다. 첫 장에 10cm 눈금자를 하나 넣어 두면, 출력한 뒤 자로 재서 바로 확인할 수 있어요.\n\n그래도 메신저 용량 제한에 걸리면 PDF를 두 개로 나눠 보내세요(`qpdf --split-pages=11 부품본_작게.pdf 부분.pdf`). 아니면 클라우드 링크로 공유하는 방법도 있어요.\n\n원하시면 HTML 파일 위치를 알려 주세요. 필터를 타일 이미지로 바꾸는 작업을 직접 해 드릴게요."
+              },
+              {
+                "name": "rasterize",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 1,
+            "costUsd": 0.13414910000000002,
+            "judgeCostUsd": 0.0012725,
+            "durationSeconds": 37,
+            "startedAt": "2026-11-07T16:22:06.266Z",
+            "error": null,
+            "tracePath": "/private/tmp/e-gOKqsu/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "# 30MB의 원인은 질감 필터일 가능성이 큽니다\n\n크롬은 PDF를 만들 때 웹 폰트와 일반 그라데이션을 벡터로 넣습니다. 그래서 이 둘은 보통 용량을 별로 차지하지 않습니다. 하지만 `feTurbulence` 같은 SVG 필터는 PDF로 표현할 수 없어서, 크롬이 페이지마다 고해상도 이미지로 바꿔 넣습니다. 노이즈 이미지는 압축도 잘 안 됩니다. 22장에 페이지당 1MB 남짓이면 30MB 정도가 나옵니다.\n\n**먼저 확인하기 (선택):** 어떤 이미지가 큰지 볼 수 있습니다.\n```bash\nbrew install poppler\npdfimages -list 파일.pdf\n```\nA4 크기의 큰 이미지가 페이지 수만큼 나오면 질감 필터가 원인입니다.\n\n## 해결 방법 (효과가 큰 순서)\n\n### 1. 질감을 작은 타일 이미지 하나로 바꾸기 (가장 효과가 큼)\n- 필터에 `stitchTiles=\"stitch\"`를 넣고, 512×512 정도 크기로 질감만 한 번 렌더링합니다.\n  - 크롬 개발자도구에서 해당 요소를 선택하고 `Cmd+Shift+P`를 누른 뒤 **\"Capture node screenshot\"**을 실행하면 이미지로 저장됩니다.\n- 저장한 이미지를 JPG(품질 80 정도)로 바꿉니다. 노이즈 이미지는 PNG보다 JPG가 훨씬 작습니다.\n- CSS에서 이 이미지를 깔아 줍니다:\n  ```css\n  background-image: url(texture.jpg);\n  background-repeat: repeat;\n  ```\n- 22페이지 모두 같은 파일을 쓰면 크롬이 대개 한 번만 넣기 때문에, 전체 용량이 수백 KB에서 몇 MB 수준으로 줄어듭니다.\n\n### 2. 인쇄할 때만 질감 빼기\n집 프린터로 뽑으면 미세한 노이즈는 거의 보이지 않고 잉크만 많이 씁니다. 화면에서는 질감을 유지하고 인쇄할 때만 빼려면 이렇게 하면 됩니다:\n```css\n@media print { .texture { filter: none; background-image: none; } }\n```\n\n### 3. 그라데이션은 벡터로 유지하기\nCSS `linear-gradient`나 SVG `<linearGradient>`만 단독으로 쓰면 벡터라서 작습니다. 그런데 `opacity`, `mix-blend-mode`, `filter`, `backdrop-filter`가 같이 걸리면 그 부분도 이미지로 바뀝니다. 이런 속성이 함께 걸려 있다면 빼는 것이 좋습니다.\n\n### 4. 이미 만든 PDF를 바로 압축하기 (응급용)\n```bash\nbrew install ghostscript\ngs -sDEVICE=pdfwrite -dCompatibilityLevel=1.6 -dPDFSETTINGS=/printer \\\n   -dNOPAUSE -dBATCH -dQUIET -sOutputFile=작은파일.pdf 원본.pdf\n```\n- `/printer`는 300dpi로 인쇄용입니다. 더 작게 만들려면 `/ebook`(150dpi)을 쓰면 되고, 집 프린터 출력에도 대체로 충분합니다.\n- 페이지 크기는 바뀌지 않으므로 실제 크기 출력에는 영향이 없습니다.\n- 맥 미리보기의 \"파일 크기 줄이기\"는 화질이 너무 많이 떨어지니 쓰지 않는 것이 좋습니다.\n\n## 실제 크기 출력을 위한 확인 사항\n- CSS에 `@page { size: A4; margin: 0; }`을 넣고, 크롬 인쇄 창에서 배율 100%, 여백 \"없음\"으로 저장합니다.\n- 프린터로 출력할 때는 \"용지에 맞춤\"이 아니라 **\"실제 크기\"(100%)**를 선택합니다.\n- 집 프린터는 대부분 가장자리 3~5mm를 인쇄하지 못합니다. 이어 붙일 현수막이라면 겹침 여백과 맞춤 표시가 그 안쪽에 들어오는지 확인해 주세요.\n- 출력 후 자로 눈금 하나를 재서 크기가 맞는지 확인해 보세요.\n\n**추천:** 지금 당장 보내야 하면 4번(Ghostscript)으로 압축하세요. 근본적으로는 1번이나 2번으로 고친 뒤 PDF를 다시 저장하는 것이 좋습니다. 그래도 크다면 구글 드라이브 같은 클라우드 링크로 보내는 방법도 있습니다.\n\nHTML 파일이 이 폴더에 있다면 위치를 알려 주세요. 필터를 타일 이미지로 바꾸는 작업을 직접 해 드릴 수 있습니다."
+              },
+              {
+                "name": "rasterize",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched (래스터|rasteri[sz]|비트맵|bitmap|이미지\\s*(한\\s*장|파일)|이미지로\\s*(바꿔|바꾸|변환|굽|저장|뽑|구워)|JPE?G|PNG)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 1,
+    "overallScore": 1,
+    "overallPassRate": 1
+  }
+}

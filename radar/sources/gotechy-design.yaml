@@ -1,5 +1,5 @@
 skill: gotechy-design
-checked: 2026-10-16
+checked: 2026-11-08
 sources:
   - id: wcag-22
     title: W3C WCAG 2.2
@@ -54,3 +54,89 @@ sources:
     feed: dequelabs/axe-core
     cadence: monthly
     covers: [references/bar.md]
+  # 인쇄물 분야(2026-11-08 추가, 스킬 업그레이드 1바퀴). 인쇄소 가이드는 그 인쇄소의 공식 작업 기준이라 official로 둔다
+  - id: adobe-acrobat-poster
+    title: Adobe Acrobat 큰 문서 출력(포스터, 겹침, 재단 표시, 라벨)
+    url: https://helpx.adobe.com/acrobat/desktop/print-documents/set-up-and-print-pdfs/large-documents.html
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: adobe-acrobat-actual-size
+    title: Adobe Acrobat 출력 페이지 크기(실제 크기와 맞춤)
+    url: https://helpx.adobe.com/acrobat/desktop/print-documents/set-up-and-print-pdfs/page-size.html
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: ms-edge-print
+    title: Microsoft Edge 인쇄(크로미움 인쇄 대화상자의 배율과 여백)
+    url: https://support.microsoft.com/en-us/edge/print-in-microsoft-edge
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: brother-unprintable-area
+    title: Brother 인쇄 불가 영역(A4 레이저 예)
+    url: https://support.brother.com/g/s/id/htmldoc/mfc/cv_mfcl2750dw/uke/html/GUID-904143DE-6F48-47B6-BA9A-182AB92F2194_28.html
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: bizhows-file-guide
+    title: 비즈하우스 공통 작업 가이드(파일 업로드 유의사항)
+    url: https://help.bizhows.com/hc/ko/articles/15031787666073
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: redprinting-banner-guide
+    title: 레드프린팅 현수막 작업 가이드
+    url: https://redprinting.co.kr/ko/guide3/view/outdoor-banner
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: wowpress-banner-guide
+    title: 와우프레스 현수막 상품 가이드
+    url: https://wowpress.co.kr/wow2.0/w_guide/doc/g3_6.html
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: hp-large-format-ppi
+    title: HP 대형 출력 모범 사례(보는 거리별 PPI 표)
+    url: https://www.hp.com/us-en/tech-takes/printing/how-to/large-format-printing-best-practices.html
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: mdn-page-size
+    title: MDN @page size
+    url: https://developer.mozilla.org/en-US/docs/Web/CSS/@page/size
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md]
+  - id: mdn-getbbox
+    title: MDN SVGGraphicsElement.getBBox()
+    url: https://developer.mozilla.org/en-US/docs/Web/API/SVGGraphicsElement/getBBox
+    trust: official
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md, references/bar.md]
+  - id: css-paged-media-3
+    title: W3C CSS Paged Media Module Level 3(작업 초안)
+    url: https://www.w3.org/TR/css-page-3/
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md]
+  - id: iso-216
+    title: ISO 216:2007 종이 크기(A, B 계열)
+    version: "2007"
+    url: https://www.iso.org/standard/36631.html
+    trust: standard
+    watch: page
+    cadence: quarterly
+    covers: [references/domain-print.md]

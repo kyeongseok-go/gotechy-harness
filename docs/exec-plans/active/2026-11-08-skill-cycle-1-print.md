@@ -29,7 +29,7 @@ branch: skill-cycle/2026-11-08-print
 - [x] C2 (01:12~01:25) SKILL.md 분야 판별 표와 절차 C, description에 인쇄물 추가, `references/domain-print.md`, `references/bar.md` 인쇄물 절 P1~P8과 원천 표, `staff/print.md`, radar 출처 12개(조사 서브에이전트가 연 1차 출처), 직원 카드 형식 검사 테스트 2개(절 이름을 바꾸면 실패하는 것 확인). 커밋 83d6762, train packs.ref를 83d6762로 올림(b060bb0, 스킬을 바꾸면 ref도 올리는 규칙). `bun run check` 813 통과, 0 실패. 인쇄 문서는 새 문제 3개를 만들기 전에 썼다
 - [x] C1 보강 (01:15~01:23) 새 문제 3개의 첫 측정은 0.17, 0.33, 0.67이었지만, 답을 읽어 보니 채점기가 좋은 답을 떨어뜨렸다(덤 조건, 내가 정한 해법 하나만 인정). 핵심 조건만 남기고 같은 해법의 다른 표현을 인정하도록 고쳐(5df5a56) 다시 재니 셋 다 1.0이었다. 업그레이드 전 인쇄 8문제 평균은 0.979. 웹 3문제: contrast-check 1.0, wireframe-states 0.5, regression-no-flow 1.0
 - [x] C3 (01:25~01:34) 업그레이드 후(b060bb0) 같은 조건: 인쇄 8문제 모두 1.0(평균 0.979에서 1.000), 웹 3문제는 전과 같음(1.0, 0.5, 1.0). 비용은 목록가 환산 5.96달러로 전보다 약 40% 많다(스킬을 불러 4~7턴). 한도 오류 0. 전체 평가 76번, 환산 11.83달러, 평가 시간 1073초
-- [ ] C4 검사, 커밋, 브랜치 푸시, 초안 PR, CI 확인
+- [x] C4 (01:35~01:44) 장문 인용 0건, `bun run check` 810 통과 3 건너뜀 0 실패, gitleaks 0건, 커밋 79b8342 푸시, 초안 PR https://github.com/kyeongseok-go/gotechy-harness/pull/1 (기준 upgrade-2026-11, REST로 생성), CI 초록(79b8342). 저장소 hook이 `gh api -f`를 force push로 오인해 막아서 `--raw-field`로 바꿨다
 - [x] C5 보고: `docs/references/evidence/2026-11-08-skill-cycle-1/HANDOFF.md`(결정 3개, 사용량, 점수표, 확인 못 한 것)
 
 ## 시간 규칙 (오너 지시 2026-11-07)

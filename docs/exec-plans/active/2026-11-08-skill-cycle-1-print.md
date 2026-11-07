@@ -23,7 +23,7 @@ branch: skill-cycle/2026-11-08-print
 ## Progress
 
 - [x] (2026-11-07 10:02 KST) 준비: 설계 문서, 이 계획, 평가 재료를 커밋 d6f2f3c로 `skill-cycle/2026-11-08-print`에 푸시. 그 전 `bun run check` 811 pass, 0 fail
-- [ ] (2026-11-07 10:06 KST 예정) 클라우드 시험 실행(읽기 전용): 도구, 구독 로그인, 푸시 권한 확인
+- [x] (2026-11-07 10:12 KST) 클라우드 시험 실행(읽기 전용, 352초) 끝. 통과: 브랜치 받기(43abf90), bun 1.4.4, claude 2.1.319, API 키 변수 0개, 푸시 dry-run, 하위 `claude plugin eval` 구독 로그인(1문제 47초). 막힘 2가지는 Surprises에 적었다: 평가가 스킬을 싣지 않음, 클라우드에서만 테스트 45개 실패. gh 로그인 오류는 문제가 아니다(아래).
 - [ ] C0 사전 점검(01:00 시작)
 - [ ] C1 평가 문제 작성과 업그레이드 전 평가
 - [ ] C2 출처 수집과 분야 문서, 합격선, 직원 카드, SKILL.md 게이트 조정
@@ -58,7 +58,7 @@ branch: skill-cycle/2026-11-08-print
 
 ## Plan of Work
 
-C0 사전 점검. 목표: 구독으로만 돌고, 깨끗한 상태에서 시작한다. 일: `TZ=Asia/Seoul date`, 키 변수 확인(로컬 실행일 때), `claude --version`, `claude plugin eval --help`, `bun --version`, `gh auth status`, `git status`, 브랜치 확인(이미 `skill-cycle/2026-11-08-print`로 받았으면 그대로 쓴다), 평가 문제 1개를 `--runs 1`로 돌려 하위 프로세스가 로그인 오류 없이 도는지 확인. 증거: Progress 줄.
+C0 사전 점검. 목표: 구독으로만 돌고, 깨끗한 상태에서 시작한다. 일: `TZ=Asia/Seoul date`, 키 변수 확인(로컬 실행일 때), `claude --version`, `claude plugin eval --help`, `bun --version`, `echo $GH_TOKEN`(클라우드에서는 `proxy-injected`가 정상이고 `gh auth status`의 "token is invalid"는 무시한다), `git status`, 브랜치 확인(이미 `skill-cycle/2026-11-08-print`로 받았으면 그대로 쓴다), 평가 문제 1개를 `--runs 1`로 돌려 하위 프로세스가 로그인 오류 없이 도는지 확인. 증거: Progress 줄.
 
 C1 평가 문제 먼저. 목표: 업그레이드 전 점수. 일: `evals/gotechy-design/print-*/`에 평가 문제 5개를 만든다.
 1. print-tiling: 3.5m × 2.3m 배경의 부품(글자 본)을 A4로 나눠 출력하는 계획. 겹침 띠, 맞춤선, 100% 출력, 자 표시가 있어야 한다.
@@ -72,7 +72,7 @@ C2 학습과 작성. 목표: 1차 출처에 근거한 인쇄 분야 문서. 일:
 
 C3 업그레이드 후 평가. 목표: 비교. 일: 같은 평가 문제를 업그레이드 후 작업 트리에서 `--runs 3`. 증거: `after.json`과 비교 표. 점수가 오르지 않은 항목은 이유를 Surprises에 적는다. 전체 점수가 오르지 않으면 커밋은 하되 PR 제목에 "반영 비추천"을 단다.
 
-C4 검사와 PR. 목표: 오너가 PR 하나로 판단. 일: `bun run check`, gitleaks, 인용 길이 검사, 커밋(검사와 `&&`로만 잇기), `skill-cycle/2026-11-08-print` 푸시, `gh pr create --draft`(본문: 전후 점수표, 사용량, 바뀐 파일, 확인 못 한 것), `gh run watch`.
+C4 검사와 PR. 목표: 오너가 PR 하나로 판단. 일: `bun run check`, gitleaks, 인용 길이 검사, 커밋(검사와 `&&`로만 잇기), `skill-cycle/2026-11-08-print` 푸시, 초안 PR은 REST로 만든다: `gh api repos/kyeongseok-go/gotechy-harness/pulls -f title=... -f head=skill-cycle/2026-11-08-print -f base=upgrade-2026-11 -F draft=true -F body=@pr-body.md`(본문: 전후 점수표, 사용량, 바뀐 파일, 확인 못 한 것). CI는 `gh api repos/kyeongseok-go/gotechy-harness/actions/runs?branch=skill-cycle/2026-11-08-print`로 확인한다. 클라우드의 GitHub 프록시는 GraphQL을 막아 `gh pr`, `gh issue`가 403으로 실패한다(https://code.claude.com/docs/en/cloud-environments 의 GitHub proxy 절, 2026-11-07 확인). PR 생성이 실패하면 푸시까지만 하고 HANDOFF에 적는다.
 
 C5 보고. 목표: 주간 자동화 설계의 입력. 일: HANDOFF(`docs/references/evidence/2026-11-08-skill-cycle-1/HANDOFF.md`, owner-protocol 형식). 맨 위에 실제 사용량: 시작과 끝 시각, `claude plugin eval` JSON의 토큰 합, 한도 오류 횟수, 5시간 창이 첫 요청 시각부터 세어졌는지의 관찰. 그리고 주간 상한 제안과 탐색 칸 주기 제안.
 
@@ -81,9 +81,9 @@ C5 보고. 목표: 주간 자동화 설계의 입력. 일: HANDOFF(`docs/referen
     TZ=Asia/Seoul date; env | grep -cE '^(ANTHROPIC_API_KEY|OPENAI_API_KEY)='   # 로컬이면 0이어야 함
     git switch skill-cycle/2026-11-08-print || git switch -c skill-cycle/2026-11-08-print origin/skill-cycle/2026-11-08-print
     git worktree add ../wt-before HEAD                              # 업그레이드 전 기준
-    claude plugin eval <wt-before 또는 저장소> --case 'print-*' --runs 3 --json > before.json
+    claude plugin eval <C0에서 정한 대상> --case 'print-*' --runs 3 --no-publish --trust-plugin --json > before.json
     bun run check && bun run dev -- text lint skills/gotechy-design/**/*.md
-    gh pr create --draft --base upgrade-2026-11 --head skill-cycle/2026-11-08-print
+    gh api repos/kyeongseok-go/gotechy-harness/pulls -f title="..." -f head=skill-cycle/2026-11-08-print -f base=upgrade-2026-11 -F draft=true -F body=@pr-body.md   # gh pr은 클라우드에서 403
 
 명령의 정확한 플러그인 대상 지정은 C0에서 `claude plugin eval --help` 전체를 읽고 확정해 이 절을 고친다(외부 경계라 실험 먼저, testing 규칙).
 
@@ -103,7 +103,10 @@ C5 보고. 목표: 주간 자동화 설계의 입력. 일: HANDOFF(`docs/referen
 
 ## Surprises & Discoveries
 
-(실행하며 채운다)
+- 2026-11-07 시험 실행: `gh auth status`가 "GH_TOKEN is invalid"로 실패했다. 클라우드에서는 GitHub 프록시가 실제 자격 증명을 밖에서 붙이고, 안에서는 `GH_TOKEN=proxy-injected`가 정상이라 로그인은 필요 없다. 다만 프록시가 GraphQL을 막아 `gh pr create`는 403이다. 그래서 C4를 `gh api` REST로 바꿨다(https://code.claude.com/docs/en/cloud-environments, GitHub proxy 절).
+- 2026-11-07 시험 실행: `claude plugin eval . --case regression-no-flow`가 점수 0이었다. 결과의 `suite.plugins`가 빈 배열이라 스킬이 실리지 않았고, 저장소 루트에는 플러그인 매니페스트(`.claude-plugin/`)가 없다. 이 상태의 점수는 스킬 품질과 무관하니 쓰지 않는다. C0에서 결과 JSON의 `suite.plugins`가 비어 있지 않은 대상 지정을 찾을 때까지 C1로 넘어가지 않는다(후보: 스킬 폴더를 대상으로 하고 `--eval-dir`로 평가 폴더 지정, 또는 매니페스트 추가). 못 찾으면 멈추고 HANDOFF에 적는다. 또 `--runs 1`을 줬는데 결과의 `runsPerCase`는 3이었다(원인 미확인).
+- 2026-11-07 시험 실행: 클라우드에서 `bun run check`의 테스트가 747 통과, 45 실패였다. 같은 커밋이 로컬에서는 811 통과, 0 실패다. 확인된 원인 1개는 얕은 clone이라 `HEAD^1`이 없는 것이다. 나머지는 mise 없음, node 22(고정은 24)일 가능성이 있지만 확인하지 못했다. C0에서 `git fetch --unshallow`부터 하고 다시 잰다. 그래도 실패하면 "클라우드 기준선 실패 수"를 before에 적고 after에서 늘지 않았는지만 본다.
+- 2026-11-07 `claude plugin eval --help`: 보고서를 기본으로 claude.ai에 올린다. 평가 명령에는 항상 `--no-publish`를 붙인다. 결과는 `evals/results/`에 생기니 커밋하지 않는다(클라우드 Stop 훅이 커밋을 요구해도 따르지 않는다).
 
 ## Decision Log
 
